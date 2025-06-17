@@ -51,10 +51,10 @@ namespace OSDP.Net.Connections
             try
             {
                 _listener.Start();
-                _logger?.LogInformation("TCP server listening on {Endpoint} for device connections", _listener.LocalEndpoint);
+                _logger?.LogInformation("TCP server listening on {@Endpoint} for device connections", _listener.LocalEndpoint);
                 
                 var newTcpClient = await _listener.AcceptTcpClientAsync();
-                _logger?.LogInformation("Accepted device connection from {RemoteEndpoint}", newTcpClient.Client.RemoteEndPoint);
+                _logger?.LogInformation("Accepted device connection from {@RemoteEndpoint}", newTcpClient.Client.RemoteEndPoint);
 
                 // Close any existing connection before accepting the new one
                 await Close();
@@ -103,7 +103,7 @@ namespace OSDP.Net.Connections
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "Error writing to TCP stream");
-                // Don't set IsOpen to false here as the base class will handle connection state
+                // Don't set IsOpen to false here as the base class will handle a connection state
                 throw;
             }
         }
@@ -145,7 +145,7 @@ namespace OSDP.Net.Connections
         /// <inheritdoc />
         public override string ToString()
         {
-            return _listener?.LocalEndpoint?.ToString() ?? "TcpServerOsdpConnection";
+            return _listener?.LocalEndpoint.ToString() ?? "TcpServerOsdpConnection";
         }
 
         /// <inheritdoc />
