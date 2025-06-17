@@ -37,3 +37,5 @@ _UpgradeReport_Files/
 # For those who use p4diff/p4merge, ignore .orig files that
 # those tools seem to leave behind
 *.orig
+
+.claude
