@@ -40,30 +40,30 @@ steps:
   - task: PowerShell@2
     displayName: 'Check inspection results and fail if needed'
     inputs:
-    targetType: 'inline'
-    script: |
-      $sarifPath = "$(Build.ArtifactStagingDirectory)/Resharper.sarif"
-      $sarif = Get-Content $sarifPath | ConvertFrom-Json
-      
-      $errorCount = 0
-      $warningCount = 0
-      
-      foreach ($run in $sarif.runs) {
-          if ($run.results) {
-              foreach ($result in $run.results) {
-                  if ($result.level -eq "error") {
-                      $errorCount++
-                  } elseif ($result.level -eq "warning") {
-                      $warningCount++
-                  }
-              }
-          }
-      }
-      
-      Write-Host "Found $errorCount errors and $warningCount warnings"
-
-      # Fail on both errors and warnings
-      if ($errorCount -gt 0 -or $warningCount -gt 0) {
-          Write-Host "##vso[task.logissue type=error]Code inspection found $errorCount errors and $warningCount warnings"
-          exit 1
-      }
+      targetType: 'inline'
+      script: |
+        $sarifPath = "$(Build.ArtifactStagingDirectory)/Resharper.sarif"
+        $sarif = Get-Content $sarifPath | ConvertFrom-Json
+        
+        $errorCount = 0
+        $warningCount = 0
+        
+        foreach ($run in $sarif.runs) {
+            if ($run.results) {
+                foreach ($result in $run.results) {
+                    if ($result.level -eq "error") {
+                        $errorCount++
+                    } elseif ($result.level -eq "warning") {
+                        $warningCount++
+                    }
+                }
+            }
+        }
+        
+        Write-Host "Found $errorCount errors and $warningCount warnings"
+  
+        # Fail on both errors and warnings
+        if ($errorCount -gt 0 -or $warningCount -gt 0) {
+            Write-Host "##vso[task.logissue type=error]Code inspection found $errorCount errors and $warningCount warnings"
+            exit 1
+        }
