@@ -30,7 +30,7 @@ steps:
   - task: CmdLine@2
     displayName: 'Perform code inspection'
     inputs:
-      script: 'jb inspectcode src/OSDP.Net.sln -o=$(Build.ArtifactStagingDirectory)/Resharper.sarif'
+      script: 'jb inspectcode src/OSDP.Net.sln -o=$(Build.ArtifactStagingDirectory)/Resharper.sarif --severity=WARNING --fail-on-issues'
 
   - task: PublishPipelineArtifact@1
     inputs:
