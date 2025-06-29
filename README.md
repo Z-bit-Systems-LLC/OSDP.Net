@@ -3,13 +3,19 @@
 [![Build Status](https://dev.azure.com/jonathanhorvath/OSDP.Net/_apis/build/status/bytedreamer.OSDP.Net?branchName=develop)](https://dev.azure.com/jonathanhorvath/OSDP.Net/_build/latest?definitionId=1&branchName=develop)
 [![NuGet](https://img.shields.io/nuget/v/OSDP.Net.svg?style=flat)](https://www.nuget.org/packages/OSDP.Net/)
 
-OSDP.Net is a .NET framework implementation of the Open Supervised Device Protocol (OSDP). 
+OSDP.Net is a .NET implementation of the Open Supervised Device Protocol (OSDP). 
 This protocol has been adopted by the Security Industry Association (SIA) to standardize access control hardware communication. 
 Further information can be found at [SIA OSDP Homepage](https://www.securityindustry.org/industry-standards/open-supervised-device-protocol/).
 
+## Prerequisites
+
+OSDP.Net supports the following .NET implementations:
+- .NET Framework 4.6.2 and later
+- NET 5.0 and later
+
 ## Getting Started
 
-The OSDP.Net library provides a Nuget package to quickly add OSDP capability to a .NET Framework or Core project. 
+The OSDP.Net library provides a Nuget package to quickly add OSDP capability to a .NET project. 
 You can install it using the NuGet Package Console window:
 
 ```shell
@@ -62,6 +68,90 @@ The reader number parameter found in some commands is used for devices with mult
 byte defaultReaderNumber = 0;
 bool success = await panel.ReaderBuzzerControl(connectionId, address, 
     new ReaderBuzzerControl(defaultReaderNumber, ToneCode.Default, 2, 2, repeatNumber))
+```
+
+## Common Usage Examples
+
+### Reading Card Data
+```c#
+// Register for card read events
+panel.CardRead += async (sender, eventArgs) =>
+{
+    await Task.Run(() =>
+    {
+        Console.WriteLine($"Card read from device {eventArgs.Address}");
+        if (eventArgs.CardData is RawCardData rawData)
+        {
+            Console.WriteLine($"Raw card data: {BitConverter.ToString(rawData.Data)}");
+        }
+        else if (eventArgs.CardData is FormattedCardData formattedData)
+        {
+            Console.WriteLine($"Formatted card data: {formattedData.CardNumber}");
+        }
+    });
+};
+```
+
+### Handling Device Events
+```c#
+// Monitor device status changes
+panel.InputStatusReport += async (sender, eventArgs) =>
+{
+    await Task.Run(() =>
+    {
+        Console.WriteLine($"Input status changed on device {eventArgs.Address}");
+        foreach (var input in eventArgs.InputStatuses)
+        {
+            Console.WriteLine($"Input {input.Number}: {(input.Active ? "Active" : "Inactive")}");
+        }
+    });
+};
+
+// Handle NAK responses
+panel.NakReplyReceived += async (sender, eventArgs) =>
+{
+    await Task.Run(() =>
+    {
+        Console.WriteLine($"NAK received from device {eventArgs.Address}: {eventArgs.Nak.ErrorCode}");
+    });
+};
+```
+
+### Managing Multiple Devices
+```c#
+// Add multiple devices on the same connection
+var devices = new[] { 0, 1, 2, 3 }; // Device addresses
+foreach (var address in devices)
+{
+    panel.AddDevice(connectionId, address, useCrc: true, useSecureChannel: true);
+}
+
+// Send commands to all devices
+foreach (var address in devices)
+{
+    await panel.ReaderLedControl(connectionId, address, new ReaderLedControls(new[]
+    {
+        new ReaderLedControl(0, 0, LedColor.Green, LedColor.Black, 
+            30, 30, PermanentControlCode.SetPermanentState)
+    }));
+}
+```
+
+### Error Handling
+```c#
+try
+{
+    var deviceId = await panel.IdReport(connectionId, address);
+    Console.WriteLine($"Device ID: {deviceId.VendorCode:X}-{deviceId.ModelNumber}-{deviceId.Version}");
+}
+catch (TimeoutException)
+{
+    Console.WriteLine("Device communication timeout");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Error communicating with device: {ex.Message}");
+}
 ```
 
 ## Custom Communication Implementations
