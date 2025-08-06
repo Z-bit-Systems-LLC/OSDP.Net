@@ -122,7 +122,7 @@ public class SecurityContext
         var crypto = Aes.Create();
         if (crypto == null)
         {
-            throw new Exception("Unable to create key algorithm");
+            throw new Exception("Unable to create AES algorithm");
         }
 
         if (!isForSessionSetup)
@@ -135,6 +135,7 @@ public class SecurityContext
             crypto.Mode = CipherMode.ECB;
             crypto.Padding = PaddingMode.Zeros;
         }
+        
         crypto.KeySize = 128;
         crypto.BlockSize = 128;
         crypto.Key = key ?? _securityKey;
@@ -157,13 +158,14 @@ public class SecurityContext
     {
         var buffer = new byte[16];
         int currentSize = 0;
+        
         foreach (byte[] x in input)
         {
             x.CopyTo(buffer, currentSize);
             currentSize += x.Length;
         }
+        
         using var encryptor = aes.CreateEncryptor();
-
         return encryptor.TransformFinalBlock(buffer, 0, buffer.Length);
     }
 

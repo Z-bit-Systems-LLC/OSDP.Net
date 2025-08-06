@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OSDP.Net.Messages.SecureChannel;
@@ -10,7 +11,7 @@ namespace OSDP.Net.Messages
     /// class with extra properties/methods that specifically indicate the parsing and
     /// validation of incoming raw bytes.
     /// </summary>
-    public class IncomingMessage : Message
+    internal class IncomingMessage : Message
     {
         private const ushort MessageHeaderSize = 6;
         private readonly byte[] _originalMessage;
