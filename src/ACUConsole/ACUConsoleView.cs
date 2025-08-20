@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using ACUConsole.Configuration;
 using ACUConsole.Model;
@@ -589,12 +590,31 @@ namespace ACUConsole
 
                 Application.RequestStop();
 
+                var cancellationTokenSource = new CancellationTokenSource();
+
+                void CancelDiscovery()
+                {
+                    cancellationTokenSource?.Cancel();
+                    cancellationTokenSource?.Dispose();
+                    cancellationTokenSource = null;
+                }
+
+                void CompleteDiscovery()
+                {
+                    _discoverMenuItem.Title = "_Discover";
+                    _discoverMenuItem.Action = DiscoverDevice;
+                }
+
                 try
                 {
                     _discoverMenuItem.Title = "Cancel _Discover";
-                    _discoverMenuItem.Action = () => { }; // TODO: Implement cancellation
+                    _discoverMenuItem.Action = CancelDiscovery;
 
-                    await _controller.DiscoverDevice(portNameComboBox.Text.ToString(), pingTimeout, reconnectDelay);
+                    await _controller.DiscoverDevice(portNameComboBox.Text.ToString(), pingTimeout, reconnectDelay, cancellationTokenSource.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Discovery was cancelled - this is expected, no need to show error
                 }
                 catch (Exception ex)
                 {
@@ -602,8 +622,8 @@ namespace ACUConsole
                 }
                 finally
                 {
-                    _discoverMenuItem.Title = "_Discover";
-                    _discoverMenuItem.Action = DiscoverDevice;
+                    CompleteDiscovery();
+                    cancellationTokenSource?.Dispose();
                 }
             }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using ACUConsole.Configuration;
 using ACUConsole.Model;
@@ -34,7 +35,7 @@ namespace ACUConsole
         // Device Management Methods
         void AddDevice(string name, byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey);
         void RemoveDevice(byte address);
-        Task<string> DiscoverDevice(string portName, int pingTimeout, int reconnectDelay);
+        Task<string> DiscoverDevice(string portName, int pingTimeout, int reconnectDelay, CancellationToken cancellationToken = default);
 
         // Command Methods
         Task SendDeviceCapabilities(byte address);

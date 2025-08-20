@@ -229,7 +229,7 @@ namespace ACUConsole
             }
         }
 
-        public async Task<string> DiscoverDevice(string portName, int pingTimeout, int reconnectDelay)
+        public async Task<string> DiscoverDevice(string portName, int pingTimeout, int reconnectDelay, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -239,7 +239,7 @@ namespace ACUConsole
                     {
                         ProgressCallback = OnDiscoveryProgress,
                         ResponseTimeout = TimeSpan.FromMilliseconds(pingTimeout),
-                        CancellationToken = CancellationToken.None,
+                        CancellationToken = cancellationToken,
                         ReconnectDelay = TimeSpan.FromMilliseconds(reconnectDelay),
                     }.WithDefaultTracer(_settings.IsTracing));
 
