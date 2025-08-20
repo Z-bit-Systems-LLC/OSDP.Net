@@ -1,4 +1,4 @@
-namespace Console.Configuration
+namespace ACUConsole.Configuration
 {
     public class SerialConnectionSettings
     {

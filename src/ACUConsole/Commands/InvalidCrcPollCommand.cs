@@ -3,12 +3,12 @@ using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model.CommandData;
 
-namespace Console.Commands
+namespace ACUConsole.Commands
 {
     /// <summary>
-    /// Change the length on a poll command
+    /// Change the CRC on a poll command
     /// </summary>
-    public class InvalidLengthPollCommand : CommandData
+    public class InvalidCrcPollCommand : CommandData
     {
         /// <inheritdoc />
         public override byte Code => (byte)CommandType;
@@ -22,7 +22,7 @@ namespace Console.Commands
         /// <inheritdoc />
         public override void CustomMessageUpdate(Span<byte> commandBuffer)
         {
-            commandBuffer[2] = (byte)(commandBuffer[2] + 1);
+            commandBuffer[^1] = (byte)(commandBuffer[^1] + 1);
         }
 
         /// <inheritdoc />

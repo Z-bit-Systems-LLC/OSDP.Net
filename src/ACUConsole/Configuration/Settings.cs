@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Console.Configuration
+namespace ACUConsole.Configuration
 {
     public class Settings
     {

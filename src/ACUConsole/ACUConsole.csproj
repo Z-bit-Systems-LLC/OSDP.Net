@@ -4,6 +4,8 @@
         <OutputType>Exe</OutputType>
         <TargetFramework>net8.0</TargetFramework>
         <LangVersion>default</LangVersion>
+        <AssemblyName>ACUConsole</AssemblyName>
+        <RootNamespace>ACUConsole</RootNamespace>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
