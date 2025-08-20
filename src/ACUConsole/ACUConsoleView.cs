@@ -138,8 +138,23 @@ namespace ACUConsole
 
         private void Quit()
         {
-            _controller.SaveConfiguration();
-            Application.Shutdown();
+            var result = MessageBox.Query(60, 8, "Exit Application", 
+                "Do you want to save your configuration before exiting?", 
+                2, "Cancel", "Don't Save", "Save");
+
+            switch (result)
+            {
+                case 0: // Cancel
+                    // Do nothing, stay in application
+                    break;
+                case 1: // Don't Save
+                    Application.Shutdown();
+                    break;
+                case 2: // Save
+                    _controller.SaveConfiguration();
+                    Application.Shutdown();
+                    break;
+            }
         }
 
         // Connection Methods - Simplified implementations
