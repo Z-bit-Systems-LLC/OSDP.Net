@@ -1,0 +1,31 @@
+mode: GitFlow
+branches:
+  master:
+    tag: 'beta'
+    increment: Patch
+    prevent-increment-of-merged-branch-version: true
+    track-merge-target: false
+    tracks-release-branches: false
+    is-release-branch: false
+  develop:
+    tag: beta
+    increment: Minor
+    prevent-increment-of-merged-branch-version: false
+    track-merge-target: true
+    tracks-release-branches: true
+    is-release-branch: false
+  feature:
+    tag: alpha.{BranchName}
+    increment: Patch
+    regex: ^feature?[/-]
+  release:
+    tag: rc
+    increment: Patch
+    regex: ^release?[/-]
+  hotfix:
+    tag: ''
+    increment: Patch
+    regex: ^hotfix?[/-]
+ignore:
+  sha: []
+merge-message-formats: {}

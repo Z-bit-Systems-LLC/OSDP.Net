@@ -5,14 +5,23 @@ steps:
       packageType: 'sdk'
       version: '8.x'
 
+  - task: gitversion/setup@0
+    displayName: 'Install GitVersion'
+    inputs:
+      versionSpec: '5.x'
+
+  - task: gitversion/execute@0
+    displayName: 'Execute GitVersion'
+    inputs:
+      useConfigFile: true
+      configFilePath: 'GitVersion.yml'
+
   - task: DotNetCoreCLI@2
     displayName: 'dotnet build'
     inputs:
       command: 'build'
       projects: '**/*.csproj'
-      arguments: '--configuration $(buildConfiguration)'
-      versioningScheme: 'byEnvVar'
-      versionEnvVar: 'AssemblyVersion'
+      arguments: '--configuration $(buildConfiguration) /p:Version=$(GitVersion.SemVer) /p:AssemblyVersion=$(GitVersion.AssemblySemVer) /p:FileVersion=$(GitVersion.AssemblySemFileVer) /p:PackageVersion=$(GitVersion.NuGetVersionV2)'
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet test'
