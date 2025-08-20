@@ -5,22 +5,12 @@ steps:
       packageType: 'sdk'
       version: '8.x'
       
-  - task: gitversion/setup@0
-    displayName: 'Install GitVersion'
-    inputs:
-      versionSpec: '5.x'
-
-  - task: gitversion/execute@0
-    displayName: 'Execute GitVersion'
-    inputs:
-      useConfigFile: true
-      configFilePath: 'GitVersion.yml'
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet pack'
     inputs:
       command: 'pack'
-      arguments: '--configuration $(buildConfiguration) /p:PackageVersion=$(GitVersion.NuGetVersionV2)'
+      arguments: '--configuration $(buildConfiguration) /p:PackageVersion=$(GitVersionNuGet)'
       packagesToPack: 'src/OSDP.Net/OSDP.Net.csproj'
 
   - task: DotNetCoreCLI@2
@@ -29,7 +19,7 @@ steps:
       command: 'publish'
       publishWebProjects: false
       projects: 'src/Console/Console.csproj'
-      arguments: '-r osx-x64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/osx-x64 /p:Version=$(GitVersion.AssemblySemVer)'
+      arguments: '-r osx-x64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/osx-x64 /p:Version=$(GitVersionAssembly)'
       zipAfterPublish: false
       modifyOutputPath: false
 
@@ -41,7 +31,7 @@ steps:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: 'src/Console/Console.csproj'
-      arguments: '-r win-x64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/win-x64 /p:Version=$(GitVersion.AssemblySemVer)'
+      arguments: '-r win-x64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/win-x64 /p:Version=$(GitVersionAssembly)'
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet publish for linux-x64'
@@ -51,7 +41,7 @@ steps:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: 'src/Console/Console.csproj'
-      arguments: '-r linux-x64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-x64 /p:Version=$(GitVersion.AssemblySemVer)'
+      arguments: '-r linux-x64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-x64 /p:Version=$(GitVersionAssembly)'
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet publish for linux-arm64'
@@ -61,7 +51,7 @@ steps:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: 'src/Console/Console.csproj'
-      arguments: '-r linux-arm64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeAllContentForSelfExtract=true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-arm64 /p:Version=$(GitVersion.AssemblySemVer)'
+      arguments: '-r linux-arm64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeAllContentForSelfExtract=true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-arm64 /p:Version=$(GitVersionAssembly)'
 
   - task: ArchiveFiles@2
     inputs:

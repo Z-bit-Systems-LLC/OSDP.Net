@@ -21,6 +21,15 @@ jobs:
       vmImage: 'windows-latest'
     steps:
       - template: ci/build.yml
+      - task: PowerShell@2
+        displayName: 'Set GitVersion variables for package job'
+        inputs:
+          targetType: 'inline'
+          script: |
+            Write-Host "##vso[task.setvariable variable=GitVersion.SemVer;isOutput=true]$(GitVersion.SemVer)"
+            Write-Host "##vso[task.setvariable variable=GitVersion.NuGetVersionV2;isOutput=true]$(GitVersion.NuGetVersionV2)"
+            Write-Host "##vso[task.setvariable variable=GitVersion.AssemblySemVer;isOutput=true]$(GitVersion.AssemblySemVer)"
+        name: GitVersionOutput
 
   - job: package
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
@@ -28,5 +37,9 @@ jobs:
       vmImage: 'windows-latest'
     dependsOn:
       build
+    variables:
+      GitVersionSemVer: $[ dependencies.build.outputs['GitVersionOutput.GitVersion.SemVer'] ]
+      GitVersionNuGet: $[ dependencies.build.outputs['GitVersionOutput.GitVersion.NuGetVersionV2'] ]
+      GitVersionAssembly: $[ dependencies.build.outputs['GitVersionOutput.GitVersion.AssemblySemVer'] ]
     steps:
       - template: ci/package.yml  
