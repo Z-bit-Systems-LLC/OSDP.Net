@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
@@ -635,8 +636,56 @@ namespace ACUConsole
                 return;
             }
 
-            // For now, just show a simple placeholder
-            MessageBox.Query(60, 10, "Communication Configuration", "Feature not yet implemented in simplified view", "OK");
+            var newAddressTextField = new TextField(25, 1, 25, 
+                ((_controller.Settings.Devices.MaxBy(device => device.Address)?.Address ?? 0) + 1).ToString());
+            var newBaudRateTextField = new TextField(25, 3, 25, _controller.Settings.SerialConnectionSettings.BaudRate.ToString());
+
+            void SendCommunicationConfigurationButtonClicked()
+            {
+                if (!byte.TryParse(newAddressTextField.Text.ToString(), out var newAddress) || newAddress > 127)
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid address entered (0-127)!", "OK");
+                    return;
+                }
+
+                if (!int.TryParse(newBaudRateTextField.Text.ToString(), out var newBaudRate))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid baud rate entered!", "OK");
+                    return;
+                }
+
+                Application.RequestStop();
+
+                ShowDeviceSelectionDialog("Communication Configuration", async (address) =>
+                {
+                    try
+                    {
+                        await _controller.SendCommunicationConfiguration(address, newAddress, newBaudRate);
+                        
+                        if (_controller.Settings.SerialConnectionSettings.BaudRate != newBaudRate)
+                        {
+                            MessageBox.Query(60, 10, "Info",
+                                $"The connection needs to be restarted with baud rate of {newBaudRate}", "OK");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
+                    }
+                });
+            }
+
+            var sendButton = new Button("Send", true);
+            sendButton.Clicked += SendCommunicationConfigurationButtonClicked;
+            var cancelButton = new Button("Cancel");
+            cancelButton.Clicked += () => Application.RequestStop();
+
+            var dialog = new Dialog("Communication Configuration", 70, 12, cancelButton, sendButton);
+            dialog.Add(new Label(1, 1, "New Address:"), newAddressTextField,
+                      new Label(1, 3, "New Baud Rate:"), newBaudRateTextField);
+            newAddressTextField.SetFocus();
+
+            Application.Run(dialog);
         }
 
         private void SendOutputControlCommand()
@@ -647,8 +696,43 @@ namespace ACUConsole
                 return;
             }
 
-            // For now, just show a simple placeholder
-            MessageBox.Query(60, 10, "Output Control", "Feature not yet implemented in simplified view", "OK");
+            var outputNumberTextField = new TextField(25, 1, 25, "0");
+            var activateOutputCheckBox = new CheckBox(1, 3, "Activate Output", false);
+
+            void SendOutputControlButtonClicked()
+            {
+                if (!byte.TryParse(outputNumberTextField.Text.ToString(), out var outputNumber))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid output number entered!", "OK");
+                    return;
+                }
+
+                Application.RequestStop();
+
+                ShowDeviceSelectionDialog("Output Control", async (address) =>
+                {
+                    try
+                    {
+                        await _controller.SendOutputControl(address, outputNumber, activateOutputCheckBox.Checked);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
+                    }
+                });
+            }
+
+            var sendButton = new Button("Send", true);
+            sendButton.Clicked += SendOutputControlButtonClicked;
+            var cancelButton = new Button("Cancel");
+            cancelButton.Clicked += () => Application.RequestStop();
+
+            var dialog = new Dialog("Output Control", 60, 10, cancelButton, sendButton);
+            dialog.Add(new Label(1, 1, "Output Number:"), outputNumberTextField,
+                      activateOutputCheckBox);
+            outputNumberTextField.SetFocus();
+
+            Application.Run(dialog);
         }
 
         private void SendReaderLedControlCommand()
@@ -659,8 +743,47 @@ namespace ACUConsole
                 return;
             }
 
-            // For now, just show a simple placeholder
-            MessageBox.Query(60, 10, "Reader LED Control", "Feature not yet implemented in simplified view", "OK");
+            var ledNumberTextField = new TextField(25, 1, 25, "0");
+            var colorComboBox = new ComboBox(new Rect(25, 3, 25, 8), new[] { "Black", "Red", "Green", "Amber", "Blue", "Magenta", "Cyan", "White" })
+            {
+                SelectedItem = 1 // Default to Red
+            };
+
+            void SendReaderLedControlButtonClicked()
+            {
+                if (!byte.TryParse(ledNumberTextField.Text.ToString(), out var ledNumber))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid LED number entered!", "OK");
+                    return;
+                }
+
+                var selectedColor = (LedColor)colorComboBox.SelectedItem;
+                Application.RequestStop();
+
+                ShowDeviceSelectionDialog("Reader LED Control", async (address) =>
+                {
+                    try
+                    {
+                        await _controller.SendReaderLedControl(address, ledNumber, selectedColor);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
+                    }
+                });
+            }
+
+            var sendButton = new Button("Send", true);
+            sendButton.Clicked += SendReaderLedControlButtonClicked;
+            var cancelButton = new Button("Cancel");
+            cancelButton.Clicked += () => Application.RequestStop();
+
+            var dialog = new Dialog("Reader LED Control", 60, 12, cancelButton, sendButton);
+            dialog.Add(new Label(1, 1, "LED Number:"), ledNumberTextField,
+                      new Label(1, 3, "Color:"), colorComboBox);
+            ledNumberTextField.SetFocus();
+
+            Application.Run(dialog);
         }
 
         private void SendReaderBuzzerControlCommand()
@@ -671,8 +794,49 @@ namespace ACUConsole
                 return;
             }
 
-            // For now, just show a simple placeholder
-            MessageBox.Query(60, 10, "Reader Buzzer Control", "Feature not yet implemented in simplified view", "OK");
+            var readerNumberTextField = new TextField(25, 1, 25, "0");
+            var repeatTimesTextField = new TextField(25, 3, 25, "1");
+
+            void SendReaderBuzzerControlButtonClicked()
+            {
+                if (!byte.TryParse(readerNumberTextField.Text.ToString(), out var readerNumber))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reader number entered!", "OK");
+                    return;
+                }
+
+                if (!byte.TryParse(repeatTimesTextField.Text.ToString(), out var repeatTimes))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid repeat times entered!", "OK");
+                    return;
+                }
+
+                Application.RequestStop();
+
+                ShowDeviceSelectionDialog("Reader Buzzer Control", async (address) =>
+                {
+                    try
+                    {
+                        await _controller.SendReaderBuzzerControl(address, readerNumber, repeatTimes);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
+                    }
+                });
+            }
+
+            var sendButton = new Button("Send", true);
+            sendButton.Clicked += SendReaderBuzzerControlButtonClicked;
+            var cancelButton = new Button("Cancel");
+            cancelButton.Clicked += () => Application.RequestStop();
+
+            var dialog = new Dialog("Reader Buzzer Control", 60, 11, cancelButton, sendButton);
+            dialog.Add(new Label(1, 1, "Reader Number:"), readerNumberTextField,
+                      new Label(1, 3, "Repeat Times:"), repeatTimesTextField);
+            readerNumberTextField.SetFocus();
+
+            Application.Run(dialog);
         }
 
         private void SendReaderTextOutputCommand()
@@ -683,8 +847,50 @@ namespace ACUConsole
                 return;
             }
 
-            // For now, just show a simple placeholder
-            MessageBox.Query(60, 10, "Reader Text Output", "Feature not yet implemented in simplified view", "OK");
+            var readerNumberTextField = new TextField(25, 1, 25, "0");
+            var textTextField = new TextField(25, 3, 40, "Hello World");
+
+            void SendReaderTextOutputButtonClicked()
+            {
+                if (!byte.TryParse(readerNumberTextField.Text.ToString(), out var readerNumber))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reader number entered!", "OK");
+                    return;
+                }
+
+                var text = textTextField.Text.ToString();
+                if (string.IsNullOrEmpty(text))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Please enter text to display!", "OK");
+                    return;
+                }
+
+                Application.RequestStop();
+
+                ShowDeviceSelectionDialog("Reader Text Output", async (address) =>
+                {
+                    try
+                    {
+                        await _controller.SendReaderTextOutput(address, readerNumber, text);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
+                    }
+                });
+            }
+
+            var sendButton = new Button("Send", true);
+            sendButton.Clicked += SendReaderTextOutputButtonClicked;
+            var cancelButton = new Button("Cancel");
+            cancelButton.Clicked += () => Application.RequestStop();
+
+            var dialog = new Dialog("Reader Text Output", 70, 11, cancelButton, sendButton);
+            dialog.Add(new Label(1, 1, "Reader Number:"), readerNumberTextField,
+                      new Label(1, 3, "Text:"), textTextField);
+            readerNumberTextField.SetFocus();
+
+            Application.Run(dialog);
         }
 
         private void SendManufacturerSpecificCommand()
@@ -695,8 +901,80 @@ namespace ACUConsole
                 return;
             }
 
-            // For now, just show a simple placeholder
-            MessageBox.Query(60, 10, "Manufacturer Specific", "Feature not yet implemented in simplified view", "OK");
+            var vendorCodeTextField = new TextField(25, 1, 25, "");
+            var dataTextField = new TextField(25, 3, 40, "");
+
+            void SendManufacturerSpecificButtonClicked()
+            {
+                byte[] vendorCode;
+                try
+                {
+                    var vendorCodeStr = vendorCodeTextField.Text.ToString();
+                    if (string.IsNullOrWhiteSpace(vendorCodeStr))
+                    {
+                        MessageBox.ErrorQuery(40, 10, "Error", "Please enter vendor code!", "OK");
+                        return;
+                    }
+                    vendorCode = Convert.FromHexString(vendorCodeStr);
+                }
+                catch
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid vendor code hex format!", "OK");
+                    return;
+                }
+
+                if (vendorCode.Length != 3)
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Vendor code must be exactly 3 bytes!", "OK");
+                    return;
+                }
+
+                byte[] data;
+                try
+                {
+                    var dataStr = dataTextField.Text.ToString();
+                    if (string.IsNullOrWhiteSpace(dataStr))
+                    {
+                        data = Array.Empty<byte>();
+                    }
+                    else
+                    {
+                        data = Convert.FromHexString(dataStr);
+                    }
+                }
+                catch
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid data hex format!", "OK");
+                    return;
+                }
+
+                Application.RequestStop();
+
+                ShowDeviceSelectionDialog("Manufacturer Specific", async (address) =>
+                {
+                    try
+                    {
+                        await _controller.SendManufacturerSpecific(address, vendorCode, data);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
+                    }
+                });
+            }
+
+            var sendButton = new Button("Send", true);
+            sendButton.Clicked += SendManufacturerSpecificButtonClicked;
+            var cancelButton = new Button("Cancel");
+            cancelButton.Clicked += () => Application.RequestStop();
+
+            var dialog = new Dialog("Manufacturer Specific", 70, 13, cancelButton, sendButton);
+            dialog.Add(new Label(1, 1, "Vendor Code (3 bytes hex):"), vendorCodeTextField,
+                      new Label(1, 3, "Data (hex):"), dataTextField,
+                      new Label(1, 5, "Example: Vendor Code = 'AABBCC', Data = '01020304'"));
+            vendorCodeTextField.SetFocus();
+
+            Application.Run(dialog);
         }
 
         private void SendEncryptionKeySetCommand()
@@ -707,8 +985,60 @@ namespace ACUConsole
                 return;
             }
 
-            // For now, just show a simple placeholder
-            MessageBox.Query(60, 10, "Encryption Key Set", "Feature not yet implemented in simplified view", "OK");
+            var keyTextField = new TextField(1, 3, 35, "");
+
+            void SendEncryptionKeySetButtonClicked()
+            {
+                var keyStr = keyTextField.Text.ToString();
+                if (string.IsNullOrWhiteSpace(keyStr))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Please enter encryption key!", "OK");
+                    return;
+                }
+
+                byte[] key;
+                try
+                {
+                    key = Convert.FromHexString(keyStr);
+                }
+                catch
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid hex format!", "OK");
+                    return;
+                }
+
+                if (key.Length != 16)
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Key must be exactly 16 bytes (32 hex chars)!", "OK");
+                    return;
+                }
+
+                Application.RequestStop();
+
+                ShowDeviceSelectionDialog("Encryption Key Set", async (address) =>
+                {
+                    try
+                    {
+                        await _controller.SendEncryptionKeySet(address, key);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
+                    }
+                });
+            }
+
+            var sendButton = new Button("Send", true);
+            sendButton.Clicked += SendEncryptionKeySetButtonClicked;
+            var cancelButton = new Button("Cancel");
+            cancelButton.Clicked += () => Application.RequestStop();
+
+            var dialog = new Dialog("Encryption Key Set", 60, 12, cancelButton, sendButton);
+            dialog.Add(new Label(1, 1, "Encryption Key (16 bytes hex):"), keyTextField,
+                      new Label(1, 5, "Example: '0102030405060708090A0B0C0D0E0F10'"));
+            keyTextField.SetFocus();
+
+            Application.Run(dialog);
         }
 
         private void SendBiometricReadCommand()
@@ -719,8 +1049,65 @@ namespace ACUConsole
                 return;
             }
 
-            // For now, just show a simple placeholder
-            MessageBox.Query(60, 10, "Biometric Read", "Feature not yet implemented in simplified view", "OK");
+            var readerNumberTextField = new TextField(25, 1, 25, "0");
+            var typeTextField = new TextField(25, 3, 25, "1");
+            var formatTextField = new TextField(25, 5, 25, "0");
+            var qualityTextField = new TextField(25, 7, 25, "1");
+
+            void SendBiometricReadButtonClicked()
+            {
+                if (!byte.TryParse(readerNumberTextField.Text.ToString(), out var readerNumber))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reader number entered!", "OK");
+                    return;
+                }
+
+                if (!byte.TryParse(typeTextField.Text.ToString(), out var type))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid type entered!", "OK");
+                    return;
+                }
+
+                if (!byte.TryParse(formatTextField.Text.ToString(), out var format))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid format entered!", "OK");
+                    return;
+                }
+
+                if (!byte.TryParse(qualityTextField.Text.ToString(), out var quality))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid quality entered!", "OK");
+                    return;
+                }
+
+                Application.RequestStop();
+
+                ShowDeviceSelectionDialog("Biometric Read", async (address) =>
+                {
+                    try
+                    {
+                        await _controller.SendBiometricRead(address, readerNumber, type, format, quality);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
+                    }
+                });
+            }
+
+            var sendButton = new Button("Send", true);
+            sendButton.Clicked += SendBiometricReadButtonClicked;
+            var cancelButton = new Button("Cancel");
+            cancelButton.Clicked += () => Application.RequestStop();
+
+            var dialog = new Dialog("Biometric Read", 60, 15, cancelButton, sendButton);
+            dialog.Add(new Label(1, 1, "Reader Number:"), readerNumberTextField,
+                      new Label(1, 3, "Type:"), typeTextField,
+                      new Label(1, 5, "Format:"), formatTextField,
+                      new Label(1, 7, "Quality:"), qualityTextField);
+            readerNumberTextField.SetFocus();
+
+            Application.Run(dialog);
         }
 
         private void SendBiometricMatchCommand()
@@ -731,8 +1118,85 @@ namespace ACUConsole
                 return;
             }
 
-            // For now, just show a simple placeholder
-            MessageBox.Query(60, 10, "Biometric Match", "Feature not yet implemented in simplified view", "OK");
+            var readerNumberTextField = new TextField(25, 1, 25, "0");
+            var typeTextField = new TextField(25, 3, 25, "1");
+            var formatTextField = new TextField(25, 5, 25, "0");
+            var qualityThresholdTextField = new TextField(25, 7, 25, "1");
+            var templateDataTextField = new TextField(25, 9, 40, "");
+
+            void SendBiometricMatchButtonClicked()
+            {
+                if (!byte.TryParse(readerNumberTextField.Text.ToString(), out var readerNumber))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reader number entered!", "OK");
+                    return;
+                }
+
+                if (!byte.TryParse(typeTextField.Text.ToString(), out var type))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid type entered!", "OK");
+                    return;
+                }
+
+                if (!byte.TryParse(formatTextField.Text.ToString(), out var format))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid format entered!", "OK");
+                    return;
+                }
+
+                if (!byte.TryParse(qualityThresholdTextField.Text.ToString(), out var qualityThreshold))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid quality threshold entered!", "OK");
+                    return;
+                }
+
+                byte[] templateData;
+                try
+                {
+                    var templateDataStr = templateDataTextField.Text.ToString();
+                    if (string.IsNullOrWhiteSpace(templateDataStr))
+                    {
+                        MessageBox.ErrorQuery(40, 10, "Error", "Please enter template data!", "OK");
+                        return;
+                    }
+                    templateData = Convert.FromHexString(templateDataStr);
+                }
+                catch
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid template data hex format!", "OK");
+                    return;
+                }
+
+                Application.RequestStop();
+
+                ShowDeviceSelectionDialog("Biometric Match", async (address) =>
+                {
+                    try
+                    {
+                        await _controller.SendBiometricMatch(address, readerNumber, type, format, qualityThreshold, templateData);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
+                    }
+                });
+            }
+
+            var sendButton = new Button("Send", true);
+            sendButton.Clicked += SendBiometricMatchButtonClicked;
+            var cancelButton = new Button("Cancel");
+            cancelButton.Clicked += () => Application.RequestStop();
+
+            var dialog = new Dialog("Biometric Match", 70, 17, cancelButton, sendButton);
+            dialog.Add(new Label(1, 1, "Reader Number:"), readerNumberTextField,
+                      new Label(1, 3, "Type:"), typeTextField,
+                      new Label(1, 5, "Format:"), formatTextField,
+                      new Label(1, 7, "Quality Threshold:"), qualityThresholdTextField,
+                      new Label(1, 9, "Template Data (hex):"), templateDataTextField,
+                      new Label(1, 11, "Example: '010203040506070809'"));
+            readerNumberTextField.SetFocus();
+
+            Application.Run(dialog);
         }
 
         private void SendFileTransferCommand()
@@ -743,8 +1207,94 @@ namespace ACUConsole
                 return;
             }
 
-            // For now, just show a simple placeholder
-            MessageBox.Query(60, 10, "File Transfer", "Feature not yet implemented in simplified view", "OK");
+            var typeTextField = new TextField(25, 1, 25, "1");
+            var messageSizeTextField = new TextField(25, 3, 25, "128");
+            var filePathTextField = new TextField(25, 5, 40, "");
+
+            void SendFileTransferButtonClicked()
+            {
+                if (!byte.TryParse(typeTextField.Text.ToString(), out var type))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid type entered!", "OK");
+                    return;
+                }
+
+                if (!byte.TryParse(messageSizeTextField.Text.ToString(), out var messageSize))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid message size entered!", "OK");
+                    return;
+                }
+
+                var filePath = filePathTextField.Text.ToString();
+                if (string.IsNullOrWhiteSpace(filePath))
+                {
+                    MessageBox.ErrorQuery(40, 10, "Error", "Please enter file path!", "OK");
+                    return;
+                }
+
+                byte[] fileData;
+                try
+                {
+                    if (!File.Exists(filePath))
+                    {
+                        MessageBox.ErrorQuery(40, 10, "Error", "File does not exist!", "OK");
+                        return;
+                    }
+                    fileData = File.ReadAllBytes(filePath);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.ErrorQuery(60, 10, "Error", $"Failed to read file: {ex.Message}", "OK");
+                    return;
+                }
+
+                Application.RequestStop();
+
+                ShowDeviceSelectionDialog("File Transfer", async (address) =>
+                {
+                    try
+                    {
+                        var totalFragments = await _controller.SendFileTransfer(address, type, fileData, messageSize);
+                        MessageBox.Query(60, 10, "File Transfer Complete", 
+                            $"File transferred successfully in {totalFragments} fragments.", "OK");
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
+                    }
+                });
+            }
+
+            void BrowseFileButtonClicked()
+            {
+                var openDialog = new OpenDialog("Select File to Transfer", "", new List<string>());
+                Application.Run(openDialog);
+
+                if (!openDialog.Canceled && !string.IsNullOrEmpty(openDialog.FilePath?.ToString()))
+                {
+                    filePathTextField.Text = openDialog.FilePath.ToString();
+                }
+            }
+
+            var sendButton = new Button("Send", true);
+            sendButton.Clicked += SendFileTransferButtonClicked;
+            var browseButton = new Button("Browse");
+            browseButton.Clicked += BrowseFileButtonClicked;
+            var cancelButton = new Button("Cancel");
+            cancelButton.Clicked += () => Application.RequestStop();
+
+            var dialog = new Dialog("File Transfer", 80, 15, cancelButton, sendButton);
+            dialog.Add(new Label(1, 1, "Type:"), typeTextField,
+                      new Label(1, 3, "Message Size:"), messageSizeTextField,
+                      new Label(1, 5, "File Path:"), filePathTextField);
+            
+            browseButton.X = Pos.Right(filePathTextField) + 2;
+            browseButton.Y = 5;
+            dialog.Add(browseButton);
+            
+            typeTextField.SetFocus();
+
+            Application.Run(dialog);
         }
 
         private void SendCustomCommand(string title, CommandData commandData)
