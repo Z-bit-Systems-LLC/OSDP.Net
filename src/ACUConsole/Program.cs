@@ -7,18 +7,18 @@ namespace ACUConsole
     /// </summary>
     internal static class Program
     {
-        private static ACUConsoleController _controller;
+        private static ACUConsolePresenter _presenter;
         private static ACUConsoleView _view;
 
         private static void Main()
         {
             try
             {
-                // Create controller (handles business logic)
-                _controller = new ACUConsoleController();
+                // Create presenter (handles business logic)
+                _presenter = new ACUConsolePresenter();
                 
                 // Create view (handles UI)
-                _view = new ACUConsoleView(_controller);
+                _view = new ACUConsoleView(_presenter);
                 
                 // Initialize and run the application
                 _view.Initialize();
@@ -38,7 +38,7 @@ namespace ACUConsole
         {
             try
             {
-                _controller?.Dispose();
+                _presenter?.Dispose();
                 _view?.Shutdown();
             }
             catch (Exception ex)

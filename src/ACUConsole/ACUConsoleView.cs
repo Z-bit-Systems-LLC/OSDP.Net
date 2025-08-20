@@ -18,7 +18,7 @@ namespace ACUConsole
     /// </summary>
     public class ACUConsoleView
     {
-        private readonly IACUConsoleController _controller;
+        private readonly IACUConsolePresenter _presenter;
         
         // UI Components
         private Window _window;
@@ -26,18 +26,18 @@ namespace ACUConsole
         private MenuBar _menuBar;
         private readonly MenuItem _discoverMenuItem;
         
-        public ACUConsoleView(IACUConsoleController controller)
+        public ACUConsoleView(IACUConsolePresenter presenter)
         {
-            _controller = controller ?? throw new ArgumentNullException(nameof(controller));
+            _presenter = presenter ?? throw new ArgumentNullException(nameof(presenter));
             
             // Create discover menu item that can be updated
             _discoverMenuItem = new MenuItem("_Discover", string.Empty, DiscoverDevice);
             
-            // Subscribe to controller events
-            _controller.MessageReceived += OnMessageReceived;
-            _controller.StatusChanged += OnStatusChanged;
-            _controller.ConnectionStatusChanged += OnConnectionStatusChanged;
-            _controller.ErrorOccurred += OnErrorOccurred;
+            // Subscribe to presenter events
+            _presenter.MessageReceived += OnMessageReceived;
+            _presenter.StatusChanged += OnStatusChanged;
+            _presenter.ConnectionStatusChanged += OnConnectionStatusChanged;
+            _presenter.ErrorOccurred += OnErrorOccurred;
         }
 
         public void Initialize()
@@ -75,7 +75,7 @@ namespace ACUConsole
                     new MenuItem("_Connection Settings", "", UpdateConnectionSettings),
                     new MenuItem("_Parse OSDP Cap File", "", ParseOSDPCapFile),
                     new MenuItem("_Load Configuration", "", LoadConfigurationSettings),
-                    new MenuItem("_Save Configuration", "", () => _controller.SaveConfiguration()),
+                    new MenuItem("_Save Configuration", "", () => _presenter.SaveConfiguration()),
                     new MenuItem("_Quit", "", Quit)
                 }),
                 new MenuBarItem("Co_nnections", new[]
@@ -83,7 +83,7 @@ namespace ACUConsole
                     new MenuItem("Start Serial Connection", "", StartSerialConnection),
                     new MenuItem("Start TCP Server Connection", "", StartTcpServerConnection),
                     new MenuItem("Start TCP Client Connection", "", StartTcpClientConnection),
-                    new MenuItem("Stop Connections", "", () => _ = _controller.StopConnection())
+                    new MenuItem("Stop Connections", "", () => _ = _presenter.StopConnection())
                 }),
                 new MenuBarItem("_Devices", new[]
                 {
@@ -96,19 +96,19 @@ namespace ACUConsole
                     new MenuItem("Communication Configuration", "", SendCommunicationConfiguration),
                     new MenuItem("Biometric Read", "", SendBiometricReadCommand),
                     new MenuItem("Biometric Match", "", SendBiometricMatchCommand),
-                    new MenuItem("_Device Capabilities", "", () => SendSimpleCommand("Device capabilities", _controller.SendDeviceCapabilities)),
+                    new MenuItem("_Device Capabilities", "", () => SendSimpleCommand("Device capabilities", _presenter.SendDeviceCapabilities)),
                     new MenuItem("Encryption Key Set", "", SendEncryptionKeySetCommand),
                     new MenuItem("File Transfer", "", SendFileTransferCommand),
-                    new MenuItem("_ID Report", "", () => SendSimpleCommand("ID report", _controller.SendIdReport)),
-                    new MenuItem("Input Status", "", () => SendSimpleCommand("Input status", _controller.SendInputStatus)),
-                    new MenuItem("_Local Status", "", () => SendSimpleCommand("Local Status", _controller.SendLocalStatus)),
+                    new MenuItem("_ID Report", "", () => SendSimpleCommand("ID report", _presenter.SendIdReport)),
+                    new MenuItem("Input Status", "", () => SendSimpleCommand("Input status", _presenter.SendInputStatus)),
+                    new MenuItem("_Local Status", "", () => SendSimpleCommand("Local Status", _presenter.SendLocalStatus)),
                     new MenuItem("Manufacturer Specific", "", SendManufacturerSpecificCommand),
                     new MenuItem("Output Control", "", SendOutputControlCommand),
-                    new MenuItem("Output Status", "", () => SendSimpleCommand("Output status", _controller.SendOutputStatus)),
+                    new MenuItem("Output Status", "", () => SendSimpleCommand("Output status", _presenter.SendOutputStatus)),
                     new MenuItem("Reader Buzzer Control", "", SendReaderBuzzerControlCommand),
                     new MenuItem("Reader LED Control", "", SendReaderLedControlCommand),
                     new MenuItem("Reader Text Output", "", SendReaderTextOutputCommand),
-                    new MenuItem("_Reader Status", "", () => SendSimpleCommand("Reader status", _controller.SendReaderStatus))
+                    new MenuItem("_Reader Status", "", () => SendSimpleCommand("Reader status", _presenter.SendReaderStatus))
                 }),
                 new MenuBarItem("_Invalid Commands", new[]
                 {
@@ -152,7 +152,7 @@ namespace ACUConsole
                     Application.Shutdown();
                     break;
                 case 2: // Save
-                    _controller.SaveConfiguration();
+                    _presenter.SaveConfiguration();
                     Application.Shutdown();
                     break;
             }
@@ -162,8 +162,8 @@ namespace ACUConsole
         private void StartSerialConnection()
         {
             var portNameComboBox = CreatePortNameComboBox(15, 1);
-            var baudRateTextField = new TextField(25, 3, 25, _controller.Settings.SerialConnectionSettings.BaudRate.ToString());
-            var replyTimeoutTextField = new TextField(25, 5, 25, _controller.Settings.SerialConnectionSettings.ReplyTimeout.ToString());
+            var baudRateTextField = new TextField(25, 3, 25, _presenter.Settings.SerialConnectionSettings.BaudRate.ToString());
+            var replyTimeoutTextField = new TextField(25, 5, 25, _presenter.Settings.SerialConnectionSettings.ReplyTimeout.ToString());
 
             async void StartConnectionButtonClicked()
             {
@@ -187,7 +187,7 @@ namespace ACUConsole
 
                 try
                 {
-                    await _controller.StartSerialConnection(portNameComboBox.Text.ToString(), baudRate, replyTimeout);
+                    await _presenter.StartSerialConnection(portNameComboBox.Text.ToString(), baudRate, replyTimeout);
                     Application.RequestStop();
                 }
                 catch (Exception ex)
@@ -212,9 +212,9 @@ namespace ACUConsole
 
         private void StartTcpServerConnection()
         {
-            var portNumberTextField = new TextField(25, 1, 25, _controller.Settings.TcpServerConnectionSettings.PortNumber.ToString());
-            var baudRateTextField = new TextField(25, 3, 25, _controller.Settings.TcpServerConnectionSettings.BaudRate.ToString());
-            var replyTimeoutTextField = new TextField(25, 5, 25, _controller.Settings.TcpServerConnectionSettings.ReplyTimeout.ToString());
+            var portNumberTextField = new TextField(25, 1, 25, _presenter.Settings.TcpServerConnectionSettings.PortNumber.ToString());
+            var baudRateTextField = new TextField(25, 3, 25, _presenter.Settings.TcpServerConnectionSettings.BaudRate.ToString());
+            var replyTimeoutTextField = new TextField(25, 5, 25, _presenter.Settings.TcpServerConnectionSettings.ReplyTimeout.ToString());
 
             async void StartConnectionButtonClicked()
             {
@@ -238,7 +238,7 @@ namespace ACUConsole
 
                 try
                 {
-                    await _controller.StartTcpServerConnection(portNumber, baudRate, replyTimeout);
+                    await _presenter.StartTcpServerConnection(portNumber, baudRate, replyTimeout);
                     Application.RequestStop();
                 }
                 catch (Exception ex)
@@ -263,10 +263,10 @@ namespace ACUConsole
 
         private void StartTcpClientConnection()
         {
-            var hostTextField = new TextField(15, 1, 35, _controller.Settings.TcpClientConnectionSettings.Host);
-            var portNumberTextField = new TextField(25, 3, 25, _controller.Settings.TcpClientConnectionSettings.PortNumber.ToString());
-            var baudRateTextField = new TextField(25, 5, 25, _controller.Settings.TcpClientConnectionSettings.BaudRate.ToString());
-            var replyTimeoutTextField = new TextField(25, 7, 25, _controller.Settings.TcpClientConnectionSettings.ReplyTimeout.ToString());
+            var hostTextField = new TextField(15, 1, 35, _presenter.Settings.TcpClientConnectionSettings.Host);
+            var portNumberTextField = new TextField(25, 3, 25, _presenter.Settings.TcpClientConnectionSettings.PortNumber.ToString());
+            var baudRateTextField = new TextField(25, 5, 25, _presenter.Settings.TcpClientConnectionSettings.BaudRate.ToString());
+            var replyTimeoutTextField = new TextField(25, 7, 25, _presenter.Settings.TcpClientConnectionSettings.ReplyTimeout.ToString());
 
             async void StartConnectionButtonClicked()
             {
@@ -290,7 +290,7 @@ namespace ACUConsole
 
                 try
                 {
-                    await _controller.StartTcpClientConnection(hostTextField.Text.ToString(), portNumber, baudRate, replyTimeout);
+                    await _presenter.StartTcpClientConnection(hostTextField.Text.ToString(), portNumber, baudRate, replyTimeout);
                     Application.RequestStop();
                 }
                 catch (Exception ex)
@@ -316,8 +316,8 @@ namespace ACUConsole
 
         private void UpdateConnectionSettings()
         {
-            var pollingIntervalTextField = new TextField(25, 4, 25, _controller.Settings.PollingInterval.ToString());
-            var tracingCheckBox = new CheckBox(1, 6, "Write packet data to file", _controller.Settings.IsTracing);
+            var pollingIntervalTextField = new TextField(25, 4, 25, _presenter.Settings.PollingInterval.ToString());
+            var tracingCheckBox = new CheckBox(1, 6, "Write packet data to file", _presenter.Settings.IsTracing);
 
             void UpdateConnectionSettingsButtonClicked()
             {
@@ -327,7 +327,7 @@ namespace ACUConsole
                     return;
                 }
 
-                _controller.UpdateConnectionSettings(pollingInterval, tracingCheckBox.Checked);
+                _presenter.UpdateConnectionSettings(pollingInterval, tracingCheckBox.Checked);
                 Application.RequestStop();
             }
 
@@ -392,7 +392,7 @@ namespace ACUConsole
 
                 try
                 {
-                    _controller.ParseOSDPCapFile(filePath, address, ignorePollsAndAcksCheckBox.Checked, key);
+                    _presenter.ParseOSDPCapFile(filePath, address, ignorePollsAndAcksCheckBox.Checked, key);
                     Application.RequestStop();
                 }
                 catch (Exception ex)
@@ -424,7 +424,7 @@ namespace ACUConsole
             {
                 try
                 {
-                    _controller.LoadConfiguration();
+                    _presenter.LoadConfiguration();
                     MessageBox.Query(40, 6, "Load Configuration", "Load completed successfully", "OK");
                 }
                 catch (Exception ex)
@@ -437,7 +437,7 @@ namespace ACUConsole
         // Device Management Methods - Simplified
         private void AddDevice()
         {
-            if (!_controller.IsConnected)
+            if (!_presenter.IsConnected)
             {
                 MessageBox.ErrorQuery(60, 12, "Information", "Start a connection before adding devices.", "OK");
                 return;
@@ -474,7 +474,7 @@ namespace ACUConsole
                     return;
                 }
 
-                var existingDevice = _controller.Settings.Devices.FirstOrDefault(d => d.Address == address);
+                var existingDevice = _presenter.Settings.Devices.FirstOrDefault(d => d.Address == address);
                 if (existingDevice != null)
                 {
                     if (MessageBox.Query(60, 10, "Overwrite", "Device already exists at that address, overwrite?", 1, "No", "Yes") == 0)
@@ -485,7 +485,7 @@ namespace ACUConsole
 
                 try
                 {
-                    _controller.AddDevice(nameTextField.Text.ToString(), address, useCrcCheckBox.Checked, 
+                    _presenter.AddDevice(nameTextField.Text.ToString(), address, useCrcCheckBox.Checked, 
                         useSecureChannelCheckBox.Checked, key);
                     Application.RequestStop();
                 }
@@ -513,13 +513,13 @@ namespace ACUConsole
 
         private void RemoveDevice()
         {
-            if (!_controller.IsConnected)
+            if (!_presenter.IsConnected)
             {
                 MessageBox.ErrorQuery(60, 10, "Information", "Start a connection before removing devices.", "OK");
                 return;
             }
 
-            var deviceList = _controller.GetDeviceList();
+            var deviceList = _presenter.GetDeviceList();
             if (deviceList.Length == 0)
             {
                 MessageBox.ErrorQuery(60, 10, "Information", "No devices to remove.", "OK");
@@ -538,10 +538,10 @@ namespace ACUConsole
 
             void RemoveDeviceButtonClicked()
             {
-                var selectedDevice = _controller.Settings.Devices.OrderBy(d => d.Address).ToArray()[deviceRadioGroup.SelectedItem];
+                var selectedDevice = _presenter.Settings.Devices.OrderBy(d => d.Address).ToArray()[deviceRadioGroup.SelectedItem];
                 try
                 {
-                    _controller.RemoveDevice(selectedDevice.Address);
+                    _presenter.RemoveDevice(selectedDevice.Address);
                     Application.RequestStop();
                 }
                 catch (Exception ex)
@@ -610,7 +610,7 @@ namespace ACUConsole
                     _discoverMenuItem.Title = "Cancel _Discover";
                     _discoverMenuItem.Action = CancelDiscovery;
 
-                    await _controller.DiscoverDevice(portNameComboBox.Text.ToString(), pingTimeout, reconnectDelay, cancellationTokenSource.Token);
+                    await _presenter.DiscoverDevice(portNameComboBox.Text.ToString(), pingTimeout, reconnectDelay, cancellationTokenSource.Token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -644,7 +644,7 @@ namespace ACUConsole
         // Command Methods - Simplified
         private void SendSimpleCommand(string title, Func<byte, Task> commandFunction)
         {
-            if (!_controller.CanSendCommand())
+            if (!_presenter.CanSendCommand())
             {
                 ShowCommandRequirementsError();
                 return;
@@ -665,15 +665,15 @@ namespace ACUConsole
 
         private void SendCommunicationConfiguration()
         {
-            if (!_controller.CanSendCommand())
+            if (!_presenter.CanSendCommand())
             {
                 ShowCommandRequirementsError();
                 return;
             }
 
             var newAddressTextField = new TextField(25, 1, 25, 
-                ((_controller.Settings.Devices.MaxBy(device => device.Address)?.Address ?? 0) + 1).ToString());
-            var newBaudRateTextField = new TextField(25, 3, 25, _controller.Settings.SerialConnectionSettings.BaudRate.ToString());
+                ((_presenter.Settings.Devices.MaxBy(device => device.Address)?.Address ?? 0) + 1).ToString());
+            var newBaudRateTextField = new TextField(25, 3, 25, _presenter.Settings.SerialConnectionSettings.BaudRate.ToString());
 
             void SendCommunicationConfigurationButtonClicked()
             {
@@ -695,9 +695,9 @@ namespace ACUConsole
                 {
                     try
                     {
-                        await _controller.SendCommunicationConfiguration(address, newAddress, newBaudRate);
+                        await _presenter.SendCommunicationConfiguration(address, newAddress, newBaudRate);
                         
-                        if (_controller.Settings.SerialConnectionSettings.BaudRate != newBaudRate)
+                        if (_presenter.Settings.SerialConnectionSettings.BaudRate != newBaudRate)
                         {
                             MessageBox.Query(60, 10, "Info",
                                 $"The connection needs to be restarted with baud rate of {newBaudRate}", "OK");
@@ -725,7 +725,7 @@ namespace ACUConsole
 
         private void SendOutputControlCommand()
         {
-            if (!_controller.CanSendCommand())
+            if (!_presenter.CanSendCommand())
             {
                 ShowCommandRequirementsError();
                 return;
@@ -748,7 +748,7 @@ namespace ACUConsole
                 {
                     try
                     {
-                        await _controller.SendOutputControl(address, outputNumber, activateOutputCheckBox.Checked);
+                        await _presenter.SendOutputControl(address, outputNumber, activateOutputCheckBox.Checked);
                     }
                     catch (Exception ex)
                     {
@@ -772,7 +772,7 @@ namespace ACUConsole
 
         private void SendReaderLedControlCommand()
         {
-            if (!_controller.CanSendCommand())
+            if (!_presenter.CanSendCommand())
             {
                 ShowCommandRequirementsError();
                 return;
@@ -799,7 +799,7 @@ namespace ACUConsole
                 {
                     try
                     {
-                        await _controller.SendReaderLedControl(address, ledNumber, selectedColor);
+                        await _presenter.SendReaderLedControl(address, ledNumber, selectedColor);
                     }
                     catch (Exception ex)
                     {
@@ -823,7 +823,7 @@ namespace ACUConsole
 
         private void SendReaderBuzzerControlCommand()
         {
-            if (!_controller.CanSendCommand())
+            if (!_presenter.CanSendCommand())
             {
                 ShowCommandRequirementsError();
                 return;
@@ -852,7 +852,7 @@ namespace ACUConsole
                 {
                     try
                     {
-                        await _controller.SendReaderBuzzerControl(address, readerNumber, repeatTimes);
+                        await _presenter.SendReaderBuzzerControl(address, readerNumber, repeatTimes);
                     }
                     catch (Exception ex)
                     {
@@ -876,7 +876,7 @@ namespace ACUConsole
 
         private void SendReaderTextOutputCommand()
         {
-            if (!_controller.CanSendCommand())
+            if (!_presenter.CanSendCommand())
             {
                 ShowCommandRequirementsError();
                 return;
@@ -906,7 +906,7 @@ namespace ACUConsole
                 {
                     try
                     {
-                        await _controller.SendReaderTextOutput(address, readerNumber, text);
+                        await _presenter.SendReaderTextOutput(address, readerNumber, text);
                     }
                     catch (Exception ex)
                     {
@@ -930,7 +930,7 @@ namespace ACUConsole
 
         private void SendManufacturerSpecificCommand()
         {
-            if (!_controller.CanSendCommand())
+            if (!_presenter.CanSendCommand())
             {
                 ShowCommandRequirementsError();
                 return;
@@ -989,7 +989,7 @@ namespace ACUConsole
                 {
                     try
                     {
-                        await _controller.SendManufacturerSpecific(address, vendorCode, data);
+                        await _presenter.SendManufacturerSpecific(address, vendorCode, data);
                     }
                     catch (Exception ex)
                     {
@@ -1014,7 +1014,7 @@ namespace ACUConsole
 
         private void SendEncryptionKeySetCommand()
         {
-            if (!_controller.CanSendCommand())
+            if (!_presenter.CanSendCommand())
             {
                 ShowCommandRequirementsError();
                 return;
@@ -1054,7 +1054,7 @@ namespace ACUConsole
                 {
                     try
                     {
-                        await _controller.SendEncryptionKeySet(address, key);
+                        await _presenter.SendEncryptionKeySet(address, key);
                     }
                     catch (Exception ex)
                     {
@@ -1078,7 +1078,7 @@ namespace ACUConsole
 
         private void SendBiometricReadCommand()
         {
-            if (!_controller.CanSendCommand())
+            if (!_presenter.CanSendCommand())
             {
                 ShowCommandRequirementsError();
                 return;
@@ -1121,7 +1121,7 @@ namespace ACUConsole
                 {
                     try
                     {
-                        await _controller.SendBiometricRead(address, readerNumber, type, format, quality);
+                        await _presenter.SendBiometricRead(address, readerNumber, type, format, quality);
                     }
                     catch (Exception ex)
                     {
@@ -1147,7 +1147,7 @@ namespace ACUConsole
 
         private void SendBiometricMatchCommand()
         {
-            if (!_controller.CanSendCommand())
+            if (!_presenter.CanSendCommand())
             {
                 ShowCommandRequirementsError();
                 return;
@@ -1208,7 +1208,7 @@ namespace ACUConsole
                 {
                     try
                     {
-                        await _controller.SendBiometricMatch(address, readerNumber, type, format, qualityThreshold, templateData);
+                        await _presenter.SendBiometricMatch(address, readerNumber, type, format, qualityThreshold, templateData);
                     }
                     catch (Exception ex)
                     {
@@ -1236,7 +1236,7 @@ namespace ACUConsole
 
         private void SendFileTransferCommand()
         {
-            if (!_controller.CanSendCommand())
+            if (!_presenter.CanSendCommand())
             {
                 ShowCommandRequirementsError();
                 return;
@@ -1289,7 +1289,7 @@ namespace ACUConsole
                 {
                     try
                     {
-                        var totalFragments = await _controller.SendFileTransfer(address, type, fileData, messageSize);
+                        var totalFragments = await _presenter.SendFileTransfer(address, type, fileData, messageSize);
                         MessageBox.Query(60, 10, "File Transfer Complete", 
                             $"File transferred successfully in {totalFragments} fragments.", "OK");
                     }
@@ -1334,7 +1334,7 @@ namespace ACUConsole
 
         private void SendCustomCommand(string title, CommandData commandData)
         {
-            if (!_controller.CanSendCommand())
+            if (!_presenter.CanSendCommand())
             {
                 ShowCommandRequirementsError();
                 return;
@@ -1344,7 +1344,7 @@ namespace ACUConsole
             {
                 try
                 {
-                    await _controller.SendCustomCommand(address, commandData);
+                    await _presenter.SendCustomCommand(address, commandData);
                 }
                 catch (Exception ex)
                 {
@@ -1356,11 +1356,11 @@ namespace ACUConsole
         // Helper Methods
         private void ShowCommandRequirementsError()
         {
-            if (!_controller.IsConnected)
+            if (!_presenter.IsConnected)
             {
                 MessageBox.ErrorQuery(60, 10, "Warning", "Start a connection before sending commands.", "OK");
             }
-            else if (_controller.Settings.Devices.Count == 0)
+            else if (_presenter.Settings.Devices.Count == 0)
             {
                 MessageBox.ErrorQuery(60, 10, "Warning", "Add a device before sending commands.", "OK");
             }
@@ -1368,7 +1368,7 @@ namespace ACUConsole
 
         private void ShowDeviceSelectionDialog(string title, Func<byte, Task> actionFunction)
         {
-            var deviceList = _controller.GetDeviceList();
+            var deviceList = _presenter.GetDeviceList();
             var scrollView = new ScrollView(new Rect(6, 1, 50, 6))
             {
                 ContentSize = new Size(40, deviceList.Length * 2),
@@ -1384,7 +1384,7 @@ namespace ACUConsole
 
             async void SendCommandButtonClicked()
             {
-                var selectedDevice = _controller.Settings.Devices.OrderBy(device => device.Address).ToArray()[deviceRadioGroup.SelectedItem];
+                var selectedDevice = _presenter.Settings.Devices.OrderBy(device => device.Address).ToArray()[deviceRadioGroup.SelectedItem];
                 Application.RequestStop();
                 await actionFunction(selectedDevice.Address);
             }
@@ -1410,7 +1410,7 @@ namespace ACUConsole
             {
                 portNameComboBox.SelectedItem = Math.Max(
                     Array.FindIndex(portNames, port => 
-                        string.Equals(port, _controller.Settings.SerialConnectionSettings.PortName)), 0);
+                        string.Equals(port, _presenter.Settings.SerialConnectionSettings.PortName)), 0);
             }
 
             return portNameComboBox;
@@ -1453,7 +1453,7 @@ namespace ACUConsole
                 _scrollView.RemoveAll();
 
                 int index = 0;
-                foreach (var message in _controller.MessageHistory.Reverse())
+                foreach (var message in _presenter.MessageHistory.Reverse())
                 {
                     var messageText = message.ToString().TrimEnd();
                     var label = new Label(0, index, messageText);

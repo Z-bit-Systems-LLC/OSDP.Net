@@ -28,9 +28,9 @@ using ManufacturerSpecific = OSDP.Net.Model.CommandData.ManufacturerSpecific;
 namespace ACUConsole
 {
     /// <summary>
-    /// Controller class that manages the ACU Console business logic and device interactions
+    /// Presenter class that manages the ACU Console business logic and device interactions
     /// </summary>
-    public class ACUConsoleController : IACUConsoleController
+    public class ACUConsolePresenter : IACUConsolePresenter
     {
         private ControlPanel _controlPanel;
         private ILoggerFactory _loggerFactory;
@@ -55,7 +55,7 @@ namespace ACUConsole
         public IReadOnlyList<ACUEvent> MessageHistory => _messageHistory.AsReadOnly();
         public Settings Settings => _settings;
 
-        public ACUConsoleController()
+        public ACUConsolePresenter()
         {
             InitializeLogging();
             InitializePaths();

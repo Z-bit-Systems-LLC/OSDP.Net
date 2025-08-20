@@ -10,9 +10,9 @@ using OSDP.Net.Model.CommandData;
 namespace ACUConsole
 {
     /// <summary>
-    /// Interface for ACU Console controller to enable testing and separation of concerns
+    /// Interface for ACU Console presenter to enable testing and separation of concerns
     /// </summary>
-    public interface IACUConsoleController : IDisposable
+    public interface IACUConsolePresenter : IDisposable
     {
         // Events
         event EventHandler<ACUEvent> MessageReceived;
