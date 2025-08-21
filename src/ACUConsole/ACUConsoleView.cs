@@ -213,33 +213,12 @@ namespace ACUConsole
 
         private void UpdateConnectionSettings()
         {
-            var pollingIntervalTextField = new TextField(25, 4, 25, _presenter.Settings.PollingInterval.ToString());
-            var tracingCheckBox = new CheckBox(1, 6, "Write packet data to file", _presenter.Settings.IsTracing);
-
-            void UpdateConnectionSettingsButtonClicked()
+            var input = ConnectionSettingsDialog.Show(_presenter.Settings.PollingInterval, _presenter.Settings.IsTracing);
+            
+            if (!input.WasCancelled)
             {
-                if (!int.TryParse(pollingIntervalTextField.Text.ToString(), out var pollingInterval))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid polling interval entered!", "OK");
-                    return;
-                }
-
-                _presenter.UpdateConnectionSettings(pollingInterval, tracingCheckBox.Checked);
-                Application.RequestStop();
+                _presenter.UpdateConnectionSettings(input.PollingInterval, input.IsTracing);
             }
-
-            var updateButton = new Button("Update", true);
-            updateButton.Clicked += UpdateConnectionSettingsButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Update Connection Settings", 60, 12, cancelButton, updateButton);
-            dialog.Add(new Label(new Rect(1, 1, 55, 2), "Connection will need to be restarted for setting to take effect."),
-                      new Label(1, 4, "Polling Interval(ms):"), pollingIntervalTextField,
-                      tracingCheckBox);
-            pollingIntervalTextField.SetFocus();
-
-            Application.Run(dialog);
         }
 
         private void ParseOSDPCapFile()
@@ -550,7 +529,7 @@ namespace ACUConsole
             Application.Run(dialog);
         }
 
-        private void SendOutputControlCommand()
+        private async void SendOutputControlCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -558,46 +537,23 @@ namespace ACUConsole
                 return;
             }
 
-            var outputNumberTextField = new TextField(25, 1, 25, "0");
-            var activateOutputCheckBox = new CheckBox(1, 3, "Activate Output", false);
-
-            void SendOutputControlButtonClicked()
+            var deviceList = _presenter.GetDeviceList();
+            var input = OutputControlDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
             {
-                if (!byte.TryParse(outputNumberTextField.Text.ToString(), out var outputNumber))
+                try
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid output number entered!", "OK");
-                    return;
+                    await _presenter.SendOutputControl(input.DeviceAddress, input.OutputNumber, input.ActivateOutput);
                 }
-
-                Application.RequestStop();
-
-                ShowDeviceSelectionDialog("Output Control", async (address) =>
+                catch (Exception ex)
                 {
-                    try
-                    {
-                        await _presenter.SendOutputControl(address, outputNumber, activateOutputCheckBox.Checked);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
-                    }
-                });
+                    ShowError("Error", ex.Message);
+                }
             }
-
-            var sendButton = new Button("Send", true);
-            sendButton.Clicked += SendOutputControlButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Output Control", 60, 10, cancelButton, sendButton);
-            dialog.Add(new Label(1, 1, "Output Number:"), outputNumberTextField,
-                      activateOutputCheckBox);
-            outputNumberTextField.SetFocus();
-
-            Application.Run(dialog);
         }
 
-        private void SendReaderLedControlCommand()
+        private async void SendReaderLedControlCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -605,50 +561,23 @@ namespace ACUConsole
                 return;
             }
 
-            var ledNumberTextField = new TextField(25, 1, 25, "0");
-            var colorComboBox = new ComboBox(new Rect(25, 3, 25, 8), new[] { "Black", "Red", "Green", "Amber", "Blue", "Magenta", "Cyan", "White" })
+            var deviceList = _presenter.GetDeviceList();
+            var input = ReaderLedControlDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
             {
-                SelectedItem = 1 // Default to Red
-            };
-
-            void SendReaderLedControlButtonClicked()
-            {
-                if (!byte.TryParse(ledNumberTextField.Text.ToString(), out var ledNumber))
+                try
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid LED number entered!", "OK");
-                    return;
+                    await _presenter.SendReaderLedControl(input.DeviceAddress, input.LedNumber, input.Color);
                 }
-
-                var selectedColor = (LedColor)colorComboBox.SelectedItem;
-                Application.RequestStop();
-
-                ShowDeviceSelectionDialog("Reader LED Control", async (address) =>
+                catch (Exception ex)
                 {
-                    try
-                    {
-                        await _presenter.SendReaderLedControl(address, ledNumber, selectedColor);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
-                    }
-                });
+                    ShowError("Error", ex.Message);
+                }
             }
-
-            var sendButton = new Button("Send", true);
-            sendButton.Clicked += SendReaderLedControlButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Reader LED Control", 60, 12, cancelButton, sendButton);
-            dialog.Add(new Label(1, 1, "LED Number:"), ledNumberTextField,
-                      new Label(1, 3, "Color:"), colorComboBox);
-            ledNumberTextField.SetFocus();
-
-            Application.Run(dialog);
         }
 
-        private void SendReaderBuzzerControlCommand()
+        private async void SendReaderBuzzerControlCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -656,52 +585,23 @@ namespace ACUConsole
                 return;
             }
 
-            var readerNumberTextField = new TextField(25, 1, 25, "0");
-            var repeatTimesTextField = new TextField(25, 3, 25, "1");
-
-            void SendReaderBuzzerControlButtonClicked()
+            var deviceList = _presenter.GetDeviceList();
+            var input = ReaderBuzzerControlDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
             {
-                if (!byte.TryParse(readerNumberTextField.Text.ToString(), out var readerNumber))
+                try
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reader number entered!", "OK");
-                    return;
+                    await _presenter.SendReaderBuzzerControl(input.DeviceAddress, input.ReaderNumber, input.RepeatTimes);
                 }
-
-                if (!byte.TryParse(repeatTimesTextField.Text.ToString(), out var repeatTimes))
+                catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid repeat times entered!", "OK");
-                    return;
+                    ShowError("Error", ex.Message);
                 }
-
-                Application.RequestStop();
-
-                ShowDeviceSelectionDialog("Reader Buzzer Control", async (address) =>
-                {
-                    try
-                    {
-                        await _presenter.SendReaderBuzzerControl(address, readerNumber, repeatTimes);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
-                    }
-                });
             }
-
-            var sendButton = new Button("Send", true);
-            sendButton.Clicked += SendReaderBuzzerControlButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Reader Buzzer Control", 60, 11, cancelButton, sendButton);
-            dialog.Add(new Label(1, 1, "Reader Number:"), readerNumberTextField,
-                      new Label(1, 3, "Repeat Times:"), repeatTimesTextField);
-            readerNumberTextField.SetFocus();
-
-            Application.Run(dialog);
         }
 
-        private void SendReaderTextOutputCommand()
+        private async void SendReaderTextOutputCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -709,50 +609,20 @@ namespace ACUConsole
                 return;
             }
 
-            var readerNumberTextField = new TextField(25, 1, 25, "0");
-            var textTextField = new TextField(25, 3, 40, "Hello World");
-
-            void SendReaderTextOutputButtonClicked()
+            var deviceList = _presenter.GetDeviceList();
+            var input = ReaderTextOutputDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
             {
-                if (!byte.TryParse(readerNumberTextField.Text.ToString(), out var readerNumber))
+                try
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reader number entered!", "OK");
-                    return;
+                    await _presenter.SendReaderTextOutput(input.DeviceAddress, input.ReaderNumber, input.Text);
                 }
-
-                var text = textTextField.Text.ToString();
-                if (string.IsNullOrEmpty(text))
+                catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Please enter text to display!", "OK");
-                    return;
+                    ShowError("Error", ex.Message);
                 }
-
-                Application.RequestStop();
-
-                ShowDeviceSelectionDialog("Reader Text Output", async (address) =>
-                {
-                    try
-                    {
-                        await _presenter.SendReaderTextOutput(address, readerNumber, text);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
-                    }
-                });
             }
-
-            var sendButton = new Button("Send", true);
-            sendButton.Clicked += SendReaderTextOutputButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Reader Text Output", 70, 11, cancelButton, sendButton);
-            dialog.Add(new Label(1, 1, "Reader Number:"), readerNumberTextField,
-                      new Label(1, 3, "Text:"), textTextField);
-            readerNumberTextField.SetFocus();
-
-            Application.Run(dialog);
         }
 
         private void SendManufacturerSpecificCommand()
