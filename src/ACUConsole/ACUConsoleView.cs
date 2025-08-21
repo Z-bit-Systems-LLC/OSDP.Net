@@ -213,7 +213,7 @@ namespace ACUConsole
 
         private void ParseOSDPCapFile()
         {
-            var input = ParseOSDPCapFileDialog.Show();
+            var input = ParseOSDPCapFileDialog.Show(_presenter.GetLastOsdpConfigDirectory());
             
             if (!input.WasCancelled)
             {
@@ -306,8 +306,11 @@ namespace ACUConsole
 
                 void CancelDiscovery()
                 {
+                    
+                    // ReSharper disable AccessToDisposedClosure
                     cancellationTokenSource?.Cancel();
                     cancellationTokenSource?.Dispose();
+                    // ReSharper restore AccessToDisposedClosure
                     cancellationTokenSource = null;
                 }
 

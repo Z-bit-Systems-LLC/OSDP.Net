@@ -14,13 +14,14 @@ namespace ACUConsole.Dialogs
         /// <summary>
         /// Shows the parse OSDP cap file dialog and returns user input
         /// </summary>
+        /// <param name="initialDirectory">The initial directory to show in the file dialog</param>
         /// <returns>ParseOSDPCapFileInput with user's choices</returns>
-        public static ParseOSDPCapFileInput Show()
+        public static ParseOSDPCapFileInput Show(string initialDirectory = "")
         {
             var result = new ParseOSDPCapFileInput { WasCancelled = true };
 
             // First, show file selection dialog
-            var openDialog = new OpenDialog("Load OSDPCap File", string.Empty, new() { ".osdpcap" });
+            var openDialog = new OpenDialog("Load OSDPCap File", initialDirectory ?? string.Empty, new() { ".osdpcap" });
             Application.Run(openDialog);
 
             if (openDialog.Canceled || !File.Exists(openDialog.FilePath?.ToString()))

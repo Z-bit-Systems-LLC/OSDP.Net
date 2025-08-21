@@ -3,14 +3,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Ports;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using ACUConsole.Commands;
 using ACUConsole.Configuration;
 using ACUConsole.Model;
 using log4net;
@@ -19,7 +17,6 @@ using Microsoft.Extensions.Logging;
 using OSDP.Net;
 using OSDP.Net.Connections;
 using OSDP.Net.Model.CommandData;
-using OSDP.Net.Model.ReplyData;
 using OSDP.Net.PanelCommands.DeviceDiscover;
 using OSDP.Net.Tracing;
 using CommunicationConfiguration = OSDP.Net.Model.CommandData.CommunicationConfiguration;
@@ -37,7 +34,6 @@ namespace ACUConsole
         private readonly List<ACUEvent> _messageHistory = new();
         private readonly object _messageLock = new();
         private readonly ConcurrentDictionary<byte, ControlPanel.NakReplyEventArgs> _lastNak = new();
-        private IACUConsoleView _view;
         
         private Guid _connectionId = Guid.Empty;
         private Settings _settings;
@@ -53,7 +49,16 @@ namespace ACUConsole
         // Properties
         public bool IsConnected => _connectionId != Guid.Empty;
         public Guid ConnectionId => _connectionId;
-        public IReadOnlyList<ACUEvent> MessageHistory => _messageHistory.AsReadOnly();
+        public IReadOnlyList<ACUEvent> MessageHistory 
+        {
+            get
+            {
+                lock (_messageLock)
+                {
+                    return _messageHistory.ToList().AsReadOnly();
+                }
+            }
+        }
         public Settings Settings => _settings;
 
         public ACUConsolePresenter()
@@ -64,14 +69,6 @@ namespace ACUConsole
             LoadSettings();
         }
 
-        /// <summary>
-        /// Sets the view reference to allow presenter to control the view
-        /// </summary>
-        /// <param name="view">The view instance</param>
-        public void SetView(IACUConsoleView view)
-        {
-            _view = view ?? throw new ArgumentNullException(nameof(view));
-        }
 
         private void InitializeLogging()
         {
@@ -330,12 +327,11 @@ namespace ACUConsole
 
         public async Task SendOutputControl(byte address, byte outputNumber, bool activate)
         {
-            var outputControls = new OutputControls(new[]
-            {
+            var outputControls = new OutputControls([
                 new OutputControl(outputNumber, activate
                     ? OutputControlCode.PermanentStateOnAbortTimedOperation
                     : OutputControlCode.PermanentStateOffAbortTimedOperation, 0)
-            });
+            ]);
             
             await ExecuteCommand("Output Control Command", address, 
                 () => _controlPanel.OutputControl(_connectionId, address, outputControls));
@@ -343,13 +339,12 @@ namespace ACUConsole
 
         public async Task SendReaderLedControl(byte address, byte ledNumber, LedColor color)
         {
-            var ledControls = new ReaderLedControls(new[]
-            {
+            var ledControls = new ReaderLedControls([
                 new ReaderLedControl(0, ledNumber,
                     TemporaryReaderControlCode.CancelAnyTemporaryAndDisplayPermanent, 1, 0,
                     LedColor.Red, LedColor.Green, 0,
                     PermanentReaderControlCode.SetPermanentState, 1, 0, color, color)
-            });
+            ]);
             
             await ExecuteCommand("Reader LED Control Command", address, 
                 () => _controlPanel.ReaderLedControl(_connectionId, address, ledControls));
@@ -477,6 +472,9 @@ namespace ACUConsole
                 var outputPath = Path.ChangeExtension(filePath, ".txt");
                 File.WriteAllText(outputPath, textBuilder.ToString());
                 
+                // Update the last used directory for next time
+                _lastOsdpConfigFilePath = Path.GetDirectoryName(filePath) ?? Environment.CurrentDirectory;
+                
                 AddLogMessage($"OSDP Cap file parsed successfully. Output saved to: {outputPath}");
             }
             catch (Exception ex)
@@ -530,6 +528,11 @@ namespace ACUConsole
                 .OrderBy(device => device.Address)
                 .Select(device => $"{device.Address} : {device.Name}")
                 .ToArray();
+        }
+
+        public string GetLastOsdpConfigDirectory()
+        {
+            return _lastOsdpConfigFilePath;
         }
 
         // Private helper methods
@@ -616,10 +619,9 @@ namespace ACUConsole
                     type = entry.Packet.ReplyType.ToString();
                 }
 
-                string payloadDataString = string.Empty;
                 var payloadData = entry.Packet.ParsePayloadData();
                 
-                payloadDataString = payloadData switch
+                var payloadDataString = payloadData switch
                 {
                     null => string.Empty,
                     byte[] data => $"    {BitConverter.ToString(data)}\n",

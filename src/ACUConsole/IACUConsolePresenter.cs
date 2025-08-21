@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using ACUConsole.Configuration;
 using ACUConsole.Model;
-using OSDP.Net.Connections;
 using OSDP.Net.Model.CommandData;
 
 namespace ACUConsole
@@ -69,9 +68,7 @@ namespace ACUConsole
         void AddLogMessage(string message);
         bool CanSendCommand();
         string[] GetDeviceList();
-        
-        // View Management
-        void SetView(IACUConsoleView view);
+        string GetLastOsdpConfigDirectory();
     }
 
     public class ConnectionStatusChangedEventArgs : EventArgs
