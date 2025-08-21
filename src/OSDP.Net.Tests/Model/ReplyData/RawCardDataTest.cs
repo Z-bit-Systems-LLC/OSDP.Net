@@ -7,6 +7,7 @@ using OSDP.Net.Model.ReplyData;
 namespace OSDP.Net.Tests.Model.ReplyData
 {
     [TestFixture]
+    [Category("Unit")]
     public class RawCardDataTest
     {
         [Test]

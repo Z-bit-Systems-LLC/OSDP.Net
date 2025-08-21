@@ -8,6 +8,7 @@ using OSDP.Net.Model.ReplyData;
 namespace OSDP.Net.Tests.Model.ReplyData
 {
     [TestFixture]
+    [Category("Unit")]
     public class DeviceCapabilitiesTest
     {
         private readonly byte[] _rawCapsFromDennisBrivoKeypad = new byte[] {

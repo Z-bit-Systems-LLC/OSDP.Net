@@ -8,6 +8,7 @@ using OSDP.Net.Utilities;
 namespace OSDP.Net.Tests.Messages
 {
     [TestFixture]
+    [Category("Unit")]
     public class MessageTest
     {
         [Test]

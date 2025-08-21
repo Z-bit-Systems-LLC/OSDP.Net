@@ -7,6 +7,7 @@ using OSDP.Net.Model.CommandData;
 namespace OSDP.Net.Tests.Messages
 {
     [TestFixture]
+    [Category("Unit")]
     public class ReplyTest
     {
         [Test]

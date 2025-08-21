@@ -4,6 +4,7 @@ using OSDP.Net.Messages;
 
 namespace OSDP.Net.Tests.IntegrationTests
 {
+    [Category("Integration")]
     public class SecurityTests : IntegrationTestFixtureBase
     {
         [Test]

@@ -6,6 +6,7 @@ using OSDP.Net.Model.CommandData;
 namespace OSDP.Net.Tests.Model.CommandData
 {
     [TestFixture]
+    [Category("Unit")]
     internal class ReaderTextOutputTest
     {
         private byte[] TestData =>

@@ -5,6 +5,7 @@ using OSDP.Net.Model.CommandData;
 
 namespace OSDP.Net.Tests.Model.CommandData;
 
+[Category("Unit")]
 internal class FileTransferFragmentTest
 {
     private byte[] TestData =>

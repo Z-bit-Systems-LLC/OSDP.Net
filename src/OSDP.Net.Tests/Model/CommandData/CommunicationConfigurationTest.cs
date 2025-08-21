@@ -5,6 +5,7 @@ using OSDP.Net.Model.CommandData;
 
 namespace OSDP.Net.Tests.Model.CommandData;
 
+[Category("Unit")]
 internal class CommunicationConfigurationTest
 {
     private byte[] TestData => [0x02, 0x80, 0x25, 0x00, 0x00];

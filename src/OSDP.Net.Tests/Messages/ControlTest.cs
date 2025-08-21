@@ -4,6 +4,7 @@ using OSDP.Net.Messages;
 namespace OSDP.Net.Tests.Messages
 {
     [TestFixture]
+    [Category("Unit")]
     public class ControlTest
     {
         [TestCase(0, true, false, ExpectedResult = 0x04)]

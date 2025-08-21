@@ -5,6 +5,7 @@ using OSDP.Net.Model.CommandData;
 
 namespace OSDP.Net.Tests.Model.CommandData;
 
+[Category("Unit")]
 internal class BiometricTemplateDataTest
 {
     private byte[] TestData => [0x00, 0x07, 0x02, 0x04, 0x03, 0x00, 0x01, 0x02, 0x05];
