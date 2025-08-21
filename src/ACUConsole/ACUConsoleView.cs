@@ -177,108 +177,38 @@ namespace ACUConsole
             }
         }
 
-        private void StartTcpServerConnection()
+        private async void StartTcpServerConnection()
         {
-            var portNumberTextField = new TextField(25, 1, 25, _presenter.Settings.TcpServerConnectionSettings.PortNumber.ToString());
-            var baudRateTextField = new TextField(25, 3, 25, _presenter.Settings.TcpServerConnectionSettings.BaudRate.ToString());
-            var replyTimeoutTextField = new TextField(25, 5, 25, _presenter.Settings.TcpServerConnectionSettings.ReplyTimeout.ToString());
-
-            async void StartConnectionButtonClicked()
+            var input = TcpServerConnectionDialog.Show(_presenter.Settings.TcpServerConnectionSettings);
+            
+            if (!input.WasCancelled)
             {
-                if (!int.TryParse(portNumberTextField.Text.ToString(), out var portNumber))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid port number entered!", "OK");
-                    return;
-                }
-
-                if (!int.TryParse(baudRateTextField.Text.ToString(), out var baudRate))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid baud rate entered!", "OK");
-                    return;
-                }
-
-                if (!int.TryParse(replyTimeoutTextField.Text.ToString(), out var replyTimeout))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reply timeout entered!", "OK");
-                    return;
-                }
-
                 try
                 {
-                    await _presenter.StartTcpServerConnection(portNumber, baudRate, replyTimeout);
-                    Application.RequestStop();
+                    await _presenter.StartTcpServerConnection(input.PortNumber, input.BaudRate, input.ReplyTimeout);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(60, 10, "Connection Error", ex.Message, "OK");
+                    ShowError("Connection Error", ex.Message);
                 }
             }
-
-            var startButton = new Button("Start", true);
-            startButton.Clicked += StartConnectionButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Start TCP Server Connection", 60, 12, cancelButton, startButton);
-            dialog.Add(new Label(1, 1, "Port Number:"), portNumberTextField,
-                      new Label(1, 3, "Baud Rate:"), baudRateTextField,
-                      new Label(1, 5, "Reply Timeout(ms):"), replyTimeoutTextField);
-            portNumberTextField.SetFocus();
-
-            Application.Run(dialog);
         }
 
-        private void StartTcpClientConnection()
+        private async void StartTcpClientConnection()
         {
-            var hostTextField = new TextField(15, 1, 35, _presenter.Settings.TcpClientConnectionSettings.Host);
-            var portNumberTextField = new TextField(25, 3, 25, _presenter.Settings.TcpClientConnectionSettings.PortNumber.ToString());
-            var baudRateTextField = new TextField(25, 5, 25, _presenter.Settings.TcpClientConnectionSettings.BaudRate.ToString());
-            var replyTimeoutTextField = new TextField(25, 7, 25, _presenter.Settings.TcpClientConnectionSettings.ReplyTimeout.ToString());
-
-            async void StartConnectionButtonClicked()
+            var input = TcpClientConnectionDialog.Show(_presenter.Settings.TcpClientConnectionSettings);
+            
+            if (!input.WasCancelled)
             {
-                if (!int.TryParse(portNumberTextField.Text.ToString(), out var portNumber))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid port number entered!", "OK");
-                    return;
-                }
-
-                if (!int.TryParse(baudRateTextField.Text.ToString(), out var baudRate))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid baud rate entered!", "OK");
-                    return;
-                }
-                
-                if (!int.TryParse(replyTimeoutTextField.Text.ToString(), out var replyTimeout))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reply timeout entered!", "OK");
-                    return;
-                }
-
                 try
                 {
-                    await _presenter.StartTcpClientConnection(hostTextField.Text.ToString(), portNumber, baudRate, replyTimeout);
-                    Application.RequestStop();
+                    await _presenter.StartTcpClientConnection(input.Host, input.PortNumber, input.BaudRate, input.ReplyTimeout);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(60, 10, "Connection Error", ex.Message, "OK");
+                    ShowError("Connection Error", ex.Message);
                 }
             }
-
-            var startButton = new Button("Start", true);
-            startButton.Clicked += StartConnectionButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Start TCP Client Connection", 60, 15, cancelButton, startButton);
-            dialog.Add(new Label(1, 1, "Host Name:"), hostTextField,
-                      new Label(1, 3, "Port Number:"), portNumberTextField,
-                      new Label(1, 5, "Baud Rate:"), baudRateTextField,
-                      new Label(1, 7, "Reply Timeout(ms):"), replyTimeoutTextField);
-            hostTextField.SetFocus();
-
-            Application.Run(dialog);
         }
 
         private void UpdateConnectionSettings()
@@ -401,132 +331,53 @@ namespace ACUConsole
             }
         }
 
-        // Device Management Methods - Simplified
+        // Device Management Methods - Using extracted dialog classes
         private void AddDevice()
         {
             if (!_presenter.IsConnected)
             {
-                MessageBox.ErrorQuery(60, 12, "Information", "Start a connection before adding devices.", "OK");
+                ShowError("Information", "Start a connection before adding devices.");
                 return;
             }
 
-            var nameTextField = new TextField(15, 1, 35, string.Empty);
-            var addressTextField = new TextField(15, 3, 35, string.Empty);
-            var useCrcCheckBox = new CheckBox(1, 5, "Use CRC", true);
-            var useSecureChannelCheckBox = new CheckBox(1, 6, "Use Secure Channel", true);
-            var keyTextField = new TextField(15, 8, 35, Convert.ToHexString(DeviceSetting.DefaultKey));
-
-            void AddDeviceButtonClicked()
+            var input = AddDeviceDialog.Show(_presenter.Settings.Devices.ToArray());
+            
+            if (!input.WasCancelled)
             {
-                if (!byte.TryParse(addressTextField.Text.ToString(), out var address) || address > 127)
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid address entered!", "OK");
-                    return;
-                }
-
-                if (keyTextField.Text == null || keyTextField.Text.Length != 32)
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid key length entered!", "OK");
-                    return;
-                }
-
-                byte[] key;
                 try
                 {
-                    key = Convert.FromHexString(keyTextField.Text.ToString()!);
-                }
-                catch
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid hex characters!", "OK");
-                    return;
-                }
-
-                var existingDevice = _presenter.Settings.Devices.FirstOrDefault(d => d.Address == address);
-                if (existingDevice != null)
-                {
-                    if (MessageBox.Query(60, 10, "Overwrite", "Device already exists at that address, overwrite?", 1, "No", "Yes") == 0)
-                    {
-                        return;
-                    }
-                }
-
-                try
-                {
-                    _presenter.AddDevice(nameTextField.Text.ToString(), address, useCrcCheckBox.Checked, 
-                        useSecureChannelCheckBox.Checked, key);
-                    Application.RequestStop();
+                    _presenter.AddDevice(input.Name, input.Address, input.UseCrc, 
+                        input.UseSecureChannel, input.SecureChannelKey);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
+                    ShowError("Error", ex.Message);
                 }
             }
-
-            var addButton = new Button("Add", true);
-            addButton.Clicked += AddDeviceButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Add Device", 60, 13, cancelButton, addButton);
-            dialog.Add(new Label(1, 1, "Name:"), nameTextField,
-                      new Label(1, 3, "Address:"), addressTextField,
-                      useCrcCheckBox,
-                      useSecureChannelCheckBox,
-                      new Label(1, 8, "Secure Key:"), keyTextField);
-            nameTextField.SetFocus();
-
-            Application.Run(dialog);
         }
 
         private void RemoveDevice()
         {
             if (!_presenter.IsConnected)
             {
-                MessageBox.ErrorQuery(60, 10, "Information", "Start a connection before removing devices.", "OK");
+                ShowError("Information", "Start a connection before removing devices.");
                 return;
             }
 
             var deviceList = _presenter.GetDeviceList();
-            if (deviceList.Length == 0)
+            var input = RemoveDeviceDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
             {
-                MessageBox.ErrorQuery(60, 10, "Information", "No devices to remove.", "OK");
-                return;
-            }
-
-            var scrollView = new ScrollView(new Rect(6, 1, 50, 6))
-            {
-                ContentSize = new Size(40, deviceList.Length * 2),
-                ShowVerticalScrollIndicator = deviceList.Length > 6,
-                ShowHorizontalScrollIndicator = false
-            };
-
-            var deviceRadioGroup = new RadioGroup(0, 0, deviceList.Select(ustring.Make).ToArray());
-            scrollView.Add(deviceRadioGroup);
-
-            void RemoveDeviceButtonClicked()
-            {
-                var selectedDevice = _presenter.Settings.Devices.OrderBy(d => d.Address).ToArray()[deviceRadioGroup.SelectedItem];
                 try
                 {
-                    _presenter.RemoveDevice(selectedDevice.Address);
-                    Application.RequestStop();
+                    _presenter.RemoveDevice(input.DeviceAddress);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
+                    ShowError("Error", ex.Message);
                 }
             }
-
-            var removeButton = new Button("Remove", true);
-            removeButton.Clicked += RemoveDeviceButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Remove Device", 60, 13, cancelButton, removeButton);
-            dialog.Add(scrollView);
-            removeButton.SetFocus();
-
-            Application.Run(dialog);
         }
 
         private void DiscoverDevice()
