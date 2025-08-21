@@ -223,72 +223,19 @@ namespace ACUConsole
 
         private void ParseOSDPCapFile()
         {
-            var openDialog = new OpenDialog("Load OSDPCap File", string.Empty, new() { ".osdpcap" });
-            Application.Run(openDialog);
-
-            if (openDialog.Canceled || !File.Exists(openDialog.FilePath?.ToString()))
+            var input = ParseOSDPCapFileDialog.Show();
+            
+            if (!input.WasCancelled)
             {
-                return;
-            }
-
-            var filePath = openDialog.FilePath.ToString();
-            var addressTextField = new TextField(30, 1, 20, string.Empty);
-            var ignorePollsAndAcksCheckBox = new CheckBox(1, 3, "Ignore Polls And Acks", false);
-            var keyTextField = new TextField(15, 5, 35, Convert.ToHexString(DeviceSetting.DefaultKey));
-
-            void ParseButtonClicked()
-            {
-                byte? address = null;
-                if (!string.IsNullOrWhiteSpace(addressTextField.Text.ToString()))
-                {
-                    if (!byte.TryParse(addressTextField.Text.ToString(), out var addr) || addr > 127)
-                    {
-                        MessageBox.ErrorQuery(40, 10, "Error", "Invalid address entered!", "OK");
-                        return;
-                    }
-                    address = addr;
-                }
-
-                if (keyTextField.Text != null && keyTextField.Text.Length != 32)
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid key length entered!", "OK");
-                    return;
-                }
-
-                byte[] key;
                 try
                 {
-                    key = keyTextField.Text != null ? Convert.FromHexString(keyTextField.Text.ToString()!) : null;
-                }
-                catch
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid hex characters!", "OK");
-                    return;
-                }
-
-                try
-                {
-                    _presenter.ParseOSDPCapFile(filePath, address, ignorePollsAndAcksCheckBox.Checked, key);
-                    Application.RequestStop();
+                    _presenter.ParseOSDPCapFile(input.FilePath, input.FilterAddress, input.IgnorePollsAndAcks, input.SecureKey);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", $"Unable to parse. {ex.Message}", "OK");
+                    ShowError("Error", $"Unable to parse. {ex.Message}");
                 }
             }
-
-            var parseButton = new Button("Parse", true);
-            parseButton.Clicked += ParseButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Parse settings", 60, 13, cancelButton, parseButton);
-            dialog.Add(new Label(1, 1, "Filter Specific Address:"), addressTextField,
-                      ignorePollsAndAcksCheckBox,
-                      new Label(1, 5, "Secure Key:"), keyTextField);
-            addressTextField.SetFocus();
-
-            Application.Run(dialog);
         }
 
         private void LoadConfigurationSettings()
@@ -359,43 +306,12 @@ namespace ACUConsole
             }
         }
 
-        private void DiscoverDevice()
+        private async void DiscoverDevice()
         {
-            var portNames = SerialPort.GetPortNames();
-            var portNameComboBox = new ComboBox(new Rect(15, 1, 35, 5), portNames);
+            var input = DiscoverDeviceDialog.Show(_presenter.Settings.SerialConnectionSettings.PortName);
             
-            // Select default port name
-            if (portNames.Length > 0)
+            if (!input.WasCancelled)
             {
-                portNameComboBox.SelectedItem = Math.Max(
-                    Array.FindIndex(portNames, port => 
-                        string.Equals(port, _presenter.Settings.SerialConnectionSettings.PortName)), 0);
-            }
-            var pingTimeoutTextField = new TextField(25, 3, 25, "1000");
-            var reconnectDelayTextField = new TextField(25, 5, 25, "0");
-
-            async void OnClickDiscover()
-            {
-                if (string.IsNullOrEmpty(portNameComboBox.Text.ToString()))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "No port name entered!", "OK");
-                    return;
-                }
-
-                if (!int.TryParse(pingTimeoutTextField.Text.ToString(), out var pingTimeout))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reply timeout entered!", "OK");
-                    return;
-                }
-
-                if (!int.TryParse(reconnectDelayTextField.Text.ToString(), out var reconnectDelay))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reconnect delay entered!", "OK");
-                    return;
-                }
-
-                Application.RequestStop();
-
                 var cancellationTokenSource = new CancellationTokenSource();
 
                 void CancelDiscovery()
@@ -416,7 +332,7 @@ namespace ACUConsole
                     _discoverMenuItem.Title = "Cancel _Discover";
                     _discoverMenuItem.Action = CancelDiscovery;
 
-                    await _presenter.DiscoverDevice(portNameComboBox.Text.ToString(), pingTimeout, reconnectDelay, cancellationTokenSource.Token);
+                    await _presenter.DiscoverDevice(input.PortName, input.PingTimeout, input.ReconnectDelay, cancellationTokenSource.Token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -424,7 +340,7 @@ namespace ACUConsole
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(40, 10, "Exception in Device Discovery", ex.Message, "OK");
+                    ShowError("Exception in Device Discovery", ex.Message);
                 }
                 finally
                 {
@@ -432,19 +348,6 @@ namespace ACUConsole
                     cancellationTokenSource?.Dispose();
                 }
             }
-
-            var discoverButton = new Button("Discover", true);
-            discoverButton.Clicked += OnClickDiscover;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Discover Device", 60, 11, cancelButton, discoverButton);
-            dialog.Add(new Label(1, 1, "Port:"), portNameComboBox,
-                      new Label(1, 3, "Ping Timeout(ms):"), pingTimeoutTextField,
-                      new Label(1, 5, "Reconnect Delay(ms):"), reconnectDelayTextField);
-            pingTimeoutTextField.SetFocus();
-
-            Application.Run(dialog);
         }
 
         // Command Methods - Simplified
@@ -618,7 +521,7 @@ namespace ACUConsole
             }
         }
 
-        private void SendEncryptionKeySetCommand()
+        private async void SendEncryptionKeySetCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -626,60 +529,20 @@ namespace ACUConsole
                 return;
             }
 
-            var keyTextField = new TextField(1, 3, 35, "");
-
-            void SendEncryptionKeySetButtonClicked()
+            var deviceList = _presenter.GetDeviceList();
+            var input = EncryptionKeySetDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
             {
-                var keyStr = keyTextField.Text.ToString();
-                if (string.IsNullOrWhiteSpace(keyStr))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Please enter encryption key!", "OK");
-                    return;
-                }
-
-                byte[] key;
                 try
                 {
-                    key = Convert.FromHexString(keyStr);
+                    await _presenter.SendEncryptionKeySet(input.DeviceAddress, input.EncryptionKey);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid hex format!", "OK");
-                    return;
+                    ShowError("Error", ex.Message);
                 }
-
-                if (key.Length != 16)
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Key must be exactly 16 bytes (32 hex chars)!", "OK");
-                    return;
-                }
-
-                Application.RequestStop();
-
-                ShowDeviceSelectionDialog("Encryption Key Set", async (address) =>
-                {
-                    try
-                    {
-                        await _presenter.SendEncryptionKeySet(address, key);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
-                    }
-                });
             }
-
-            var sendButton = new Button("Send", true);
-            sendButton.Clicked += SendEncryptionKeySetButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Encryption Key Set", 60, 12, cancelButton, sendButton);
-            dialog.Add(new Label(1, 1, "Encryption Key (16 bytes hex):"), keyTextField,
-                      new Label(1, 5, "Example: '0102030405060708090A0B0C0D0E0F10'"));
-            keyTextField.SetFocus();
-
-            Application.Run(dialog);
         }
 
         private async void SendBiometricReadCommand()
@@ -706,7 +569,7 @@ namespace ACUConsole
             }
         }
 
-        private void SendBiometricMatchCommand()
+        private async void SendBiometricMatchCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -714,183 +577,45 @@ namespace ACUConsole
                 return;
             }
 
-            var readerNumberTextField = new TextField(25, 1, 25, "0");
-            var typeTextField = new TextField(25, 3, 25, "1");
-            var formatTextField = new TextField(25, 5, 25, "0");
-            var qualityThresholdTextField = new TextField(25, 7, 25, "1");
-            var templateDataTextField = new TextField(25, 9, 40, "");
-
-            void SendBiometricMatchButtonClicked()
+            var deviceList = _presenter.GetDeviceList();
+            var input = BiometricMatchDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
             {
-                if (!byte.TryParse(readerNumberTextField.Text.ToString(), out var readerNumber))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reader number entered!", "OK");
-                    return;
-                }
-
-                if (!byte.TryParse(typeTextField.Text.ToString(), out var type))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid type entered!", "OK");
-                    return;
-                }
-
-                if (!byte.TryParse(formatTextField.Text.ToString(), out var format))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid format entered!", "OK");
-                    return;
-                }
-
-                if (!byte.TryParse(qualityThresholdTextField.Text.ToString(), out var qualityThreshold))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid quality threshold entered!", "OK");
-                    return;
-                }
-
-                byte[] templateData;
                 try
                 {
-                    var templateDataStr = templateDataTextField.Text.ToString();
-                    if (string.IsNullOrWhiteSpace(templateDataStr))
-                    {
-                        MessageBox.ErrorQuery(40, 10, "Error", "Please enter template data!", "OK");
-                        return;
-                    }
-                    templateData = Convert.FromHexString(templateDataStr);
-                }
-                catch
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid template data hex format!", "OK");
-                    return;
-                }
-
-                Application.RequestStop();
-
-                ShowDeviceSelectionDialog("Biometric Match", async (address) =>
-                {
-                    try
-                    {
-                        await _presenter.SendBiometricMatch(address, readerNumber, type, format, qualityThreshold, templateData);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
-                    }
-                });
-            }
-
-            var sendButton = new Button("Send", true);
-            sendButton.Clicked += SendBiometricMatchButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Biometric Match", 70, 17, cancelButton, sendButton);
-            dialog.Add(new Label(1, 1, "Reader Number:"), readerNumberTextField,
-                      new Label(1, 3, "Type:"), typeTextField,
-                      new Label(1, 5, "Format:"), formatTextField,
-                      new Label(1, 7, "Quality Threshold:"), qualityThresholdTextField,
-                      new Label(1, 9, "Template Data (hex):"), templateDataTextField,
-                      new Label(1, 11, "Example: '010203040506070809'"));
-            readerNumberTextField.SetFocus();
-
-            Application.Run(dialog);
-        }
-
-        private void SendFileTransferCommand()
-        {
-            if (!_presenter.CanSendCommand())
-            {
-                ShowCommandRequirementsError();
-                return;
-            }
-
-            var typeTextField = new TextField(25, 1, 25, "1");
-            var messageSizeTextField = new TextField(25, 3, 25, "128");
-            var filePathTextField = new TextField(25, 5, 40, "");
-
-            void SendFileTransferButtonClicked()
-            {
-                if (!byte.TryParse(typeTextField.Text.ToString(), out var type))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid type entered!", "OK");
-                    return;
-                }
-
-                if (!byte.TryParse(messageSizeTextField.Text.ToString(), out var messageSize))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid message size entered!", "OK");
-                    return;
-                }
-
-                var filePath = filePathTextField.Text.ToString();
-                if (string.IsNullOrWhiteSpace(filePath))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Please enter file path!", "OK");
-                    return;
-                }
-
-                byte[] fileData;
-                try
-                {
-                    if (!File.Exists(filePath))
-                    {
-                        MessageBox.ErrorQuery(40, 10, "Error", "File does not exist!", "OK");
-                        return;
-                    }
-                    fileData = File.ReadAllBytes(filePath);
+                    await _presenter.SendBiometricMatch(input.DeviceAddress, input.ReaderNumber, input.Type, input.Format, input.QualityThreshold, input.TemplateData);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(60, 10, "Error", $"Failed to read file: {ex.Message}", "OK");
-                    return;
+                    ShowError("Error", ex.Message);
                 }
-
-                Application.RequestStop();
-
-                ShowDeviceSelectionDialog("File Transfer", async (address) =>
-                {
-                    try
-                    {
-                        var totalFragments = await _presenter.SendFileTransfer(address, type, fileData, messageSize);
-                        MessageBox.Query(60, 10, "File Transfer Complete", 
-                            $"File transferred successfully in {totalFragments} fragments.", "OK");
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
-                    }
-                });
             }
+        }
 
-            void BrowseFileButtonClicked()
+        private async void SendFileTransferCommand()
+        {
+            if (!_presenter.CanSendCommand())
             {
-                var openDialog = new OpenDialog("Select File to Transfer", "", new List<string>());
-                Application.Run(openDialog);
-
-                if (!openDialog.Canceled && !string.IsNullOrEmpty(openDialog.FilePath?.ToString()))
-                {
-                    filePathTextField.Text = openDialog.FilePath.ToString();
-                }
+                ShowCommandRequirementsError();
+                return;
             }
 
-            var sendButton = new Button("Send", true);
-            sendButton.Clicked += SendFileTransferButtonClicked;
-            var browseButton = new Button("Browse");
-            browseButton.Clicked += BrowseFileButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("File Transfer", 80, 15, cancelButton, sendButton);
-            dialog.Add(new Label(1, 1, "Type:"), typeTextField,
-                      new Label(1, 3, "Message Size:"), messageSizeTextField,
-                      new Label(1, 5, "File Path:"), filePathTextField);
+            var deviceList = _presenter.GetDeviceList();
+            var input = FileTransferDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
             
-            browseButton.X = Pos.Right(filePathTextField) + 2;
-            browseButton.Y = 5;
-            dialog.Add(browseButton);
-            
-            typeTextField.SetFocus();
-
-            Application.Run(dialog);
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    var totalFragments = await _presenter.SendFileTransfer(input.DeviceAddress, input.Type, input.FileData, input.MessageSize);
+                    ShowInformation("File Transfer Complete", $"File transferred successfully in {totalFragments} fragments.");
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
         }
 
         private void SendCustomCommand(string title, CommandData commandData)
@@ -927,38 +652,15 @@ namespace ACUConsole
             }
         }
 
-        private void ShowDeviceSelectionDialog(string title, Func<byte, Task> actionFunction)
+        private async void ShowDeviceSelectionDialog(string title, Func<byte, Task> actionFunction)
         {
             var deviceList = _presenter.GetDeviceList();
-            var scrollView = new ScrollView(new Rect(6, 1, 50, 6))
+            var deviceSelection = DeviceSelectionDialog.Show(title, _presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!deviceSelection.WasCancelled)
             {
-                ContentSize = new Size(40, deviceList.Length * 2),
-                ShowVerticalScrollIndicator = deviceList.Length > 6,
-                ShowHorizontalScrollIndicator = false
-            };
-
-            var deviceRadioGroup = new RadioGroup(0, 0, deviceList.Select(ustring.Make).ToArray())
-            {
-                SelectedItem = 0
-            };
-            scrollView.Add(deviceRadioGroup);
-
-            async void SendCommandButtonClicked()
-            {
-                var selectedDevice = _presenter.Settings.Devices.OrderBy(device => device.Address).ToArray()[deviceRadioGroup.SelectedItem];
-                Application.RequestStop();
-                await actionFunction(selectedDevice.Address);
+                await actionFunction(deviceSelection.SelectedDeviceAddress);
             }
-
-            var sendButton = new Button("Send", true);
-            sendButton.Clicked += SendCommandButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog(title, 60, 13, cancelButton, sendButton);
-            dialog.Add(scrollView);
-            sendButton.SetFocus();
-            Application.Run(dialog);
         }
 
 
