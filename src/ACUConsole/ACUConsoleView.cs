@@ -1,15 +1,11 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.IO.Ports;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using ACUConsole.Configuration;
 using ACUConsole.Dialogs;
 using ACUConsole.Model;
 using OSDP.Net.Model.CommandData;
-using NStack;
 using Terminal.Gui;
 
 namespace ACUConsole
@@ -32,7 +28,7 @@ namespace ACUConsole
             _presenter = presenter ?? throw new ArgumentNullException(nameof(presenter));
             
             // Create discover menu item that can be updated
-            _discoverMenuItem = new MenuItem("_Discover", string.Empty, DiscoverDevice);
+            _discoverMenuItem = new MenuItem("_Discover", string.Empty, () => _ = DiscoverDevice());
             
             // Subscribe to presenter events
             _presenter.MessageReceived += OnMessageReceived;
@@ -68,56 +64,50 @@ namespace ACUConsole
 
         private void CreateMenuBar()
         {
-            _menuBar = new MenuBar(new[]
-            {
-                new MenuBarItem("_System", new[]
-                {
+            _menuBar = new MenuBar([
+                new MenuBarItem("_System", [
                     new MenuItem("_About", "", ShowAbout),
                     new MenuItem("_Connection Settings", "", UpdateConnectionSettings),
                     new MenuItem("_Parse OSDP Cap File", "", ParseOSDPCapFile),
                     new MenuItem("_Load Configuration", "", LoadConfigurationSettings),
                     new MenuItem("_Save Configuration", "", () => _presenter.SaveConfiguration()),
                     new MenuItem("_Quit", "", Quit)
-                }),
-                new MenuBarItem("Co_nnections", new[]
-                {
-                    new MenuItem("Start Serial Connection", "", StartSerialConnection),
-                    new MenuItem("Start TCP Server Connection", "", StartTcpServerConnection),
-                    new MenuItem("Start TCP Client Connection", "", StartTcpClientConnection),
+                ]),
+                new MenuBarItem("Co_nnections", [
+                    new MenuItem("Start Serial Connection", "", () => _ = StartSerialConnection()),
+                    new MenuItem("Start TCP Server Connection", "", () => _ = StartTcpServerConnection()),
+                    new MenuItem("Start TCP Client Connection", "", () => _ = StartTcpClientConnection()),
                     new MenuItem("Stop Connections", "", () => _ = _presenter.StopConnection())
-                }),
-                new MenuBarItem("_Devices", new[]
-                {
+                ]),
+                new MenuBarItem("_Devices", [
                     new MenuItem("_Add", string.Empty, AddDevice),
                     new MenuItem("_Remove", string.Empty, RemoveDevice),
-                    _discoverMenuItem,
-                }),
-                new MenuBarItem("_Commands", new[]
-                {
-                    new MenuItem("Communication Configuration", "", SendCommunicationConfiguration),
-                    new MenuItem("Biometric Read", "", SendBiometricReadCommand),
-                    new MenuItem("Biometric Match", "", SendBiometricMatchCommand),
+                    _discoverMenuItem
+                ]),
+                new MenuBarItem("_Commands", [
+                    new MenuItem("Communication Configuration", "", () => _ = SendCommunicationConfiguration()),
+                    new MenuItem("Biometric Read", "", () => _ = SendBiometricReadCommand()),
+                    new MenuItem("Biometric Match", "", () => _ = SendBiometricMatchCommand()),
                     new MenuItem("_Device Capabilities", "", () => SendSimpleCommand("Device capabilities", _presenter.SendDeviceCapabilities)),
-                    new MenuItem("Encryption Key Set", "", SendEncryptionKeySetCommand),
-                    new MenuItem("File Transfer", "", SendFileTransferCommand),
+                    new MenuItem("Encryption Key Set", "", () => _ = SendEncryptionKeySetCommand()),
+                    new MenuItem("File Transfer", "", () => _ = SendFileTransferCommand()),
                     new MenuItem("_ID Report", "", () => SendSimpleCommand("ID report", _presenter.SendIdReport)),
                     new MenuItem("Input Status", "", () => SendSimpleCommand("Input status", _presenter.SendInputStatus)),
                     new MenuItem("_Local Status", "", () => SendSimpleCommand("Local Status", _presenter.SendLocalStatus)),
-                    new MenuItem("Manufacturer Specific", "", SendManufacturerSpecificCommand),
-                    new MenuItem("Output Control", "", SendOutputControlCommand),
+                    new MenuItem("Manufacturer Specific", "", () => _ = SendManufacturerSpecificCommand()),
+                    new MenuItem("Output Control", "", () => _ = SendOutputControlCommand()),
                     new MenuItem("Output Status", "", () => SendSimpleCommand("Output status", _presenter.SendOutputStatus)),
-                    new MenuItem("Reader Buzzer Control", "", SendReaderBuzzerControlCommand),
-                    new MenuItem("Reader LED Control", "", SendReaderLedControlCommand),
-                    new MenuItem("Reader Text Output", "", SendReaderTextOutputCommand),
+                    new MenuItem("Reader Buzzer Control", "", () => _ = SendReaderBuzzerControlCommand()),
+                    new MenuItem("Reader LED Control", "", () => _ = SendReaderLedControlCommand()),
+                    new MenuItem("Reader Text Output", "", () => _ = SendReaderTextOutputCommand()),
                     new MenuItem("_Reader Status", "", () => SendSimpleCommand("Reader status", _presenter.SendReaderStatus))
-                }),
-                new MenuBarItem("_Invalid Commands", new[]
-                {
-                    new MenuItem("_Bad CRC/Checksum", "", () => SendCustomCommand("Bad CRC/Checksum", new ACUConsole.Commands.InvalidCrcPollCommand())),
-                    new MenuItem("Invalid Command Length", "", () => SendCustomCommand("Invalid Command Length", new ACUConsole.Commands.InvalidLengthPollCommand())),
-                    new MenuItem("Invalid Command", "", () => SendCustomCommand("Invalid Command", new ACUConsole.Commands.InvalidCommand()))
-                })
-            });
+                ]),
+                new MenuBarItem("_Invalid Commands", [
+                    new MenuItem("_Bad CRC/Checksum", "", () => SendCustomCommand("Bad CRC/Checksum", new Commands.InvalidCrcPollCommand())),
+                    new MenuItem("Invalid Command Length", "", () => SendCustomCommand("Invalid Command Length", new Commands.InvalidLengthPollCommand())),
+                    new MenuItem("Invalid Command", "", () => SendCustomCommand("Invalid Command", new Commands.InvalidCommand()))
+                ])
+            ]);
         }
 
         private void CreateScrollView()
@@ -160,7 +150,7 @@ namespace ACUConsole
         }
 
         // Connection Methods - Using extracted dialog classes
-        private async void StartSerialConnection()
+        private async Task StartSerialConnection()
         {
             var input = SerialConnectionDialog.Show(_presenter.Settings.SerialConnectionSettings);
             
@@ -177,7 +167,7 @@ namespace ACUConsole
             }
         }
 
-        private async void StartTcpServerConnection()
+        private async Task StartTcpServerConnection()
         {
             var input = TcpServerConnectionDialog.Show(_presenter.Settings.TcpServerConnectionSettings);
             
@@ -194,7 +184,7 @@ namespace ACUConsole
             }
         }
 
-        private async void StartTcpClientConnection()
+        private async Task StartTcpClientConnection()
         {
             var input = TcpClientConnectionDialog.Show(_presenter.Settings.TcpClientConnectionSettings);
             
@@ -240,7 +230,7 @@ namespace ACUConsole
 
         private void LoadConfigurationSettings()
         {
-            var openDialog = new OpenDialog("Load Configuration", string.Empty, new() { ".config" });
+            var openDialog = new OpenDialog("Load Configuration", string.Empty, [".config"]);
             Application.Run(openDialog);
 
             if (!openDialog.Canceled && File.Exists(openDialog.FilePath?.ToString()))
@@ -306,7 +296,7 @@ namespace ACUConsole
             }
         }
 
-        private async void DiscoverDevice()
+        private async Task DiscoverDevice()
         {
             var input = DiscoverDeviceDialog.Show(_presenter.Settings.SerialConnectionSettings.PortName);
             
@@ -324,7 +314,7 @@ namespace ACUConsole
                 void CompleteDiscovery()
                 {
                     _discoverMenuItem.Title = "_Discover";
-                    _discoverMenuItem.Action = DiscoverDevice;
+                    _discoverMenuItem.Action = () => _ = DiscoverDevice();
                 }
 
                 try
@@ -359,7 +349,7 @@ namespace ACUConsole
                 return;
             }
 
-            ShowDeviceSelectionDialog(title, async (address) =>
+            _ = ShowDeviceSelectionDialog(title, async (address) =>
             {
                 try
                 {
@@ -372,7 +362,7 @@ namespace ACUConsole
             });
         }
 
-        private async void SendCommunicationConfiguration()
+        private async Task SendCommunicationConfiguration()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -401,7 +391,7 @@ namespace ACUConsole
             }
         }
 
-        private async void SendOutputControlCommand()
+        private async Task SendOutputControlCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -425,7 +415,7 @@ namespace ACUConsole
             }
         }
 
-        private async void SendReaderLedControlCommand()
+        private async Task SendReaderLedControlCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -449,7 +439,7 @@ namespace ACUConsole
             }
         }
 
-        private async void SendReaderBuzzerControlCommand()
+        private async Task SendReaderBuzzerControlCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -473,7 +463,7 @@ namespace ACUConsole
             }
         }
 
-        private async void SendReaderTextOutputCommand()
+        private async Task SendReaderTextOutputCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -497,7 +487,7 @@ namespace ACUConsole
             }
         }
 
-        private async void SendManufacturerSpecificCommand()
+        private async Task SendManufacturerSpecificCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -521,7 +511,7 @@ namespace ACUConsole
             }
         }
 
-        private async void SendEncryptionKeySetCommand()
+        private async Task SendEncryptionKeySetCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -545,7 +535,7 @@ namespace ACUConsole
             }
         }
 
-        private async void SendBiometricReadCommand()
+        private async Task SendBiometricReadCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -569,7 +559,7 @@ namespace ACUConsole
             }
         }
 
-        private async void SendBiometricMatchCommand()
+        private async Task SendBiometricMatchCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -593,7 +583,7 @@ namespace ACUConsole
             }
         }
 
-        private async void SendFileTransferCommand()
+        private async Task SendFileTransferCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -626,7 +616,7 @@ namespace ACUConsole
                 return;
             }
 
-            ShowDeviceSelectionDialog(title, async (address) =>
+            _ = ShowDeviceSelectionDialog(title, async (address) =>
             {
                 try
                 {
@@ -652,7 +642,7 @@ namespace ACUConsole
             }
         }
 
-        private async void ShowDeviceSelectionDialog(string title, Func<byte, Task> actionFunction)
+        private async Task ShowDeviceSelectionDialog(string title, Func<byte, Task> actionFunction)
         {
             var deviceList = _presenter.GetDeviceList();
             var deviceSelection = DeviceSelectionDialog.Show(title, _presenter.Settings.Devices.ToArray(), deviceList);
