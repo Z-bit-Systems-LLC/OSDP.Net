@@ -37,6 +37,7 @@ namespace ACUConsole
         private readonly List<ACUEvent> _messageHistory = new();
         private readonly object _messageLock = new();
         private readonly ConcurrentDictionary<byte, ControlPanel.NakReplyEventArgs> _lastNak = new();
+        private IACUConsoleView _view;
         
         private Guid _connectionId = Guid.Empty;
         private Settings _settings;
@@ -61,6 +62,15 @@ namespace ACUConsole
             InitializePaths();
             InitializeControlPanel();
             LoadSettings();
+        }
+
+        /// <summary>
+        /// Sets the view reference to allow presenter to control the view
+        /// </summary>
+        /// <param name="view">The view instance</param>
+        public void SetView(IACUConsoleView view)
+        {
+            _view = view ?? throw new ArgumentNullException(nameof(view));
         }
 
         private void InitializeLogging()

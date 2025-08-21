@@ -69,6 +69,9 @@ namespace ACUConsole
         void AddLogMessage(string message);
         bool CanSendCommand();
         string[] GetDeviceList();
+        
+        // View Management
+        void SetView(IACUConsoleView view);
     }
 
     public class ConnectionStatusChangedEventArgs : EventArgs

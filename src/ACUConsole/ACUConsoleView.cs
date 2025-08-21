@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ACUConsole.Configuration;
+using ACUConsole.Dialogs;
 using ACUConsole.Model;
 using OSDP.Net.Model.CommandData;
 using NStack;
@@ -16,7 +17,7 @@ namespace ACUConsole
     /// <summary>
     /// View class that handles all Terminal.Gui UI elements and interactions for ACU Console
     /// </summary>
-    public class ACUConsoleView
+    public class ACUConsoleView : IACUConsoleView
     {
         private readonly IACUConsolePresenter _presenter;
         
@@ -158,56 +159,22 @@ namespace ACUConsole
             }
         }
 
-        // Connection Methods - Simplified implementations
-        private void StartSerialConnection()
+        // Connection Methods - Using extracted dialog classes
+        private async void StartSerialConnection()
         {
-            var portNameComboBox = CreatePortNameComboBox(15, 1);
-            var baudRateTextField = new TextField(25, 3, 25, _presenter.Settings.SerialConnectionSettings.BaudRate.ToString());
-            var replyTimeoutTextField = new TextField(25, 5, 25, _presenter.Settings.SerialConnectionSettings.ReplyTimeout.ToString());
-
-            async void StartConnectionButtonClicked()
+            var input = SerialConnectionDialog.Show(_presenter.Settings.SerialConnectionSettings);
+            
+            if (!input.WasCancelled)
             {
-                if (string.IsNullOrEmpty(portNameComboBox.Text.ToString()))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "No port name entered!", "OK");
-                    return;
-                }
-                
-                if (!int.TryParse(baudRateTextField.Text.ToString(), out var baudRate))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid baud rate entered!", "OK");
-                    return;
-                }
-
-                if (!int.TryParse(replyTimeoutTextField.Text.ToString(), out var replyTimeout))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reply timeout entered!", "OK");
-                    return;
-                }
-
                 try
                 {
-                    await _presenter.StartSerialConnection(portNameComboBox.Text.ToString(), baudRate, replyTimeout);
-                    Application.RequestStop();
+                    await _presenter.StartSerialConnection(input.PortName, input.BaudRate, input.ReplyTimeout);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(60, 10, "Connection Error", ex.Message, "OK");
+                    ShowError("Connection Error", ex.Message);
                 }
             }
-
-            var startButton = new Button("Start", true);
-            startButton.Clicked += StartConnectionButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Start Serial Connection", 70, 12, cancelButton, startButton);
-            dialog.Add(new Label(1, 1, "Port:"), portNameComboBox,
-                      new Label(1, 3, "Baud Rate:"), baudRateTextField,
-                      new Label(1, 5, "Reply Timeout(ms):"), replyTimeoutTextField);
-            portNameComboBox.SetFocus();
-
-            Application.Run(dialog);
         }
 
         private void StartTcpServerConnection()
@@ -564,7 +531,16 @@ namespace ACUConsole
 
         private void DiscoverDevice()
         {
-            var portNameComboBox = CreatePortNameComboBox(15, 1);
+            var portNames = SerialPort.GetPortNames();
+            var portNameComboBox = new ComboBox(new Rect(15, 1, 35, 5), portNames);
+            
+            // Select default port name
+            if (portNames.Length > 0)
+            {
+                portNameComboBox.SelectedItem = Math.Max(
+                    Array.FindIndex(portNames, port => 
+                        string.Equals(port, _presenter.Settings.SerialConnectionSettings.PortName)), 0);
+            }
             var pingTimeoutTextField = new TextField(25, 3, 25, "1000");
             var reconnectDelayTextField = new TextField(25, 5, 25, "0");
 
@@ -1400,21 +1376,6 @@ namespace ACUConsole
             Application.Run(dialog);
         }
 
-        private ComboBox CreatePortNameComboBox(int x, int y)
-        {
-            var portNames = SerialPort.GetPortNames();
-            var portNameComboBox = new ComboBox(new Rect(x, y, 35, 5), portNames);
-
-            // Select default port name
-            if (portNames.Length > 0)
-            {
-                portNameComboBox.SelectedItem = Math.Max(
-                    Array.FindIndex(portNames, port => 
-                        string.Equals(port, _presenter.Settings.SerialConnectionSettings.PortName)), 0);
-            }
-
-            return portNameComboBox;
-        }
 
         // Event Handlers
         private void OnMessageReceived(object sender, ACUEvent acuEvent)
@@ -1474,6 +1435,55 @@ namespace ACUConsole
                     _scrollView.Add(label);
                 }
             });
+        }
+
+        // IACUConsoleView interface implementation
+        public void ShowInformation(string title, string message)
+        {
+            Application.MainLoop.Invoke(() =>
+            {
+                MessageBox.Query(60, 8, title, message, "OK");
+            });
+        }
+
+        public void ShowError(string title, string message)
+        {
+            Application.MainLoop.Invoke(() =>
+            {
+                MessageBox.ErrorQuery(60, 8, title, message, "OK");
+            });
+        }
+
+        public void ShowWarning(string title, string message)
+        {
+            Application.MainLoop.Invoke(() =>
+            {
+                MessageBox.Query(60, 8, title, message, "OK");
+            });
+        }
+
+        public bool AskYesNo(string title, string message)
+        {
+            var result = false;
+            Application.MainLoop.Invoke(() =>
+            {
+                result = MessageBox.Query(60, 8, title, message, 1, "No", "Yes") == 1;
+            });
+            return result;
+        }
+
+        public void UpdateDiscoverMenuItem(string title, Action action)
+        {
+            Application.MainLoop.Invoke(() =>
+            {
+                _discoverMenuItem.Title = title;
+                _discoverMenuItem.Action = action;
+            });
+        }
+
+        public void RefreshMessageDisplay()
+        {
+            UpdateMessageDisplay();
         }
 
         public void Shutdown()

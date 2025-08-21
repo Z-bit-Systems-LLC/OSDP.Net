@@ -20,6 +20,9 @@ namespace ACUConsole
                 // Create view (handles UI)
                 _view = new ACUConsoleView(_presenter);
                 
+                // Wire up presenter and view (avoiding circular dependency)
+                _presenter.SetView(_view);
+                
                 // Initialize and run the application
                 _view.Initialize();
                 _view.Run();
