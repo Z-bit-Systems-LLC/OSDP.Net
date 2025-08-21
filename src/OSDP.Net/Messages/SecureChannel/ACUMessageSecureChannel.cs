@@ -10,11 +10,6 @@ namespace OSDP.Net.Messages.SecureChannel;
 public class ACUMessageSecureChannel : MessageSecureChannel
 {
     /// <summary>
-    /// Initializes a new instance of the ACUMessageChannel
-    /// </summary>
-    public ACUMessageSecureChannel() : base() {}
-
-    /// <summary>
     /// Initializes a new instance of the ACUMessageChannel with logger factory
     /// </summary>
     /// <param name="loggerFactory">Optional logger factory from which a logger object for the

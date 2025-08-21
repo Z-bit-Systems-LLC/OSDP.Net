@@ -1,4 +1,3 @@
-using System;
 using ACUConsole.Configuration;
 using ACUConsole.Model.DialogInputs;
 using OSDP.Net.Model.CommandData;
