@@ -1,6 +1,7 @@
 using System;
 using System.IO.Ports;
 using ACUConsole.Configuration;
+using ACUConsole.Model.DialogInputs;
 using Terminal.Gui;
 
 namespace ACUConsole.Dialogs

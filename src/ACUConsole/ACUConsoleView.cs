@@ -469,7 +469,7 @@ namespace ACUConsole
             });
         }
 
-        private void SendCommunicationConfiguration()
+        private async void SendCommunicationConfiguration()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -477,56 +477,25 @@ namespace ACUConsole
                 return;
             }
 
-            var newAddressTextField = new TextField(25, 1, 25, 
-                ((_presenter.Settings.Devices.MaxBy(device => device.Address)?.Address ?? 0) + 1).ToString());
-            var newBaudRateTextField = new TextField(25, 3, 25, _presenter.Settings.SerialConnectionSettings.BaudRate.ToString());
-
-            void SendCommunicationConfigurationButtonClicked()
+            var deviceList = _presenter.GetDeviceList();
+            var input = CommunicationConfigurationDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList, _presenter.Settings.SerialConnectionSettings.BaudRate);
+            
+            if (!input.WasCancelled)
             {
-                if (!byte.TryParse(newAddressTextField.Text.ToString(), out var newAddress) || newAddress > 127)
+                try
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid address entered (0-127)!", "OK");
-                    return;
-                }
-
-                if (!int.TryParse(newBaudRateTextField.Text.ToString(), out var newBaudRate))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid baud rate entered!", "OK");
-                    return;
-                }
-
-                Application.RequestStop();
-
-                ShowDeviceSelectionDialog("Communication Configuration", async (address) =>
-                {
-                    try
+                    await _presenter.SendCommunicationConfiguration(input.DeviceAddress, input.NewAddress, input.NewBaudRate);
+                    
+                    if (_presenter.Settings.SerialConnectionSettings.BaudRate != input.NewBaudRate)
                     {
-                        await _presenter.SendCommunicationConfiguration(address, newAddress, newBaudRate);
-                        
-                        if (_presenter.Settings.SerialConnectionSettings.BaudRate != newBaudRate)
-                        {
-                            MessageBox.Query(60, 10, "Info",
-                                $"The connection needs to be restarted with baud rate of {newBaudRate}", "OK");
-                        }
+                        ShowInformation("Info", $"The connection needs to be restarted with baud rate of {input.NewBaudRate}");
                     }
-                    catch (Exception ex)
-                    {
-                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
-                    }
-                });
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
             }
-
-            var sendButton = new Button("Send", true);
-            sendButton.Clicked += SendCommunicationConfigurationButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Communication Configuration", 70, 12, cancelButton, sendButton);
-            dialog.Add(new Label(1, 1, "New Address:"), newAddressTextField,
-                      new Label(1, 3, "New Baud Rate:"), newBaudRateTextField);
-            newAddressTextField.SetFocus();
-
-            Application.Run(dialog);
         }
 
         private async void SendOutputControlCommand()
@@ -625,7 +594,7 @@ namespace ACUConsole
             }
         }
 
-        private void SendManufacturerSpecificCommand()
+        private async void SendManufacturerSpecificCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -633,80 +602,20 @@ namespace ACUConsole
                 return;
             }
 
-            var vendorCodeTextField = new TextField(25, 1, 25, "");
-            var dataTextField = new TextField(25, 3, 40, "");
-
-            void SendManufacturerSpecificButtonClicked()
+            var deviceList = _presenter.GetDeviceList();
+            var input = ManufacturerSpecificDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
             {
-                byte[] vendorCode;
                 try
                 {
-                    var vendorCodeStr = vendorCodeTextField.Text.ToString();
-                    if (string.IsNullOrWhiteSpace(vendorCodeStr))
-                    {
-                        MessageBox.ErrorQuery(40, 10, "Error", "Please enter vendor code!", "OK");
-                        return;
-                    }
-                    vendorCode = Convert.FromHexString(vendorCodeStr);
+                    await _presenter.SendManufacturerSpecific(input.DeviceAddress, input.VendorCode, input.Data);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid vendor code hex format!", "OK");
-                    return;
+                    ShowError("Error", ex.Message);
                 }
-
-                if (vendorCode.Length != 3)
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Vendor code must be exactly 3 bytes!", "OK");
-                    return;
-                }
-
-                byte[] data;
-                try
-                {
-                    var dataStr = dataTextField.Text.ToString();
-                    if (string.IsNullOrWhiteSpace(dataStr))
-                    {
-                        data = Array.Empty<byte>();
-                    }
-                    else
-                    {
-                        data = Convert.FromHexString(dataStr);
-                    }
-                }
-                catch
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid data hex format!", "OK");
-                    return;
-                }
-
-                Application.RequestStop();
-
-                ShowDeviceSelectionDialog("Manufacturer Specific", async (address) =>
-                {
-                    try
-                    {
-                        await _presenter.SendManufacturerSpecific(address, vendorCode, data);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
-                    }
-                });
             }
-
-            var sendButton = new Button("Send", true);
-            sendButton.Clicked += SendManufacturerSpecificButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Manufacturer Specific", 70, 13, cancelButton, sendButton);
-            dialog.Add(new Label(1, 1, "Vendor Code (3 bytes hex):"), vendorCodeTextField,
-                      new Label(1, 3, "Data (hex):"), dataTextField,
-                      new Label(1, 5, "Example: Vendor Code = 'AABBCC', Data = '01020304'"));
-            vendorCodeTextField.SetFocus();
-
-            Application.Run(dialog);
         }
 
         private void SendEncryptionKeySetCommand()
@@ -773,7 +682,7 @@ namespace ACUConsole
             Application.Run(dialog);
         }
 
-        private void SendBiometricReadCommand()
+        private async void SendBiometricReadCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -781,65 +690,20 @@ namespace ACUConsole
                 return;
             }
 
-            var readerNumberTextField = new TextField(25, 1, 25, "0");
-            var typeTextField = new TextField(25, 3, 25, "1");
-            var formatTextField = new TextField(25, 5, 25, "0");
-            var qualityTextField = new TextField(25, 7, 25, "1");
-
-            void SendBiometricReadButtonClicked()
+            var deviceList = _presenter.GetDeviceList();
+            var input = BiometricReadDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
             {
-                if (!byte.TryParse(readerNumberTextField.Text.ToString(), out var readerNumber))
+                try
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reader number entered!", "OK");
-                    return;
+                    await _presenter.SendBiometricRead(input.DeviceAddress, input.ReaderNumber, input.Type, input.Format, input.Quality);
                 }
-
-                if (!byte.TryParse(typeTextField.Text.ToString(), out var type))
+                catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid type entered!", "OK");
-                    return;
+                    ShowError("Error", ex.Message);
                 }
-
-                if (!byte.TryParse(formatTextField.Text.ToString(), out var format))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid format entered!", "OK");
-                    return;
-                }
-
-                if (!byte.TryParse(qualityTextField.Text.ToString(), out var quality))
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid quality entered!", "OK");
-                    return;
-                }
-
-                Application.RequestStop();
-
-                ShowDeviceSelectionDialog("Biometric Read", async (address) =>
-                {
-                    try
-                    {
-                        await _presenter.SendBiometricRead(address, readerNumber, type, format, quality);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.ErrorQuery(60, 10, "Error", ex.Message, "OK");
-                    }
-                });
             }
-
-            var sendButton = new Button("Send", true);
-            sendButton.Clicked += SendBiometricReadButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
-
-            var dialog = new Dialog("Biometric Read", 60, 15, cancelButton, sendButton);
-            dialog.Add(new Label(1, 1, "Reader Number:"), readerNumberTextField,
-                      new Label(1, 3, "Type:"), typeTextField,
-                      new Label(1, 5, "Format:"), formatTextField,
-                      new Label(1, 7, "Quality:"), qualityTextField);
-            readerNumberTextField.SetFocus();
-
-            Application.Run(dialog);
         }
 
         private void SendBiometricMatchCommand()

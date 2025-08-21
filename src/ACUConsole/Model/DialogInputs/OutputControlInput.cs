@@ -1,4 +1,4 @@
-namespace ACUConsole.Dialogs
+namespace ACUConsole.Model.DialogInputs
 {
     /// <summary>
     /// Data transfer object for output control dialog input

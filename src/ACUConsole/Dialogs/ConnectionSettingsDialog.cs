@@ -1,4 +1,5 @@
 using System;
+using ACUConsole.Model.DialogInputs;
 using Terminal.Gui;
 
 namespace ACUConsole.Dialogs

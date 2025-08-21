@@ -1,6 +1,6 @@
 using OSDP.Net.Model.CommandData;
 
-namespace ACUConsole.Dialogs
+namespace ACUConsole.Model.DialogInputs
 {
     /// <summary>
     /// Data transfer object for reader LED control dialog input
