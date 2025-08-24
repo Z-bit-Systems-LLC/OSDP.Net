@@ -10,6 +10,9 @@
     <Copyright>Copyright © $(Company) $([System.DateTime]::Now.Year)</Copyright>
     <Product>OSDP.Net</Product>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/bytedreamer/OSDP.Net</PackageProjectUrl>
+    <PackageTags>OSDP;access-control;security;card-reader;biometric;ACU;PD;protocol;serial;tcp;door-access;physical-security</PackageTags>
+    <PackageReleaseNotes>See https://github.com/bytedreamer/OSDP.Net/releases for release notes.</PackageReleaseNotes>
     <RepositoryUrl>https://github.com/bytedreamer/OSDP.Net.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
