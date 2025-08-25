@@ -6,6 +6,7 @@ branches:
     increment: Patch
     track-merge-target: false
     tracks-release-branches: false
+    regex: ^master$|^main$
     is-release-branch: true
     is-main-branch: true
   develop:
