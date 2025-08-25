@@ -15,13 +15,15 @@ steps:
     inputs:
       useConfigFile: true
       configFilePath: 'ci/GitVersion.yml'
-
+      
   - task: DotNetCoreCLI@2
     displayName: 'dotnet build'
     inputs:
       command: 'build'
       projects: '**/*.csproj'
-      arguments: '--configuration $(buildConfiguration) /p:Version=$(GitVersion.SemVer) /p:AssemblyVersion=$(GitVersion.AssemblySemVer) /p:FileVersion=$(GitVersion.AssemblySemFileVer) /p:PackageVersion=$(GitVersion.NuGetVersionV2)'
+      arguments: '--configuration $(buildConfiguration)'
+      versioningScheme: 'byEnvVar'
+      versionEnvVar: 'GitVersion.MajorMinorPatch'
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet test'
