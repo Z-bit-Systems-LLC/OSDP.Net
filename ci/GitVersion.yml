@@ -1,7 +1,7 @@
 mode: GitFlow
 branches:
   master:
-    tag: 'beta'
+    tag: beta
     increment: Patch
     prevent-increment-of-merged-branch-version: true
     track-merge-target: false
@@ -15,15 +15,12 @@ branches:
     is-release-branch: false
   feature:
     tag: alpha.{BranchName}
-    increment: Patch
     regex: ^feature?[/-]
   release:
     tag: rc
-    increment: Patch
     regex: ^release?[/-]
   hotfix:
     tag: ''
-    increment: Patch
     regex: ^hotfix?[/-]
 ignore:
   sha: []
