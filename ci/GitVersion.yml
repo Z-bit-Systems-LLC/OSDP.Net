@@ -3,13 +3,13 @@ branches:
   master:
     label: beta
     increment: Patch
-    prevent-increment-of-merged-branch-version: true
+    prevent-increment-when-branch-merged: true
     track-merge-target: true
     tracks-release-branches: false
     is-release-branch: true
   develop:
     label: beta
-    prevent-increment-of-merged-branch-version: false
+    prevent-increment-when-branch-merged: false
     track-merge-target: true
     tracks-release-branches: true
     is-release-branch: false
