@@ -5,12 +5,12 @@ steps:
       packageType: 'sdk'
       version: '8.x'
 
-  - task: gitversion/setup@0
+  - task: gittools.gittools.setup-gitversion-task.gitversion/setup@0
     displayName: 'Install GitVersion'
     inputs:
       versionSpec: '5.x'
 
-  - task: gitversion/execute@0
+  - task: gittools.gittools.execute-gitversion-task.gitversion/execute@0
     displayName: 'Execute GitVersion'
     inputs:
       useConfigFile: true
