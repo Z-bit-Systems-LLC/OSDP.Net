@@ -1,6 +1,7 @@
-mode: GitFlow
+workflow: GitFlow
 branches:
   master:
+    mode: ContinuousDeployment
     label: beta
     increment: Patch
     track-merge-target: false
