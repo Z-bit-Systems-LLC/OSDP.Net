@@ -1,4 +1,4 @@
-workflow: GitFlow
+workflow: 'GitHubFlow/v1'
 branches:
   master:
     mode: ContinuousDeployment
