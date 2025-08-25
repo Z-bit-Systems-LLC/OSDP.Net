@@ -20,6 +20,8 @@ jobs:
     pool:
       vmImage: 'windows-latest'
     steps:
+      - checkout: self
+        fetchDepth: 0
       - template: ci/build.yml
       - task: PowerShell@2
         displayName: 'Set GitVersion variables for package job'
@@ -42,4 +44,6 @@ jobs:
       GitVersionNuGet: $[ dependencies.build.outputs['GitVersionOutput.GitVersion.NuGetVersionV2'] ]
       GitVersionAssembly: $[ dependencies.build.outputs['GitVersionOutput.GitVersion.AssemblySemVer'] ]
     steps:
+      - checkout: self
+        fetchDepth: 0
       - template: ci/package.yml  
