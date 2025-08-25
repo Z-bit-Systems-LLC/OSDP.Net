@@ -2,7 +2,7 @@ workflow: 'GitHubFlow/v1'
 branches:
   master:
     mode: ContinuousDeployment
-    label: beta
+    label: 'beta'
     increment: Patch
     track-merge-target: false
     tracks-release-branches: false
@@ -10,8 +10,9 @@ branches:
     is-release-branch: true
     is-main-branch: true
   develop:
-    label: beta
+    label: 'beta'
     increment: None
+    regex: ^dev(elop)?(ment)?$
     source-branches:
     - master
 ignore:
