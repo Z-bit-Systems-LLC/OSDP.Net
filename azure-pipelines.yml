@@ -28,8 +28,8 @@ jobs:
         inputs:
           targetType: 'inline'
           script: |
-            Write-Host "##vso[task.setvariable variable=GitVersion.SemVer;isOutput=true]$(GitVersion.SemVer)"
-            Write-Host "##vso[task.setvariable variable=GitVersion.MajorMinorPatch;isOutput=true]$(GitVersion.MajorMinorPatch)"
+            Write-Host "##vso[task.setvariable variable=GitVersion.SemVer;isOutput=true]$(GITVERSION_SEMVER)"
+            Write-Host "##vso[task.setvariable variable=GitVersion.MajorMinorPatch;isOutput=true]$(GITVERSION_MAJORMINORPATCH)"
         name: GitVersionOutput
 
   - job: package
