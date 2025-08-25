@@ -27,8 +27,7 @@ jobs:
           targetType: 'inline'
           script: |
             Write-Host "##vso[task.setvariable variable=GitVersion.SemVer;isOutput=true]$(GitVersion.SemVer)"
-            Write-Host "##vso[task.setvariable variable=GitVersion.NuGetVersionV2;isOutput=true]$(GitVersion.NuGetVersionV2)"
-            Write-Host "##vso[task.setvariable variable=GitVersion.AssemblySemVer;isOutput=true]$(GitVersion.AssemblySemVer)"
+            Write-Host "##vso[task.setvariable variable=GitVersion.MajorMinorPatch;isOutput=true]$(GitVersion.MajorMinorPatch)"
         name: GitVersionOutput
 
   - job: package
@@ -39,7 +38,6 @@ jobs:
       build
     variables:
       GitVersionSemVer: $[ dependencies.build.outputs['GitVersionOutput.GitVersion.SemVer'] ]
-      GitVersionNuGet: $[ dependencies.build.outputs['GitVersionOutput.GitVersion.NuGetVersionV2'] ]
-      GitVersionAssembly: $[ dependencies.build.outputs['GitVersionOutput.GitVersion.AssemblySemVer'] ]
+      GitVersionAssembly: $[ dependencies.build.outputs['GitVersionOutput.GitVersion.MajorMinorPatch'] ]
     steps:
       - template: ci/package.yml  
