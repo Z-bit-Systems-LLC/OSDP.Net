@@ -10,7 +10,8 @@ branches:
     regex: ^master$|^main$
     is-release-branch: true
     is-main-branch: true
-    prevent-increment-of-merged-branch-version: true
+    prevent-increment:
+      of-merged-branch: true
   develop:
     label: 'beta'
     increment: None
