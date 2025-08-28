@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Text;
 using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
 
@@ -43,5 +44,14 @@ internal class NoPayloadCommandData : CommandData
     public override byte[] BuildData()
     {
         return Array.Empty<byte>();
+    }
+
+    /// <inheritdoc/>
+    public override string ToString()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"Command Type: {CommandType}");
+        sb.AppendLine($"     Payload: (none)");
+        return sb.ToString();
     }
 }

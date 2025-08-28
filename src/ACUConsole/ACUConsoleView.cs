@@ -1,0 +1,774 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using ACUConsole.Dialogs;
+using ACUConsole.Model;
+using OSDP.Net.Model.CommandData;
+using Terminal.Gui;
+
+namespace ACUConsole
+{
+    /// <summary>
+    /// View class that handles all Terminal.Gui UI elements and interactions for ACU Console
+    /// </summary>
+    public class ACUConsoleView : IACUConsoleView
+    {
+        private readonly IACUConsolePresenter _presenter;
+        
+        // UI Components
+        private Window _window;
+        private ScrollView _scrollView;
+        private MenuBar _menuBar;
+        private readonly MenuItem _discoverMenuItem;
+        
+        public ACUConsoleView(IACUConsolePresenter presenter)
+        {
+            _presenter = presenter ?? throw new ArgumentNullException(nameof(presenter));
+            
+            // Create discover menu item that can be updated
+            _discoverMenuItem = new MenuItem("_Discover", string.Empty, () => _ = DiscoverDevice());
+            
+            // Subscribe to presenter events
+            _presenter.MessageReceived += OnMessageReceived;
+            _presenter.StatusChanged += OnStatusChanged;
+            _presenter.ConnectionStatusChanged += OnConnectionStatusChanged;
+            _presenter.ErrorOccurred += OnErrorOccurred;
+        }
+
+        public void Initialize()
+        {
+            Application.Init();
+            CreateMainWindow();
+            CreateMenuBar();
+            CreateScrollView();
+            Application.Top.Add(_menuBar, _window);
+        }
+
+        public void Run()
+        {
+            Application.Run();
+        }
+
+        private void CreateMainWindow()
+        {
+            _window = new Window("OSDP.Net ACU Console")
+            {
+                X = 0,
+                Y = 1, // Leave one row for the toplevel menu
+                Width = Dim.Fill(),
+                Height = Dim.Fill() - 1
+            };
+        }
+
+        private void CreateMenuBar()
+        {
+            _menuBar = new MenuBar([
+                new MenuBarItem("_System", [
+                    new MenuItem("_About", "", ShowAbout),
+                    new MenuItem("_Connection Settings", "", UpdateConnectionSettings),
+                    new MenuItem("_Parse OSDP Cap File", "", ParseOSDPCapFile),
+                    new MenuItem("_Load Configuration", "", LoadConfigurationSettings),
+                    new MenuItem("_Save Configuration", "", () => _presenter.SaveConfiguration()),
+                    new MenuItem("_Quit", "", Quit)
+                ]),
+                new MenuBarItem("Co_nnections", [
+                    new MenuItem("Start Serial Connection", "", () => _ = StartSerialConnection()),
+                    new MenuItem("Start TCP Server Connection", "", () => _ = StartTcpServerConnection()),
+                    new MenuItem("Start TCP Client Connection", "", () => _ = StartTcpClientConnection()),
+                    new MenuItem("Stop Connections", "", () => _ = _presenter.StopConnection())
+                ]),
+                new MenuBarItem("_Devices", [
+                    new MenuItem("_Add", string.Empty, AddDevice),
+                    new MenuItem("_Remove", string.Empty, RemoveDevice),
+                    _discoverMenuItem
+                ]),
+                new MenuBarItem("_Commands", [
+                    new MenuItem("Communication Configuration", "", () => _ = SendCommunicationConfiguration()),
+                    new MenuItem("Biometric Read", "", () => _ = SendBiometricReadCommand()),
+                    new MenuItem("Biometric Match", "", () => _ = SendBiometricMatchCommand()),
+                    new MenuItem("_Device Capabilities", "", () => SendSimpleCommand("Device capabilities", _presenter.SendDeviceCapabilities)),
+                    new MenuItem("Encryption Key Set", "", () => _ = SendEncryptionKeySetCommand()),
+                    new MenuItem("File Transfer", "", () => _ = SendFileTransferCommand()),
+                    new MenuItem("_ID Report", "", () => SendSimpleCommand("ID report", _presenter.SendIdReport)),
+                    new MenuItem("Input Status", "", () => SendSimpleCommand("Input status", _presenter.SendInputStatus)),
+                    new MenuItem("_Local Status", "", () => SendSimpleCommand("Local Status", _presenter.SendLocalStatus)),
+                    new MenuItem("Manufacturer Specific", "", () => _ = SendManufacturerSpecificCommand()),
+                    new MenuItem("Output Control", "", () => _ = SendOutputControlCommand()),
+                    new MenuItem("Output Status", "", () => SendSimpleCommand("Output status", _presenter.SendOutputStatus)),
+                    new MenuItem("Reader Buzzer Control", "", () => _ = SendReaderBuzzerControlCommand()),
+                    new MenuItem("Reader LED Control", "", () => _ = SendReaderLedControlCommand()),
+                    new MenuItem("Reader Text Output", "", () => _ = SendReaderTextOutputCommand()),
+                    new MenuItem("_Reader Status", "", () => SendSimpleCommand("Reader status", _presenter.SendReaderStatus))
+                ]),
+                new MenuBarItem("_Invalid Commands", [
+                    new MenuItem("_Bad CRC/Checksum", "", () => SendCustomCommand("Bad CRC/Checksum", new Commands.InvalidCrcPollCommand())),
+                    new MenuItem("Invalid Command Length", "", () => SendCustomCommand("Invalid Command Length", new Commands.InvalidLengthPollCommand())),
+                    new MenuItem("Invalid Command", "", () => SendCustomCommand("Invalid Command", new Commands.InvalidCommand()))
+                ])
+            ]);
+        }
+
+        private void CreateScrollView()
+        {
+            _scrollView = new ScrollView(new Rect(0, 0, 0, 0))
+            {
+                ContentSize = new Size(500, 100),
+                ShowVerticalScrollIndicator = true,
+                ShowHorizontalScrollIndicator = true
+            };
+            _window.Add(_scrollView);
+        }
+
+        // System Menu Actions
+        private void ShowAbout()
+        {
+            var version = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version;
+            MessageBox.Query(40, 6, "About", $"OSDP.Net ACU Console\nVersion: {version}", 0, "OK");
+        }
+
+        private void Quit()
+        {
+            var result = MessageBox.Query(60, 8, "Exit Application", 
+                "Do you want to save your configuration before exiting?", 
+                2, "Cancel", "Don't Save", "Save");
+
+            switch (result)
+            {
+                case 0: // Cancel
+                    // Do nothing, stay in application
+                    break;
+                case 1: // Don't Save
+                    Application.Shutdown();
+                    break;
+                case 2: // Save
+                    _presenter.SaveConfiguration();
+                    Application.Shutdown();
+                    break;
+            }
+        }
+
+        // Connection Methods - Using extracted dialog classes
+        private async Task StartSerialConnection()
+        {
+            var input = SerialConnectionDialog.Show(_presenter.Settings.SerialConnectionSettings);
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    await _presenter.StartSerialConnection(input.PortName, input.BaudRate, input.ReplyTimeout);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Connection Error", ex.Message);
+                }
+            }
+        }
+
+        private async Task StartTcpServerConnection()
+        {
+            var input = TcpServerConnectionDialog.Show(_presenter.Settings.TcpServerConnectionSettings);
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    await _presenter.StartTcpServerConnection(input.PortNumber, input.BaudRate, input.ReplyTimeout);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Connection Error", ex.Message);
+                }
+            }
+        }
+
+        private async Task StartTcpClientConnection()
+        {
+            var input = TcpClientConnectionDialog.Show(_presenter.Settings.TcpClientConnectionSettings);
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    await _presenter.StartTcpClientConnection(input.Host, input.PortNumber, input.BaudRate, input.ReplyTimeout);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Connection Error", ex.Message);
+                }
+            }
+        }
+
+        private void UpdateConnectionSettings()
+        {
+            var input = ConnectionSettingsDialog.Show(_presenter.Settings.PollingInterval, _presenter.Settings.IsTracing);
+            
+            if (!input.WasCancelled)
+            {
+                _presenter.UpdateConnectionSettings(input.PollingInterval, input.IsTracing);
+            }
+        }
+
+        private void ParseOSDPCapFile()
+        {
+            var input = ParseOSDPCapFileDialog.Show(_presenter.GetLastOsdpConfigDirectory());
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    _presenter.ParseOSDPCapFile(input.FilePath, input.FilterAddress, input.IgnorePollsAndAcks, input.SecureKey);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", $"Unable to parse. {ex.Message}");
+                }
+            }
+        }
+
+        private void LoadConfigurationSettings()
+        {
+            var openDialog = new OpenDialog("Load Configuration", string.Empty, [".config"]);
+            Application.Run(openDialog);
+
+            if (!openDialog.Canceled && File.Exists(openDialog.FilePath?.ToString()))
+            {
+                try
+                {
+                    _presenter.LoadConfiguration();
+                    MessageBox.Query(40, 6, "Load Configuration", "Load completed successfully", "OK");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.ErrorQuery(40, 8, "Error", ex.Message, "OK");
+                }
+            }
+        }
+
+        // Device Management Methods - Using extracted dialog classes
+        private void AddDevice()
+        {
+            if (!_presenter.IsConnected)
+            {
+                ShowError("Information", "Start a connection before adding devices.");
+                return;
+            }
+
+            var input = AddDeviceDialog.Show(_presenter.Settings.Devices.ToArray());
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    _presenter.AddDevice(input.Name, input.Address, input.UseCrc, 
+                        input.UseSecureChannel, input.SecureChannelKey);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
+        }
+
+        private void RemoveDevice()
+        {
+            if (!_presenter.IsConnected)
+            {
+                ShowError("Information", "Start a connection before removing devices.");
+                return;
+            }
+
+            var deviceList = _presenter.GetDeviceList();
+            var input = RemoveDeviceDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    _presenter.RemoveDevice(input.DeviceAddress);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
+        }
+
+        private async Task DiscoverDevice()
+        {
+            var input = DiscoverDeviceDialog.Show(_presenter.Settings.SerialConnectionSettings.PortName);
+            
+            if (!input.WasCancelled)
+            {
+                var cancellationTokenSource = new CancellationTokenSource();
+
+                void CancelDiscovery()
+                {
+                    
+                    // ReSharper disable AccessToDisposedClosure
+                    cancellationTokenSource?.Cancel();
+                    cancellationTokenSource?.Dispose();
+                    // ReSharper restore AccessToDisposedClosure
+                    cancellationTokenSource = null;
+                }
+
+                void CompleteDiscovery()
+                {
+                    _discoverMenuItem.Title = "_Discover";
+                    _discoverMenuItem.Action = () => _ = DiscoverDevice();
+                }
+
+                try
+                {
+                    _discoverMenuItem.Title = "Cancel _Discover";
+                    _discoverMenuItem.Action = CancelDiscovery;
+
+                    await _presenter.DiscoverDevice(input.PortName, input.PingTimeout, input.ReconnectDelay, cancellationTokenSource.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Discovery was cancelled - this is expected, no need to show error
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Exception in Device Discovery", ex.Message);
+                }
+                finally
+                {
+                    CompleteDiscovery();
+                    cancellationTokenSource?.Dispose();
+                }
+            }
+        }
+
+        // Command Methods - Simplified
+        private void SendSimpleCommand(string title, Func<byte, Task> commandFunction)
+        {
+            if (!_presenter.CanSendCommand())
+            {
+                ShowCommandRequirementsError();
+                return;
+            }
+
+            _ = ShowDeviceSelectionDialog(title, async (address) =>
+            {
+                try
+                {
+                    await commandFunction(address);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.ErrorQuery(40, 10, $"Error on address {address}", ex.Message, "OK");
+                }
+            });
+        }
+
+        private async Task SendCommunicationConfiguration()
+        {
+            if (!_presenter.CanSendCommand())
+            {
+                ShowCommandRequirementsError();
+                return;
+            }
+
+            var deviceList = _presenter.GetDeviceList();
+            var input = CommunicationConfigurationDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList, _presenter.Settings.SerialConnectionSettings.BaudRate);
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    await _presenter.SendCommunicationConfiguration(input.DeviceAddress, input.NewAddress, input.NewBaudRate);
+                    
+                    if (_presenter.Settings.SerialConnectionSettings.BaudRate != input.NewBaudRate)
+                    {
+                        ShowInformation("Info", $"The connection needs to be restarted with baud rate of {input.NewBaudRate}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
+        }
+
+        private async Task SendOutputControlCommand()
+        {
+            if (!_presenter.CanSendCommand())
+            {
+                ShowCommandRequirementsError();
+                return;
+            }
+
+            var deviceList = _presenter.GetDeviceList();
+            var input = OutputControlDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    await _presenter.SendOutputControl(input.DeviceAddress, input.OutputNumber, input.ActivateOutput);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
+        }
+
+        private async Task SendReaderLedControlCommand()
+        {
+            if (!_presenter.CanSendCommand())
+            {
+                ShowCommandRequirementsError();
+                return;
+            }
+
+            var deviceList = _presenter.GetDeviceList();
+            var input = ReaderLedControlDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    await _presenter.SendReaderLedControl(input.DeviceAddress, input.LedNumber, input.Color);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
+        }
+
+        private async Task SendReaderBuzzerControlCommand()
+        {
+            if (!_presenter.CanSendCommand())
+            {
+                ShowCommandRequirementsError();
+                return;
+            }
+
+            var deviceList = _presenter.GetDeviceList();
+            var input = ReaderBuzzerControlDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    await _presenter.SendReaderBuzzerControl(input.DeviceAddress, input.ReaderNumber, input.RepeatTimes);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
+        }
+
+        private async Task SendReaderTextOutputCommand()
+        {
+            if (!_presenter.CanSendCommand())
+            {
+                ShowCommandRequirementsError();
+                return;
+            }
+
+            var deviceList = _presenter.GetDeviceList();
+            var input = ReaderTextOutputDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    await _presenter.SendReaderTextOutput(input.DeviceAddress, input.ReaderNumber, input.Text);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
+        }
+
+        private async Task SendManufacturerSpecificCommand()
+        {
+            if (!_presenter.CanSendCommand())
+            {
+                ShowCommandRequirementsError();
+                return;
+            }
+
+            var deviceList = _presenter.GetDeviceList();
+            var input = ManufacturerSpecificDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    await _presenter.SendManufacturerSpecific(input.DeviceAddress, input.VendorCode, input.Data);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
+        }
+
+        private async Task SendEncryptionKeySetCommand()
+        {
+            if (!_presenter.CanSendCommand())
+            {
+                ShowCommandRequirementsError();
+                return;
+            }
+
+            var deviceList = _presenter.GetDeviceList();
+            var input = EncryptionKeySetDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    await _presenter.SendEncryptionKeySet(input.DeviceAddress, input.EncryptionKey);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
+        }
+
+        private async Task SendBiometricReadCommand()
+        {
+            if (!_presenter.CanSendCommand())
+            {
+                ShowCommandRequirementsError();
+                return;
+            }
+
+            var deviceList = _presenter.GetDeviceList();
+            var input = BiometricReadDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    await _presenter.SendBiometricRead(input.DeviceAddress, input.ReaderNumber, input.Type, input.Format, input.Quality);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
+        }
+
+        private async Task SendBiometricMatchCommand()
+        {
+            if (!_presenter.CanSendCommand())
+            {
+                ShowCommandRequirementsError();
+                return;
+            }
+
+            var deviceList = _presenter.GetDeviceList();
+            var input = BiometricMatchDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    await _presenter.SendBiometricMatch(input.DeviceAddress, input.ReaderNumber, input.Type, input.Format, input.QualityThreshold, input.TemplateData);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
+        }
+
+        private async Task SendFileTransferCommand()
+        {
+            if (!_presenter.CanSendCommand())
+            {
+                ShowCommandRequirementsError();
+                return;
+            }
+
+            var deviceList = _presenter.GetDeviceList();
+            var input = FileTransferDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    var totalFragments = await _presenter.SendFileTransfer(input.DeviceAddress, input.Type, input.FileData, input.MessageSize);
+                    ShowInformation("File Transfer Complete", $"File transferred successfully in {totalFragments} fragments.");
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
+        }
+
+        private void SendCustomCommand(string title, CommandData commandData)
+        {
+            if (!_presenter.CanSendCommand())
+            {
+                ShowCommandRequirementsError();
+                return;
+            }
+
+            _ = ShowDeviceSelectionDialog(title, async (address) =>
+            {
+                try
+                {
+                    await _presenter.SendCustomCommand(address, commandData);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.ErrorQuery(40, 10, $"Error on address {address}", ex.Message, "OK");
+                }
+            });
+        }
+
+        // Helper Methods
+        private void ShowCommandRequirementsError()
+        {
+            if (!_presenter.IsConnected)
+            {
+                MessageBox.ErrorQuery(60, 10, "Warning", "Start a connection before sending commands.", "OK");
+            }
+            else if (_presenter.Settings.Devices.Count == 0)
+            {
+                MessageBox.ErrorQuery(60, 10, "Warning", "Add a device before sending commands.", "OK");
+            }
+        }
+
+        private async Task ShowDeviceSelectionDialog(string title, Func<byte, Task> actionFunction)
+        {
+            var deviceList = _presenter.GetDeviceList();
+            var deviceSelection = DeviceSelectionDialog.Show(title, _presenter.Settings.Devices.ToArray(), deviceList);
+            
+            if (!deviceSelection.WasCancelled)
+            {
+                await actionFunction(deviceSelection.SelectedDeviceAddress);
+            }
+        }
+
+
+        // Event Handlers
+        private void OnMessageReceived(object sender, ACUEvent acuEvent)
+        {
+            UpdateMessageDisplay();
+        }
+
+        private void OnStatusChanged(object sender, string status)
+        {
+            // Status updates can be displayed in a status bar if needed
+        }
+
+        private void OnConnectionStatusChanged(object sender, ConnectionStatusChangedEventArgs args)
+        {
+            // Connection status updates are handled through messages
+        }
+
+        private void OnErrorOccurred(object sender, Exception ex)
+        {
+            Application.MainLoop.Invoke(() =>
+            {
+                MessageBox.ErrorQuery("Error", ex.Message, "OK");
+            });
+        }
+
+        private void UpdateMessageDisplay()
+        {
+            Application.MainLoop.Invoke(() =>
+            {
+                if (!_window.HasFocus && _menuBar.HasFocus)
+                {
+                    return;
+                }
+
+                _scrollView.Frame = new Rect(1, 0, _window.Frame.Width - 3, _window.Frame.Height - 2);
+                _scrollView.RemoveAll();
+
+                int index = 0;
+                foreach (var message in _presenter.MessageHistory.Reverse())
+                {
+                    var messageText = message.ToString().TrimEnd();
+                    var label = new Label(0, index, messageText);
+                    index += label.Bounds.Height;
+
+                    // Color code messages based on type
+                    if (messageText.Contains("| WARN |") || messageText.Contains("NAK") || message.Type == ACUEventType.Warning)
+                    {
+                        label.ColorScheme = new ColorScheme
+                            { Normal = Terminal.Gui.Attribute.Make(Color.Black, Color.BrightYellow) };
+                    }
+                    else if (messageText.Contains("| ERROR |") || message.Type == ACUEventType.Error)
+                    {
+                        label.ColorScheme = new ColorScheme
+                            { Normal = Terminal.Gui.Attribute.Make(Color.White, Color.BrightRed) };
+                    }
+
+                    _scrollView.Add(label);
+                }
+            });
+        }
+
+        // IACUConsoleView interface implementation
+        public void ShowInformation(string title, string message)
+        {
+            Application.MainLoop.Invoke(() =>
+            {
+                MessageBox.Query(60, 8, title, message, "OK");
+            });
+        }
+
+        public void ShowError(string title, string message)
+        {
+            Application.MainLoop.Invoke(() =>
+            {
+                MessageBox.ErrorQuery(60, 8, title, message, "OK");
+            });
+        }
+
+        public void ShowWarning(string title, string message)
+        {
+            Application.MainLoop.Invoke(() =>
+            {
+                MessageBox.Query(60, 8, title, message, "OK");
+            });
+        }
+
+        public bool AskYesNo(string title, string message)
+        {
+            var result = false;
+            Application.MainLoop.Invoke(() =>
+            {
+                result = MessageBox.Query(60, 8, title, message, 1, "No", "Yes") == 1;
+            });
+            return result;
+        }
+
+        public void UpdateDiscoverMenuItem(string title, Action action)
+        {
+            Application.MainLoop.Invoke(() =>
+            {
+                _discoverMenuItem.Title = title;
+                _discoverMenuItem.Action = action;
+            });
+        }
+
+        public void RefreshMessageDisplay()
+        {
+            UpdateMessageDisplay();
+        }
+
+        public void Shutdown()
+        {
+            Application.Shutdown();
+        }
+    }
+}

@@ -199,17 +199,17 @@ public abstract class MessageSecureChannel : IMessageSecureChannel
         
         int dataLength = data.Length + 1;
         int paddingLength = dataLength + (cryptoLength - dataLength % cryptoLength) % cryptoLength;
-            
+        
         Span<byte> buffer = stackalloc byte[paddingLength];
         buffer.Clear();
-            
+        
         var cursor = buffer.Slice(0);
 
         data.CopyTo(cursor);
         cursor = cursor.Slice(data.Length);
-            
+        
         cursor[0] = paddingStart;
-            
+        
         return buffer.ToArray();
     }
 }

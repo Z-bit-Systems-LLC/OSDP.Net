@@ -11,6 +11,7 @@ using OSDP.Net.Utilities;
 namespace OSDP.Net.Tests.Tracing;
 
 [TestFixture]
+[Category("Unit")]
 public class PacketDecodingTest
 {
     [Test]

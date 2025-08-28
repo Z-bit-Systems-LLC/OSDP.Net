@@ -133,7 +133,7 @@ public class IntegrationTestFixtureBase
         DeviceAddress = deviceConfig.Address;
 
         TargetDevice = new TestDevice(deviceConfig, LoggerFactory);
-        TargetDevice.StartListening(new TcpOsdpServer(6000, baudRate, LoggerFactory));
+        TargetDevice.StartListening(new TcpConnectionListener(6000, baudRate, LoggerFactory));
     }
 
     protected void AddDeviceToPanel(

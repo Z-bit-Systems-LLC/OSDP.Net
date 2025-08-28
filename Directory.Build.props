@@ -1,0 +1,31 @@
+<Project>
+  <PropertyGroup>
+    <!-- Version properties will be set by GitVersion -->
+    <VersionPrefix>5.0.5</VersionPrefix>
+    
+    <!-- Common properties for all projects -->
+    <Authors>Jonathan Horvath</Authors>
+    <Company>Z-bit Systems LLC</Company>
+    <Copyright>Copyright © $(Company) $([System.DateTime]::Now.Year)</Copyright>
+    <Product>OSDP.Net</Product>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/bytedreamer/OSDP.Net</PackageProjectUrl>
+    <PackageTags>OSDP;access-control;security;card-reader;biometric;ACU;PD;protocol;serial;tcp;door-access;physical-security</PackageTags>
+    <PackageReleaseNotes>See https://github.com/bytedreamer/OSDP.Net/releases for release notes.</PackageReleaseNotes>
+    <RepositoryUrl>https://github.com/bytedreamer/OSDP.Net.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    
+    <!-- Enable source link for debugging -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    
+    <!-- CI build settings -->
+    <ContinuousIntegrationBuild Condition="'$(TF_BUILD)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
+</Project>

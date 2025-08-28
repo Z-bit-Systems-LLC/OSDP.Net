@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
 
@@ -59,6 +60,23 @@ namespace OSDP.Net.Model.CommandData
         public static OutputControls ParseData(ReadOnlySpan<byte> payloadData)
         {
             return new OutputControls(SplitData(4, data => OutputControl.ParseData(data), payloadData));
+        }
+
+        /// <inheritdoc/>
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"Output Count: {Controls.Count()}");
+            var index = 1;
+            foreach (var control in Controls)
+            {
+                sb.AppendLine($"Output #{index}:");
+                sb.AppendLine($" Output #: {control.OutputNumber}");
+                sb.AppendLine($"     Code: {control.OutputControlCode}");
+                sb.AppendLine($"     Time: {control.Timer} (100ms units)");
+                index++;
+            }
+            return sb.ToString();
         }
     }
 }

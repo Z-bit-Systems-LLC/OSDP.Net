@@ -87,25 +87,15 @@ namespace OSDP.Net.Model.CommandData
         }
 
         /// <inheritdoc/>
-        public override string ToString() => ToString(0);
-
-        /// <summary>
-        /// Returns a string representation of the current object
-        /// </summary>
-        /// <param name="indent">Number of ' ' chars to add to beginning of every line</param>
-        /// <returns>String representation of the current object</returns>
-        public new string ToString(int indent)
+        public override string ToString()
         {
-            string padding = new string(' ', indent);
-
-            var build = new StringBuilder();
-            build.AppendLine($"{padding}Reader Number: {ReaderNumber}");
-            build.AppendLine($"{padding}  Text Command: {TextCommand}");
-            build.AppendLine($"{padding}Temp Text Time: {TemporaryTextTime}");
-            build.AppendLine($"{padding}   Row, Column: {Row}, {Column}");
-            build.AppendLine($"{padding}  Display Text: {Text}");
-
-            return build.ToString();
+            var sb = new StringBuilder();
+            sb.AppendLine($"Reader Number: {ReaderNumber}");
+            sb.AppendLine($"  Text Command: {TextCommand}");
+            sb.AppendLine($"Temp Text Time: {TemporaryTextTime}");
+            sb.AppendLine($"   Row, Column: {Row}, {Column}");
+            sb.AppendLine($"  Display Text: {Text}");
+            return sb.ToString();
         }
     }
 

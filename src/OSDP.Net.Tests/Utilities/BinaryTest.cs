@@ -5,6 +5,7 @@ using System.Linq;
 namespace OSDP.Net.Tests.Utilities
 {
     [TestFixture]
+    [Category("Unit")]
     internal class BinaryUtilsTest
     {
         [Test]

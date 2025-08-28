@@ -72,20 +72,12 @@ namespace OSDP.Net.Model.CommandData
         }
 
         /// <inheritdoc/>
-        public override string ToString() => ToString(0);
-
-        /// <summary>
-        /// Returns a string representation of the current object
-        /// </summary>
-        /// <param name="indent">Number of ' ' chars to add to beginning of every line</param>
-        /// <returns>String representation of the current object</returns>
-        public override string ToString(int indent)
+        public override string ToString()
         {
-            var padding = new string(' ', indent);
-            var build = new StringBuilder();
-            build.AppendLine($"{padding}Vendor Code: {BitConverter.ToString(VendorCode.ToArray())}");
-            build.AppendLine($"{padding}       Data: {BitConverter.ToString(Data.ToArray())}");
-            return build.ToString();
+            var sb = new StringBuilder();
+            sb.AppendLine($"Vendor Code: {BitConverter.ToString(VendorCode.ToArray())}");
+            sb.AppendLine($"       Data: {BitConverter.ToString(Data.ToArray())}");
+            return sb.ToString();
         }
     }
 }

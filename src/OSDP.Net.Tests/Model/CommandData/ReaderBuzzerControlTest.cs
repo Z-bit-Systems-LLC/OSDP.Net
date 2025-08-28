@@ -5,6 +5,7 @@ using OSDP.Net.Model.CommandData;
 
 namespace OSDP.Net.Tests.Model.CommandData
 {
+    [Category("Unit")]
     internal class ReaderBuzzerControlTest
     {
         private byte[] TestData => [0x00, 0x02, 0x05, 0x02, 0x01];

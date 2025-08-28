@@ -1,0 +1,19 @@
+workflow: 'GitHubFlow/v1'
+branches:
+  main:
+    mode: ContinuousDeployment
+    label: 'beta'
+    increment: Patch
+    track-merge-target: false
+    tracks-release-branches: false
+    regex: ^master$|^main$
+    is-release-branch: true
+    is-main-branch: true
+  develop:
+    label: 'beta'
+    increment: None
+    regex: ^dev(elop)?(ment)?$
+    source-branches:
+    - main
+ignore:
+  sha: []

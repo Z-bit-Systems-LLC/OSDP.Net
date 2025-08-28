@@ -6,6 +6,7 @@ using OSDP.Net.Utilities;
 
 namespace OSDP.Net.Tests.Model.ReplyData
 {
+    [Category("Unit")]
     internal class ChallengeResponseTest
     {
         [Test]

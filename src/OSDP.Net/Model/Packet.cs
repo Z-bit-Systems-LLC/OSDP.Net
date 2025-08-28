@@ -65,9 +65,9 @@ public class Packet
     public bool IsUsingCrc { get; }
     
     /// <summary>
-    /// The parse the payload data into an object
+    /// Parse the payload data into an object
     /// </summary>
-    /// <returns>An message data object representation of the payload data</returns>
+    /// <returns>A message data object representation of the payload data</returns>
     public object ParsePayloadData()
     {
         if (IncomingMessage.HasSecureData && !IncomingMessage.IsValidMac)
@@ -134,7 +134,7 @@ public class Packet
         switch (ReplyType)
         {
             case Messages.ReplyType.Ack:
-                return null;
+                break;
             case Messages.ReplyType.Nak:
                 return Nak.ParseData(RawPayloadData);
             case Messages.ReplyType.PdIdReport:
@@ -152,7 +152,7 @@ public class Packet
             case Messages.ReplyType.RawReaderData:
                 return RawCardData.ParseData(RawPayloadData);
             case Messages.ReplyType.FormattedReaderData:
-                return null;
+                break;
             case Messages.ReplyType.KeypadData:
                 return KeypadData.ParseData(RawPayloadData);
             case Messages.ReplyType.PdCommunicationsConfigurationReport:
@@ -166,7 +166,7 @@ public class Packet
             case Messages.ReplyType.InitialRMac:
                 return _rawPayloadData;
             case Messages.ReplyType.Busy:
-                return null;
+                break;
             case Messages.ReplyType.FileTransferStatus:
                 return FileTransferStatus.ParseData(RawPayloadData);
             case Messages.ReplyType.PIVData:
@@ -176,7 +176,7 @@ public class Packet
             case Messages.ReplyType.ManufactureSpecific:
                 return ReplyData.ManufacturerSpecific.ParseData(RawPayloadData);
             case Messages.ReplyType.ExtendedRead:
-                return null;
+                break;
         }
 
         return null;

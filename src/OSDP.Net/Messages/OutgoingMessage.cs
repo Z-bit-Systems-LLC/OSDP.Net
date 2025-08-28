@@ -29,7 +29,7 @@ internal class OutgoingMessage : Message
 
         if (securityEstablished && payload.Length > 0)
         {
-            payload = PadTheData(payload, 16, FirstPaddingByte);
+            payload = secureChannel.PadTheData(payload).ToArray();
         }
 
         bool isSecurityBlockPresent = securityEstablished || PayloadData.IsSecurityInitialization;

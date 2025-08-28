@@ -7,6 +7,7 @@ using OSDP.Net.Model.CommandData;
 namespace OSDP.Net.Tests.Model.CommandData;
 
 [TestFixture]
+[Category("Unit")]
 public class ReaderLedControlsTest
 {
     private byte[] TestData => [0x02, 0x03, 0x02, 0x01, 0x02, 0x06, 0x00, 0x04, 0x00, 0x01, 0x02, 0x06, 0x04, 0x03, 

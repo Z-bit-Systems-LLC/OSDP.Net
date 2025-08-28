@@ -5,9 +5,11 @@ VisualStudioVersion = 17.8.34408.163
 MinimumVisualStudioVersion = 15.0.26124.0
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OSDP.Net", "OSDP.Net\OSDP.Net.csproj", "{50AC5FD2-8C50-48E4-AC4E-4A275D0A879E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Console", "Console\Console.csproj", "{182D66E4-7909-4B18-AF01-BF0FE8B932BC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ACUConsole", "ACUConsole\ACUConsole.csproj", "{182D66E4-7909-4B18-AF01-BF0FE8B932BC}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OSDP.Net.Tests", "OSDP.Net.Tests\OSDP.Net.Tests.csproj", "{0018DA90-BBB2-491D-A6C3-086F21D7C29A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PDConsole", "PDConsole\PDConsole.csproj", "{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Settings", "Settings", "{5CE38FA4-377F-4C0D-A680-9CEA9A7CDBEE}"
 	ProjectSection(SolutionItems) = preProject
@@ -32,7 +34,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ci", "ci", "{B139D674-6612-
 	ProjectSection(SolutionItems) = preProject
 		..\ci\build.yml = ..\ci\build.yml
 		..\ci\package.yml = ..\ci\package.yml
+		..\ci\GitVersion.yml = ..\ci\GitVersion.yml
+		..\azure-pipelines.yml = ..\azure-pipelines.yml
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimplePDDevice", "samples\SimplePDDevice\SimplePDDevice.csproj", "{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -104,6 +110,30 @@ Global
 		{B6E1FC35-3DEC-495F-8FD2-A0CB9C3B4C6A}.Release|x64.Build.0 = Release|Any CPU
 		{B6E1FC35-3DEC-495F-8FD2-A0CB9C3B4C6A}.Release|x86.ActiveCfg = Release|Any CPU
 		{B6E1FC35-3DEC-495F-8FD2-A0CB9C3B4C6A}.Release|x86.Build.0 = Release|Any CPU
+		{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}.Debug|x64.Build.0 = Debug|Any CPU
+		{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}.Debug|x86.Build.0 = Debug|Any CPU
+		{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}.Release|x64.ActiveCfg = Release|Any CPU
+		{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}.Release|x64.Build.0 = Release|Any CPU
+		{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}.Release|x86.ActiveCfg = Release|Any CPU
+		{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}.Release|x86.Build.0 = Release|Any CPU
+		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}.Debug|x64.Build.0 = Debug|Any CPU
+		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}.Debug|x86.Build.0 = Debug|Any CPU
+		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}.Release|x64.ActiveCfg = Release|Any CPU
+		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}.Release|x64.Build.0 = Release|Any CPU
+		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}.Release|x86.ActiveCfg = Release|Any CPU
+		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -111,6 +141,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{AC0ADC7D-3A78-4937-80B0-F8AA3B7B17BD} = {A57B307A-A240-4F4F-A3A8-A078093B2809}
 		{B6E1FC35-3DEC-495F-8FD2-A0CB9C3B4C6A} = {A57B307A-A240-4F4F-A3A8-A078093B2809}
+		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9} = {A57B307A-A240-4F4F-A3A8-A078093B2809}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {07D0756C-2DA8-4FA1-8A4A-1FA6BCFBEB46}

@@ -7,6 +7,7 @@ using OSDP.Net.Model.CommandData;
 namespace OSDP.Net.Tests.Model.CommandData;
 
 [TestFixture]
+[Category("Unit")]
 public class OutputControlsTest
 {
     private byte[] TestData => [0x03, 0x01, 0xC4, 0x09, 0x05, 0x04, 0x10, 0x27];

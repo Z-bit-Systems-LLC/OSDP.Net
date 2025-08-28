@@ -5,6 +5,17 @@ steps:
       packageType: 'sdk'
       version: '8.x'
 
+  - task: gitversion-setup@4.1.0
+    displayName: 'Install GitVersion'
+    inputs:
+      versionSpec: '6.3.x'
+
+  - task: gitversion-execute@4.1.0
+    displayName: 'Execute GitVersion'
+    inputs:
+      useConfigFile: true
+      configFilePath: 'ci/GitVersion.yml'
+      
   - task: DotNetCoreCLI@2
     displayName: 'dotnet build'
     inputs:
@@ -12,7 +23,7 @@ steps:
       projects: '**/*.csproj'
       arguments: '--configuration $(buildConfiguration)'
       versioningScheme: 'byEnvVar'
-      versionEnvVar: 'AssemblyVersion'
+      versionEnvVar: 'GitVersion.MajorMinorPatch'
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet test'
@@ -36,3 +47,34 @@ steps:
     inputs:
       targetPath: '$(Build.ArtifactStagingDirectory)'
       artifactName: CodeAnalysisLogs
+
+  - task: PowerShell@2
+    displayName: 'Check inspection results and fail if needed'
+    inputs:
+      targetType: 'inline'
+      script: |
+        $sarifPath = "$(Build.ArtifactStagingDirectory)/Resharper.sarif"
+        $sarif = Get-Content $sarifPath | ConvertFrom-Json
+        
+        $errorCount = 0
+        $warningCount = 0
+        
+        foreach ($run in $sarif.runs) {
+            if ($run.results) {
+                foreach ($result in $run.results) {
+                    if ($result.level -eq "error") {
+                        $errorCount++
+                    } elseif ($result.level -eq "warning") {
+                        $warningCount++
+                    }
+                }
+            }
+        }
+        
+        Write-Host "Found $errorCount errors and $warningCount warnings"
+  
+        # Fail on both errors and warnings
+        if ($errorCount -gt 0 -or $warningCount -gt 0) {
+            Write-Host "##vso[task.logissue type=error]Code inspection found $errorCount errors and $warningCount warnings"
+            exit 1
+        }

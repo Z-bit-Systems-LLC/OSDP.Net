@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
 
@@ -41,5 +42,13 @@ public class ACUReceiveSize : CommandData
     public static ACUReceiveSize ParseData(ReadOnlySpan<byte> data)
     {
         return new ACUReceiveSize(Message.ConvertBytesToUnsignedShort(data));
+    }
+
+    /// <inheritdoc/>
+    public override string ToString()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"Max Receive Size: {MaximumReceiveSize} bytes");
+        return sb.ToString();
     }
 }

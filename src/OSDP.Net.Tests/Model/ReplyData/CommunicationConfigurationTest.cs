@@ -6,6 +6,7 @@ using System;
 namespace OSDP.Net.Tests.Model.ReplyData
 {
     [TestFixture]
+    [Category("Unit")]
     public class CommunicationConfigurationTest
     {
         [Test]

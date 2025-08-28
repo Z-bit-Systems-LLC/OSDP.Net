@@ -7,6 +7,7 @@ using OSDP.Net.Messages.SecureChannel;
 
 namespace OSDP.Net.Tests.Model.CommandData
 {
+    [Category("Unit")]
     internal class GetPIVDataTest
     {
         private byte[] TestData => [0x5F, 0xC1, 0x02, 0x01, 0x19, 0x00];

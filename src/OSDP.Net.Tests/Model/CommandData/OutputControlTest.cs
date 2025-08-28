@@ -6,6 +6,7 @@ using System.Linq;
 
 namespace OSDP.Net.Tests.Model.CommandData
 {
+    [Category("Unit")]
     public class OutputControlTest
     {
         [Test]

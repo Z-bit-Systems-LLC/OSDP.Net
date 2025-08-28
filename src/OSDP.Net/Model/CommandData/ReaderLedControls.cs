@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
 
@@ -62,6 +63,28 @@ namespace OSDP.Net.Model.CommandData
         public static ReaderLedControls ParseData(ReadOnlySpan<byte> payloadData)
         {
             return new ReaderLedControls(SplitData(14, data => ReaderLedControl.ParseData(data), payloadData));
+        }
+
+        /// <inheritdoc/>
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"LED Count: {Controls.Count()}");
+            var index = 1;
+            foreach (var control in Controls)
+            {
+                sb.AppendLine($"LED #{index}:");
+                sb.AppendLine($" Reader #: {control.ReaderNumber}");
+                sb.AppendLine($"    LED #: {control.LedNumber}");
+                sb.AppendLine($"Temp Mode: {control.TemporaryMode}");
+                sb.AppendLine($"  On Time: {control.TemporaryOnTime} (100ms)");
+                sb.AppendLine($" Off Time: {control.TemporaryOffTime} (100ms)");
+                sb.AppendLine($" On Color: {control.TemporaryOnColor}");
+                sb.AppendLine($"Off Color: {control.TemporaryOffColor}");
+                sb.AppendLine($"    Timer: {control.TemporaryTimer} (100ms)");
+                index++;
+            }
+            return sb.ToString();
         }
     }
 }

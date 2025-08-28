@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
 
@@ -76,6 +77,17 @@ namespace OSDP.Net.Model.CommandData
                 (BiometricType)data[1], 
                 (BiometricFormat)data[2], 
                 data[3]);
+        }
+
+        /// <inheritdoc/>
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($" Reader #: {ReaderNumber}");
+            sb.AppendLine($"Bio Type: {BiometricType}");
+            sb.AppendLine($"  Format: {BiometricFormatType}");
+            sb.AppendLine($" Quality: {Quality}");
+            return sb.ToString();
         }
     }
 }

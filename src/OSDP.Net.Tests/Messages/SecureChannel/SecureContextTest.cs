@@ -4,6 +4,7 @@ using OSDP.Net.Messages.SecureChannel;
 namespace OSDP.Net.Tests.Messages.SecureChannel
 {
     [TestFixture]
+    [Category("Unit")]
     public class SecureContextTest
     {
         [Test]

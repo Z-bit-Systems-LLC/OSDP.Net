@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
 
@@ -61,6 +62,16 @@ namespace OSDP.Net.Model.CommandData
             byte keyLength = data[1];
             
             return new EncryptionKeyConfiguration((KeyType)data[0], data.Slice(2, keyLength).ToArray());
+        }
+
+        /// <inheritdoc/>
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"  Key Type: {KeyType}");
+            sb.AppendLine($"Key Length: {KeyData.Length} bytes");
+            sb.AppendLine($"  Key Data: {BitConverter.ToString(KeyData)}");
+            return sb.ToString();
         }
     }
 }

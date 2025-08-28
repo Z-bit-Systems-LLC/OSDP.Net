@@ -1,0 +1,41 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <LangVersion>default</LangVersion>
+        <AssemblyName>ACUConsole</AssemblyName>
+        <RootNamespace>ACUConsole</RootNamespace>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+      <WarningsAsErrors />
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+      <WarningsAsErrors />
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\OSDP.Net\OSDP.Net.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="apache.log4net.Extensions.Logging" Version="2.0.0.12" />
+      <PackageReference Include="log4net" Version="3.0.2" />
+      <PackageReference Include="Microsoft.NETCore.Platforms" Version="7.0.4" />
+      <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+      <PackageReference Include="Terminal.Gui" Version="1.17.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="appsettings.config" />
+      <None Update="log4net.config">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
+</Project>

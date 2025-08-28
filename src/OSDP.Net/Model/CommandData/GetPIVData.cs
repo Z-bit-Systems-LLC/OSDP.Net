@@ -24,10 +24,10 @@ namespace OSDP.Net.Model.CommandData
         {
             ObjectId = objectId switch
             {
-                Model.CommandData.ObjectId.CardholderUniqueIdentifier => new byte[] { 0x5F, 0xC1, 0x02 },
-                Model.CommandData.ObjectId.CertificateForPIVAuthentication => new byte[] { 0x5F, 0xC1, 0x05 },
-                Model.CommandData.ObjectId.CertificateForCardAuthentication => new byte[] { 0xDF, 0xC1, 0x01 },
-                Model.CommandData.ObjectId.CardholderFingerprintTemplate => new byte[] { 0xDF, 0xC1, 0x03 },
+                Model.CommandData.ObjectId.CardholderUniqueIdentifier => [0x5F, 0xC1, 0x02],
+                Model.CommandData.ObjectId.CertificateForPIVAuthentication => [0x5F, 0xC1, 0x05],
+                Model.CommandData.ObjectId.CertificateForCardAuthentication => [0xDF, 0xC1, 0x01],
+                Model.CommandData.ObjectId.CardholderFingerprintTemplate => [0xDF, 0xC1, 0x03],
                 _ => throw new ArgumentOutOfRangeException()
             };
 
@@ -113,21 +113,13 @@ namespace OSDP.Net.Model.CommandData
         }
 
         /// <inheritdoc/>
-        public override string ToString() => ToString(0);
-
-        /// <summary>
-        /// Returns a string representation of the current object
-        /// </summary>
-        /// <param name="indent">Number of ' ' chars to add to beginning of every line</param>
-        /// <returns>String representation of the current object</returns>
-        public override string ToString(int indent)
+        public override string ToString()
         {
-            var padding = new string(' ', indent);
-            var build = new StringBuilder();
-            build.AppendLine($"{padding}  Object ID: {BitConverter.ToString(ObjectId)}");
-            build.AppendLine($"{padding} Element ID: {ElementId}");
-            build.AppendLine($"{padding}Data Offset: {DataOffset}");
-            return build.ToString();
+            var sb = new StringBuilder();
+            sb.AppendLine($"  Object ID: {BitConverter.ToString(ObjectId)}");
+            sb.AppendLine($" Element ID: {ElementId}");
+            sb.AppendLine($"Data Offset: {DataOffset}");
+            return sb.ToString();
         }
     }
 

@@ -7,8 +7,15 @@ namespace OSDP.Net.Messages.SecureChannel;
 /// Message channel which represents the Access Control Unit (ACU) side of the OSDP 
 /// communications (i.e. OSDP commands are sent out and replies are received)
 /// </summary>
-internal class ACUMessageSecureChannel : MessageSecureChannel
+public class ACUMessageSecureChannel : MessageSecureChannel
 {
+    /// <summary>
+    /// Initializes a new instance of the ACUMessageChannel with logger factory
+    /// </summary>
+    /// <param name="loggerFactory">Optional logger factory from which a logger object for the
+    /// message channel will be acquired</param>
+    public ACUMessageSecureChannel(ILoggerFactory loggerFactory) : base(null, loggerFactory) {}
+
     /// <summary>
     /// Initializes a new instance of the ACUMessageChannel
     /// </summary>
@@ -19,7 +26,7 @@ internal class ACUMessageSecureChannel : MessageSecureChannel
     /// channels</param>
     /// <param name="loggerFactory">Optional logger factory from which a logger object for the
     /// message channel will be acquired</param>
-    public ACUMessageSecureChannel(SecurityContext context = null, ILoggerFactory loggerFactory = null)
+    internal ACUMessageSecureChannel(SecurityContext context = null, ILoggerFactory loggerFactory = null)
         : base(context, loggerFactory) {}
 
     /// <inheritdoc />

@@ -60,20 +60,12 @@ namespace OSDP.Net.Model.CommandData
         }
 
         /// <inheritdoc/>
-        public override string ToString() => ToString(0);
-
-        /// <summary>
-        /// Returns a string representation of the current object
-        /// </summary>
-        /// <param name="indent">Number of ' ' chars to add to beginning of every line</param>
-        /// <returns>String representation of the current object</returns>
-        public string ToString(int indent)
+        public override string ToString()
         {
-            var padding = new string(' ', indent);
             var sb = new StringBuilder();
-            sb.AppendLine($"{padding} Output #: {OutputNumber}");
-            sb.AppendLine($"{padding}Ctrl Code: {OutputControlCode}");
-            sb.AppendLine($"{padding}    Timer: {Timer}");
+            sb.AppendLine($" Output #: {OutputNumber}");
+            sb.AppendLine($"Ctrl Code: {OutputControlCode}");
+            sb.AppendLine($"    Timer: {Timer}");
             return sb.ToString();
         }
     }

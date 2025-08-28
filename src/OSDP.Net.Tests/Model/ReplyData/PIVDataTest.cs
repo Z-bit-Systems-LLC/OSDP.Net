@@ -5,6 +5,7 @@ using OSDP.Net.Model.ReplyData;
 
 namespace OSDP.Net.Tests.Model.ReplyData
 {
+    [Category("Unit")]
     public class PIVDataTest
     {
         [Test]

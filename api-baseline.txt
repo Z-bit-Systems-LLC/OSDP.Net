@@ -1,0 +1,140 @@
+# OSDP.Net Public API Baseline
+# Generated: 2025-08-24 12:00:00
+# Configuration: Release
+#
+# Format: [TYPE] FullTypeName
+#
+
+# Core Classes
+[CLASS] OSDP.Net.ControlPanel
+[CLASS] OSDP.Net.Device
+[CLASS] OSDP.Net.DeviceConfiguration
+[CLASS] OSDP.Net.DeviceComSetUpdatedEventArgs
+[CLASS] OSDP.Net.Packet
+
+# Interfaces
+[INTERFACE] OSDP.Net.Connections.IOsdpConnection
+[INTERFACE] OSDP.Net.Connections.IOsdpConnectionListener
+[INTERFACE] OSDP.Net.Messages.SecureChannel.IMessageSecureChannel
+
+# Connection Classes
+[CLASS] OSDP.Net.Connections.OsdpConnection
+[CLASS] OSDP.Net.Connections.OsdpConnectionListener
+[CLASS] OSDP.Net.Connections.SerialPortOsdpConnection
+[CLASS] OSDP.Net.Connections.SerialPortConnectionListener
+[CLASS] OSDP.Net.Connections.TcpClientOsdpConnection
+[CLASS] OSDP.Net.Connections.TcpServerOsdpConnection
+[CLASS] OSDP.Net.Connections.TcpConnectionListener
+
+# Exception Classes
+[CLASS] OSDP.Net.OSDPNetException
+[CLASS] OSDP.Net.NackReplyException
+[CLASS] OSDP.Net.InvalidPayloadException
+[CLASS] OSDP.Net.SecureChannelRequired
+
+# Panel Commands and Discovery
+[CLASS] OSDP.Net.PanelCommands.DeviceDiscover.DeviceDiscoveryException
+[CLASS] OSDP.Net.PanelCommands.DeviceDiscover.ControlPanelInUseException
+[CLASS] OSDP.Net.PanelCommands.DeviceDiscover.DiscoveryOptions
+[CLASS] OSDP.Net.PanelCommands.DeviceDiscover.DiscoveryResult
+
+# Event Args Classes
+[CLASS] OSDP.Net.Bus.ConnectionStatusEventArgs
+[CLASS] OSDP.Net.ControlPanel.NakReplyEventArgs
+[CLASS] OSDP.Net.ControlPanel.ConnectionStatusEventArgs
+[CLASS] OSDP.Net.ControlPanel.LocalStatusReportReplyEventArgs
+[CLASS] OSDP.Net.ControlPanel.InputStatusReportReplyEventArgs
+[CLASS] OSDP.Net.ControlPanel.OutputStatusReportReplyEventArgs
+[CLASS] OSDP.Net.ControlPanel.ReaderStatusReportReplyEventArgs
+[CLASS] OSDP.Net.ControlPanel.RawCardDataReplyEventArgs
+[CLASS] OSDP.Net.ControlPanel.FormattedCardDataReplyEventArgs
+[CLASS] OSDP.Net.ControlPanel.ManufacturerSpecificReplyEventArgs
+[CLASS] OSDP.Net.ControlPanel.KeypadReplyEventArgs
+[CLASS] OSDP.Net.ControlPanel.FileTransferStatus
+[CLASS] OSDP.Net.ControlPanel.FileTransferException
+
+# Messages and Secure Channel
+[CLASS] OSDP.Net.Messages.Message
+[CLASS] OSDP.Net.Messages.SecureChannel.MessageSecureChannel
+[CLASS] OSDP.Net.Messages.SecureChannel.ACUMessageSecureChannel
+[CLASS] OSDP.Net.Messages.SecureChannel.SecurityContext
+[CLASS] OSDP.Net.Messages.SecureChannel.SecurityBlock
+
+# Base Model Classes
+[CLASS] OSDP.Net.Model.PayloadData
+[CLASS] OSDP.Net.Model.CommandData.CommandData
+
+# Command Data Classes
+[CLASS] OSDP.Net.Model.CommandData.ACUReceiveSize
+[CLASS] OSDP.Net.Model.CommandData.BiometricReadData
+[CLASS] OSDP.Net.Model.CommandData.BiometricTemplateData
+[CLASS] OSDP.Net.Model.CommandData.CommunicationConfiguration
+[CLASS] OSDP.Net.Model.CommandData.EncryptionKeyConfiguration
+[CLASS] OSDP.Net.Model.CommandData.GetPIVData
+[CLASS] OSDP.Net.Model.CommandData.KeepReaderActive
+[CLASS] OSDP.Net.Model.CommandData.ManufacturerSpecific
+[CLASS] OSDP.Net.Model.CommandData.OutputControl
+[CLASS] OSDP.Net.Model.CommandData.OutputControls
+[CLASS] OSDP.Net.Model.CommandData.ReaderBuzzerControl
+[CLASS] OSDP.Net.Model.CommandData.ReaderLedControl
+[CLASS] OSDP.Net.Model.CommandData.ReaderLedControls
+[CLASS] OSDP.Net.Model.CommandData.ReaderTextOutput
+
+# Reply Data Classes
+[CLASS] OSDP.Net.Model.ReplyData.Ack
+[CLASS] OSDP.Net.Model.ReplyData.BiometricMatchResult
+[CLASS] OSDP.Net.Model.ReplyData.BiometricReadResult
+[CLASS] OSDP.Net.Model.ReplyData.CommunicationConfiguration
+[CLASS] OSDP.Net.Model.ReplyData.DataFragmentResponse
+[CLASS] OSDP.Net.Model.ReplyData.DeviceCapabilities
+[CLASS] OSDP.Net.Model.ReplyData.DeviceCapability
+[CLASS] OSDP.Net.Model.ReplyData.MsgSizeDeviceCap
+[CLASS] OSDP.Net.Model.ReplyData.RcvBuffSizeDeviceCap
+[CLASS] OSDP.Net.Model.ReplyData.LargestCombMsgSizeDeviceCap
+[CLASS] OSDP.Net.Model.ReplyData.CommSecurityDeviceCap
+[CLASS] OSDP.Net.Model.ReplyData.DeviceIdentification
+[CLASS] OSDP.Net.Model.ReplyData.FileTransferStatus
+[CLASS] OSDP.Net.Model.ReplyData.FormattedCardData
+[CLASS] OSDP.Net.Model.ReplyData.InputStatus
+[CLASS] OSDP.Net.Model.ReplyData.KeypadData
+[CLASS] OSDP.Net.Model.ReplyData.LocalStatus
+[CLASS] OSDP.Net.Model.ReplyData.ManufacturerSpecific
+[CLASS] OSDP.Net.Model.ReplyData.Nak
+[CLASS] OSDP.Net.Model.ReplyData.OutputStatus
+[CLASS] OSDP.Net.Model.ReplyData.RawCardData
+[CLASS] OSDP.Net.Model.ReplyData.ReaderStatus
+[CLASS] OSDP.Net.Model.ReplyData.ReturnReplyData
+
+# Utility Classes
+[CLASS] OSDP.Net.Utilities.BinaryExtensions
+[CLASS] OSDP.Net.Utilities.BinaryUtils
+[CLASS] OSDP.Net.Utilities.Pollyfill
+
+# Tracing Classes
+[CLASS] OSDP.Net.Tracing.OSDPCapEntry
+[CLASS] OSDP.Net.Tracing.PacketDecoding
+
+# Enums
+[ENUM] OSDP.Net.Messages.CommandType
+[ENUM] OSDP.Net.Messages.ReplyType
+[ENUM] OSDP.Net.Messages.MessageType
+[ENUM] OSDP.Net.Messages.SecureChannel.SecurityBlockType
+[ENUM] OSDP.Net.Model.CommandData.BiometricFormat
+[ENUM] OSDP.Net.Model.CommandData.BiometricType
+[ENUM] OSDP.Net.Model.CommandData.GetPIVData.ObjectId
+[ENUM] OSDP.Net.Model.CommandData.OutputControlCode
+[ENUM] OSDP.Net.Model.CommandData.ReaderBuzzerControl.ToneCode
+[ENUM] OSDP.Net.Model.CommandData.ReaderLedControl.TemporaryReaderControlCode
+[ENUM] OSDP.Net.Model.CommandData.ReaderLedControl.PermanentReaderControlCode
+[ENUM] OSDP.Net.Model.CommandData.ReaderLedControl.LedColor
+[ENUM] OSDP.Net.Model.CommandData.ReaderTextOutput.TextCommand
+[ENUM] OSDP.Net.Model.CommandData.SecureChannelConfiguration.KeyType
+[ENUM] OSDP.Net.Model.ReplyData.BiometricStatus
+[ENUM] OSDP.Net.Model.ReplyData.CapabilityFunction
+[ENUM] OSDP.Net.Model.ReplyData.FileTransferStatus.StatusDetail
+[ENUM] OSDP.Net.Model.ReplyData.FormattedCardData.ReadDirection
+[ENUM] OSDP.Net.Model.ReplyData.Nak.ErrorCode
+[ENUM] OSDP.Net.Model.ReplyData.RawCardData.FormatCode
+[ENUM] OSDP.Net.Model.ReplyData.ReaderTamperStatus
+[ENUM] OSDP.Net.PanelCommands.DeviceDiscover.DiscoveryStatus
+[ENUM] OSDP.Net.Tracing.TraceDirection

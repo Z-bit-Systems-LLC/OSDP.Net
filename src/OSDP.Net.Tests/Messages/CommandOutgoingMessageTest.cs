@@ -8,6 +8,7 @@ using OSDP.Net.Model.CommandData;
 namespace OSDP.Net.Tests.Messages;
 
 [TestFixture]
+[Category("Unit")]
 internal class CommandOutgoingMessageTest
 {
     [TestCaseSource(typeof(CommunicationConfigurationBuildMessageTestClass),

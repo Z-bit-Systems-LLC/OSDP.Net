@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text;
 using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
 
@@ -61,5 +62,15 @@ public class CommunicationConfiguration : CommandData
     public static CommunicationConfiguration ParseData(ReadOnlySpan<byte> data)
     {
         return new CommunicationConfiguration(data[0], Message.ConvertBytesToInt(data.Slice(1, 4).ToArray()));
+    }
+    
+    /// <inheritdoc />
+    public override string ToString()
+    {
+        var build = new StringBuilder();
+        build.AppendLine($"  Address: {Address}");
+        build.AppendLine($"Baud Rate: {BaudRate}");
+
+        return build.ToString();
     }
 }

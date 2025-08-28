@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using OSDP.Net.Messages;
@@ -179,20 +178,6 @@ internal class DeviceProxy : IComparable<DeviceProxy>
     internal ReadOnlySpan<byte> GenerateMac(ReadOnlySpan<byte> message, bool isIncoming)
     {
         return MessageSecureChannel.GenerateMac(message, isIncoming);
-    }
-
-    internal ReadOnlySpan<byte> EncryptData(ReadOnlySpan<byte> payload)
-    {
-        var paddedData = MessageSecureChannel.PadTheData(payload);
-        
-        var encryptedData = new Span<byte>(new byte[paddedData.Length]);
-        MessageSecureChannel.EncodePayload(paddedData.ToArray(), encryptedData);
-        return encryptedData;
-    }
-
-    internal IEnumerable<byte> DecryptData(ReadOnlySpan<byte> payload)
-    {
-        return MessageSecureChannel.DecodePayload(payload.ToArray());
     }
 }
 

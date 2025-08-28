@@ -78,26 +78,18 @@ public class ReaderBuzzerControl : CommandData
     /// <inheritdoc />
     public override byte[] BuildData()
     {
-        return new[] {ReaderNumber, (byte) ToneCode, OnTime, OffTime, Count};
+        return [ReaderNumber, (byte) ToneCode, OnTime, OffTime, Count];
     }
 
     /// <inheritdoc/>
-    public override string ToString() => ToString(0);
-
-    /// <summary>
-    /// Returns a string representation of the current object
-    /// </summary>
-    /// <param name="indent">Number of ' ' chars to add to beginning of every line</param>
-    /// <returns>String representation of the current object</returns>
-    public new string ToString(int indent)
+    public override string ToString()
     {
-        var padding = new string(' ', indent);
         var sb = new StringBuilder();
-        sb.AppendLine($"{padding} Reader #: {ReaderNumber}");
-        sb.AppendLine($"{padding}Tone Code: {ToneCode}");
-        sb.AppendLine($"{padding}  On Time: {OnTime}");
-        sb.AppendLine($"{padding} Off Time: {OffTime}");
-        sb.AppendLine($"{padding}    Count: {Count}");
+        sb.AppendLine($" Reader #: {ReaderNumber}");
+        sb.AppendLine($"Tone Code: {ToneCode}");
+        sb.AppendLine($"  On Time: {OnTime}");
+        sb.AppendLine($" Off Time: {OffTime}");
+        sb.AppendLine($"    Count: {Count}");
         return sb.ToString();
     }
 }

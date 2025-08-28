@@ -2,11 +2,13 @@ using System;
 using System.Linq;
 using NUnit.Framework;
 using OSDP.Net.Messages;
+using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Utilities;
 
 namespace OSDP.Net.Tests.Messages
 {
     [TestFixture]
+    [Category("Unit")]
     public class MessageTest
     {
         [Test]
@@ -58,8 +60,8 @@ namespace OSDP.Net.Tests.Messages
                              "80-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00")]
         public string PadThisData(string buffer)
         {
-            return BitConverter.ToString(Message.PadTheData(BinaryUtils.HexToBytes(buffer).ToArray(), 16,
-                Message.FirstPaddingByte));
+            var channel = new ACUMessageSecureChannel();
+            return BitConverter.ToString(channel.PadTheData(BinaryUtils.HexToBytes(buffer).ToArray()).ToArray());
         }
     }
 }

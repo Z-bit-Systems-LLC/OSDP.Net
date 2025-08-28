@@ -162,13 +162,6 @@ namespace OSDP.Net.Messages
             packet[packet.Count - 1] = CalculateChecksum(packet.Take(packet.Count - 1).ToArray());
         }
 
-        internal ReadOnlySpan<byte> EncryptedData(DeviceProxy device)
-        {
-            var data = Data();
-            
-            return !data.IsEmpty ? device.EncryptData(data) : data;
-        }
-
         internal static int ConvertBytesToInt(byte[] bytes)
         {
             if (!BitConverter.IsLittleEndian)
@@ -204,23 +197,6 @@ namespace OSDP.Net.Messages
             const ushort encryptedDifference = 16;
 
             return (ushort)(dataSize - (isEncrypted ? encryptedDifference + (dataSize % cryptoLength) : clearTextDifference));
-        }
-
-        internal static byte[] PadTheData(ReadOnlySpan<byte> data, byte cryptoLength, byte paddingStart)
-        {
-            int paddingLength = data.Length + cryptoLength - data.Length % cryptoLength;
-
-            Span<byte> buffer = stackalloc byte[paddingLength];
-            buffer.Clear();
-
-            var cursor = buffer.Slice(0);
-
-            data.CopyTo(cursor);
-            cursor = cursor.Slice(data.Length);
-
-            cursor[0] = paddingStart;
-
-            return buffer.ToArray();
         }
     }
 }

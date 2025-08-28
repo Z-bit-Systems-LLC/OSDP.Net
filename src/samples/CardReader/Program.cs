@@ -38,8 +38,8 @@ internal class Program
         };
         
         // Replace commented out code for test reader to listen on TCP port rather than serial
-        //var communications = new TcpOsdpServer(5000, baudRate, loggerFactory);
-        var communications = new SerialPortOsdpServer(portName, baudRate, loggerFactory);
+        //var communications = new TcpConnectionListener(5000, baudRate, loggerFactory);
+        var communications = new SerialPortConnectionListener(portName, baudRate, loggerFactory);
 
         using var device = new MySampleDevice(deviceConfiguration, loggerFactory);
         device.DeviceComSetUpdated += async (sender, args) =>
@@ -52,7 +52,7 @@ internal class Program
             if (sender is MySampleDevice mySampleDevice && args.OldBaudRate != args.NewBaudRate)
             {
                 Console.WriteLine("Restarting communications with new baud rate");
-                communications = new SerialPortOsdpServer(portName, args.NewBaudRate, loggerFactory);
+                communications = new SerialPortConnectionListener(portName, args.NewBaudRate, loggerFactory);
                 await mySampleDevice.StopListening();
                 mySampleDevice.StartListening(communications);
             }

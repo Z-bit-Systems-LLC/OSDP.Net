@@ -26,7 +26,7 @@ public class Device : IDisposable
 
     private volatile int _connectionContextCounter;
     private DeviceConfiguration _deviceConfiguration;
-    private IOsdpServer _osdpServer;
+    private IOsdpConnectionListener _connectionListener;
     private DateTime _lastValidReceivedCommand = DateTime.MinValue;
 
     /// <summary>
@@ -50,7 +50,7 @@ public class Device : IDisposable
     /// Gets a value indicating whether the device is currently connected.
     /// </summary>
     /// <value><c>true</c> if the device is connected; otherwise, <c>false</c>.</value>
-    public bool IsConnected => _osdpServer?.ConnectionCount > 0 && (
+    public bool IsConnected => _connectionListener?.ConnectionCount > 0 && (
         _lastValidReceivedCommand + TimeSpan.FromSeconds(8) >= DateTime.UtcNow);
 
     /// <summary>
@@ -83,13 +83,13 @@ public class Device : IDisposable
     }
 
     /// <summary>
-    /// Starts listening for commands from the OSDP device through the specified connection.
+    /// Starts listening for commands from the ACU through the specified connection listener.
     /// </summary>
-    /// <param name="server">The I/O server used for communication with the OSDP client.</param>
-    public async void StartListening(IOsdpServer server)
+    /// <param name="connectionListener">The connection listener used to accept incoming connections from ACUs.</param>
+    public async void StartListening(IOsdpConnectionListener connectionListener)
     {
-        _osdpServer = server ?? throw new ArgumentNullException(nameof(server));
-        await _osdpServer.Start(ClientListenLoop);
+        _connectionListener = connectionListener ?? throw new ArgumentNullException(nameof(connectionListener));
+        await _connectionListener.Start(ClientListenLoop);
     }
 
     private async Task ClientListenLoop(IOsdpConnection incomingConnection)
@@ -141,8 +141,8 @@ public class Device : IDisposable
     /// </summary>
     public async Task StopListening()
     {
-        await (_osdpServer?.Stop() ?? Task.CompletedTask);
-        _osdpServer = null;
+        await (_connectionListener?.Stop() ?? Task.CompletedTask);
+        _connectionListener = null;
     }
 
     /// <summary>
@@ -191,7 +191,7 @@ public class Device : IDisposable
     /// <summary>
     /// Handles the ID Report Request command received from the OSDP device.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>A payload data response to the ID report request. Override this method to provide device identification information.</returns>
     protected virtual PayloadData HandleIdReport()
     {
         return HandleUnknownCommand(CommandType.IdReport);
@@ -201,7 +201,7 @@ public class Device : IDisposable
     /// Handles the text output command received from the OSDP device.
     /// </summary>
     /// <param name="commandPayload">The incoming reader text output command payload.</param>
-    /// <returns></returns>
+    /// <returns>A payload data response indicating the result of the text output operation.</returns>
     protected virtual PayloadData HandleTextOutput(ReaderTextOutput commandPayload)
     {
         return HandleUnknownCommand(CommandType.TextOutput);
@@ -211,7 +211,7 @@ public class Device : IDisposable
     /// Handles the reader buzzer control command received from the OSDP device.
     /// </summary>
     /// <param name="commandPayload">The incoming reader buzzer control command payload.</param>
-    /// <returns></returns>
+    /// <returns>A payload data response indicating the result of the buzzer control operation.</returns>
     protected virtual PayloadData HandleBuzzerControl(ReaderBuzzerControl commandPayload)
     {
         return HandleUnknownCommand(CommandType.BuzzerControl);
@@ -221,16 +221,16 @@ public class Device : IDisposable
     /// Handles the output controls command received from the OSDP device.
     /// </summary>
     /// <param name="commandPayload">The incoming output controls command payload.</param>
-    /// <returns></returns>
+    /// <returns>A payload data response indicating the result of the output control operation.</returns>
     protected virtual PayloadData HandleOutputControl(OutputControls commandPayload)
     {
         return HandleUnknownCommand(CommandType.OutputControl);
     }
 
     /// <summary>
-    /// Handles the output control command received from the OSDP device.
+    /// Handles the device capabilities request command received from the OSDP device.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>A payload data response containing the device capabilities. Override this method to provide actual device capabilities.</returns>
     protected virtual PayloadData HandleDeviceCapabilities()
     {
         return HandleUnknownCommand(CommandType.DeviceCapabilities);
@@ -240,17 +240,17 @@ public class Device : IDisposable
     /// Handles the get PIV data command received from the OSDP device.
     /// </summary>
     /// <param name="commandPayload">The incoming get PIV data command payload.</param>
-    /// <returns></returns>
+    /// <returns>A payload data response containing the requested PIV data or appropriate error response.</returns>
     protected virtual PayloadData HandlePivData(GetPIVData commandPayload)
     {
         return HandleUnknownCommand(CommandType.PivData);
     }
 
     /// <summary>
-    /// Handles the manufacture command received from the OSDP device.
+    /// Handles the manufacturer-specific command received from the OSDP device.
     /// </summary>
-    /// <param name="commandPayload">The incoming manufacture command payload.</param>
-    /// <returns></returns>
+    /// <param name="commandPayload">The incoming manufacturer-specific command payload.</param>
+    /// <returns>A payload data response for the manufacturer-specific command.</returns>
     protected virtual PayloadData HandleManufacturerCommand(ManufacturerSpecific commandPayload)
     {
         return HandleUnknownCommand(CommandType.ManufacturerSpecific);
@@ -260,7 +260,7 @@ public class Device : IDisposable
     /// Handles the keep active command received from the OSDP device.
     /// </summary>
     /// <param name="commandPayload">The incoming keep active command payload.</param>
-    /// <returns></returns>
+    /// <returns>A payload data response acknowledging the keep active command.</returns>
     protected virtual PayloadData HandleKeepActive(KeepReaderActive commandPayload)
     {
         return HandleUnknownCommand(CommandType.KeepActive);
@@ -269,7 +269,7 @@ public class Device : IDisposable
     /// <summary>
     /// Handles the abort request command received from the OSDP device.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>A payload data response acknowledging the abort request.</returns>
     protected virtual PayloadData HandleAbortRequest()
     {
         return HandleUnknownCommand(CommandType.Abort);
@@ -287,10 +287,10 @@ public class Device : IDisposable
     }
 
     /// <summary>
-    /// Handles the maximum ACU maximum receive size command received from the OSDP device.
+    /// Handles the maximum ACU receive size command received from the OSDP device.
     /// </summary>
     /// <param name="commandPayload">The ACU maximum receive size command payload.</param>
-    /// <returns></returns>
+    /// <returns>A payload data response acknowledging the maximum receive size setting.</returns>
     protected virtual PayloadData HandleMaxReplySize(ACUReceiveSize commandPayload)
     {
         return HandleUnknownCommand(CommandType.MaxReplySize);
@@ -330,17 +330,17 @@ public class Device : IDisposable
     /// Handles the biometric match command received from the OSDP device.
     /// </summary>
     /// <param name="commandPayload">The biometric match command payload.</param>
-    /// <returns></returns>
+    /// <returns>A payload data response containing the biometric match result.</returns>
     protected virtual PayloadData HandleBiometricMatch(BiometricTemplateData commandPayload)
     {
         return HandleUnknownCommand(CommandType.BioMatch);
     }
 
     /// <summary>
-    /// Handles the biometric match command received from the OSDP device.
+    /// Handles the biometric read command received from the OSDP device.
     /// </summary>
-    /// <param name="commandPayload">The biometric match command payload.</param>
-    /// <returns></returns>
+    /// <param name="commandPayload">The biometric read command payload.</param>
+    /// <returns>A payload data response containing the biometric read result.</returns>
     protected virtual PayloadData HandleBiometricRead(BiometricReadData commandPayload)
     {
         return HandleUnknownCommand(CommandType.BioRead);
@@ -354,7 +354,7 @@ public class Device : IDisposable
         {
             var config = (Model.ReplyData.CommunicationConfiguration)response;
             var previousAddress = _deviceConfiguration.Address;
-            var previousBaudRate = _osdpServer.BaudRate;
+            var previousBaudRate = _connectionListener.BaudRate;
 
             if (previousAddress != config.Address)
             {
@@ -410,7 +410,7 @@ public class Device : IDisposable
     /// Handles the reader LED controls command received from the OSDP device.
     /// </summary>
     /// <param name="commandPayload">The reader LED controls command payload.</param>
-    /// <returns></returns>
+    /// <returns>A payload data response indicating the result of the LED control operation.</returns>
     protected virtual PayloadData HandleReaderLEDControl(ReaderLedControls commandPayload)
     {
         return HandleUnknownCommand(CommandType.LEDControl);
@@ -419,7 +419,7 @@ public class Device : IDisposable
     /// <summary>
     /// Handles the reader status command received from the OSDP device.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>A payload data response containing the current reader status information.</returns>
     protected virtual PayloadData HandleReaderStatusReport()
     {
         return HandleUnknownCommand(CommandType.ReaderStatus);
@@ -428,7 +428,7 @@ public class Device : IDisposable
     /// <summary>
     /// Handles the output status command received from the OSDP device.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>A payload data response containing the current output status information.</returns>
     protected virtual PayloadData HandleOutputStatusReport()
     {
         return HandleUnknownCommand(CommandType.OutputStatus);
@@ -437,7 +437,7 @@ public class Device : IDisposable
     /// <summary>
     /// Handles the input status command received from the OSDP device.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>A payload data response containing the current input status information.</returns>
     protected virtual PayloadData HandleInputStatusReport()
     {
         return HandleUnknownCommand(CommandType.InputStatus);
@@ -446,7 +446,7 @@ public class Device : IDisposable
     /// <summary>
     /// Handles the reader local status command received from the OSDP device.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>A payload data response containing the current local status information.</returns>
     protected virtual PayloadData HandleLocalStatusReport()
     {
         return HandleUnknownCommand(CommandType.LocalStatus);

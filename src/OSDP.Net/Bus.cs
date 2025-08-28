@@ -33,7 +33,7 @@ namespace OSDP.Net
         
         private readonly Dictionary<byte, bool> _lastOnlineConnectionStatus = new ();
         private readonly Dictionary<byte, bool> _lastSecureConnectionStatus = new ();
-
+        
         private readonly ILogger<ControlPanel> _logger;
         private readonly TimeSpan _pollInterval;
         private readonly BlockingCollection<ReplyTracker> _replies;
