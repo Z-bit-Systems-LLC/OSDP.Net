@@ -3,8 +3,7 @@ steps:
     displayName: 'Install .NET 8 SDK'
     inputs:
       packageType: 'sdk'
-      version: '8.x'
-      
+      version: '8.x'      
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet pack'
@@ -14,12 +13,12 @@ steps:
       packagesToPack: 'src/OSDP.Net/OSDP.Net.csproj'
 
   - task: DotNetCoreCLI@2
-    displayName: 'dotnet publish for osx-x64'
+    displayName: 'dotnet publish for osx-arm64'
     inputs:
       command: 'publish'
       publishWebProjects: false
       projects: 'src/Console/Console.csproj'
-      arguments: '-r osx-x64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/osx-x64 /p:Version=$(GitVersionAssembly)'
+      arguments: '-r osx-arm64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/osx-arm64 /p:Version=$(GitVersionAssembly)'
       zipAfterPublish: false
       modifyOutputPath: false
 
