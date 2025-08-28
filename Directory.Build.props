@@ -1,8 +1,7 @@
 <Project>
   <PropertyGroup>
     <!-- Version properties will be set by GitVersion -->
-    <VersionPrefix>5.0.4</VersionPrefix>
-    <VersionSuffix Condition="'$(VersionSuffix)' == ''">beta</VersionSuffix>
+    <VersionPrefix>5.0.5</VersionPrefix>
     
     <!-- Common properties for all projects -->
     <Authors>Jonathan Horvath</Authors>
