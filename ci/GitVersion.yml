@@ -1,7 +1,8 @@
 workflow: 'GitHubFlow/v1'
+next-version: '5.0.6'
 branches:
   main:
-    mode: ContinuousDeployment
+    mode: ContinuousDelivery
     label: 'beta'
     increment: Patch
     track-merge-target: false
@@ -9,6 +10,7 @@ branches:
     regex: ^master$|^main$
     is-release-branch: true
     is-main-branch: true
+    prevent-increment-of-merged-branch-version: true
   develop:
     label: 'beta'
     increment: None
