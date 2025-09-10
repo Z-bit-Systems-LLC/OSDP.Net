@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <!-- Version properties will be set by GitVersion -->
+    <!-- Version properties managed by PowerShell script -->
     <VersionPrefix>5.0.5</VersionPrefix>
     
     <!-- Common properties for all projects -->

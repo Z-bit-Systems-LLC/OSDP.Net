@@ -5,16 +5,12 @@ steps:
       packageType: 'sdk'
       version: '8.x'
 
-  - task: gitversion-setup@4.1.0
-    displayName: 'Install GitVersion'
+  - task: PowerShell@2
+    displayName: 'Update Version'
     inputs:
-      versionSpec: '6.3.x'
-
-  - task: gitversion-execute@4.1.0
-    displayName: 'Execute GitVersion'
-    inputs:
-      useConfigFile: true
-      configFilePath: 'ci/GitVersion.yml'
+      filePath: 'ci/Update-Version.ps1'
+      arguments: '-BuildSourceBranch "$(Build.SourceBranch)" -BuildReason "$(Build.Reason)"'
+    name: UpdateVersion
       
   - task: DotNetCoreCLI@2
     displayName: 'dotnet build'
@@ -23,7 +19,7 @@ steps:
       projects: '**/*.csproj'
       arguments: '--configuration $(buildConfiguration)'
       versioningScheme: 'byEnvVar'
-      versionEnvVar: 'GitVersion.MajorMinorPatch'
+      versionEnvVar: 'UpdateVersion.BuildVersion'
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet test'
