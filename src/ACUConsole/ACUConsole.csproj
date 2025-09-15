@@ -6,6 +6,7 @@
         <LangVersion>default</LangVersion>
         <AssemblyName>ACUConsole</AssemblyName>
         <RootNamespace>ACUConsole</RootNamespace>
+        <AssemblyVersion>$(VersionPrefix.Substring(0,3)).0.0</AssemblyVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">

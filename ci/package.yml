@@ -3,13 +3,58 @@ steps:
     displayName: 'Install .NET 8 SDK'
     inputs:
       packageType: 'sdk'
-      version: '8.x'      
+      version: '8.x'
+
+  - task: PowerShell@2
+    displayName: 'Increment patch version'
+    inputs:
+      targetType: 'inline'
+      script: |
+        # Configure git for the build agent
+        git config --global user.email "qubit@z-bitco.com"
+        git config --global user.name "Azure DevOps Build Agent"
+
+        # Get current version for display
+        $currentVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -Format Simple
+        Write-Host "Current version: $currentVersion"
+
+        # Increment patch version
+        & "$(Build.SourcesDirectory)/scripts/Increment-Version.ps1" -IncrementType Patch
+
+        # Get new version
+        $newVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -Format Simple
+        Write-Host "New version: $newVersion"
+
+        # Set pipeline variable for later use
+        Write-Host "##vso[task.setvariable variable=NewVersion]$newVersion"
+
+  - task: PowerShell@2
+    displayName: 'Commit version update and create tag'
+    inputs:
+      targetType: 'inline'
+      script: |
+        $newVersion = "$(NewVersion)"
+
+        # Stage the Directory.Build.props file
+        git add Directory.Build.props
+
+        # Commit the version update
+        git commit -m "Bump version to $newVersion [skip ci]"
+
+        # Create a tag for the release
+        git tag -a "v$newVersion" -m "Release version $newVersion"
+
+        # Push the commit and tag to master
+        git push origin HEAD:master
+        git push origin "v$newVersion"
+
+        Write-Host "Version $newVersion committed and tagged successfully"
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet pack'
     inputs:
       command: 'pack'
-      arguments: '--configuration $(buildConfiguration) /p:PackageVersion=$(GitVersionNuGet)'
+      arguments: '--configuration $(buildConfiguration)'
       packagesToPack: 'src/OSDP.Net/OSDP.Net.csproj'
 
   - task: DotNetCoreCLI@2
@@ -18,7 +63,7 @@ steps:
       command: 'publish'
       publishWebProjects: false
       projects: 'src/ACUConsole/ACUConsole.csproj'
-      arguments: '-r osx-arm64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/osx-arm64 /p:Version=$(GitVersionAssembly)'
+      arguments: '-r osx-arm64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/osx-arm64'
       zipAfterPublish: false
       modifyOutputPath: false
 
@@ -30,7 +75,7 @@ steps:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: 'src/ACUConsole/ACUConsole.csproj'
-      arguments: '-r win-x64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/win-x64 /p:Version=$(GitVersionAssembly)'
+      arguments: '-r win-x64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/win-x64'
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet publish for linux-x64'
@@ -40,7 +85,7 @@ steps:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: 'src/ACUConsole/ACUConsole.csproj'
-      arguments: '-r linux-x64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-x64 /p:Version=$(GitVersionAssembly)'
+      arguments: '-r linux-x64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-x64'
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet publish for linux-arm64'
@@ -50,7 +95,7 @@ steps:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: 'src/ACUConsole/ACUConsole.csproj'
-      arguments: '-r linux-arm64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeAllContentForSelfExtract=true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-arm64 /p:Version=$(GitVersionAssembly)'
+      arguments: '-r linux-arm64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeAllContentForSelfExtract=true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-arm64'
 
   - task: ArchiveFiles@2
     inputs:
@@ -63,3 +108,22 @@ steps:
   - task: PublishPipelineArtifact@1
     inputs:
       targetPath: '$(Build.ArtifactStagingDirectory)'
+
+  - task: PowerShell@2
+    displayName: 'Merge version update back to develop'
+    inputs:
+      targetType: 'inline'
+      script: |
+        $newVersion = "$(NewVersion)"
+
+        # Checkout develop branch
+        git fetch origin develop
+        git checkout develop
+
+        # Merge the version update from master
+        git merge origin/master --no-ff -m "Merge version bump $newVersion from master [skip ci]"
+
+        # Push the merge back to develop
+        git push origin develop
+
+        Write-Host "Version update $newVersion merged back to develop successfully"

@@ -1,9 +1,9 @@
 <Project>
-  <PropertyGroup>
-    <!-- Version properties will be set by GitVersion -->
-    <VersionPrefix>5.0.5</VersionPrefix>
-    
+  <PropertyGroup>  
     <!-- Common properties for all projects -->
+    <VersionPrefix>5.0.5</VersionPrefix>
+    <VersionSuffix>beta</VersionSuffix>
+	
     <Authors>Jonathan Horvath</Authors>
     <Company>Z-bit Systems LLC</Company>
     <Copyright>Copyright © $(Company) $([System.DateTime]::Now.Year)</Copyright>
