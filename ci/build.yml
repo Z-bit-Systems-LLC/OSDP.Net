@@ -4,17 +4,6 @@ steps:
     inputs:
       packageType: 'sdk'
       version: '8.x'
-
-  - task: gitversion-setup@4.1.0
-    displayName: 'Install GitVersion'
-    inputs:
-      versionSpec: '6.3.x'
-
-  - task: gitversion-execute@4.1.0
-    displayName: 'Execute GitVersion'
-    inputs:
-      useConfigFile: true
-      configFilePath: 'ci/GitVersion.yml'
       
   - task: DotNetCoreCLI@2
     displayName: 'dotnet build'
@@ -22,8 +11,6 @@ steps:
       command: 'build'
       projects: '**/*.csproj'
       arguments: '--configuration $(buildConfiguration)'
-      versioningScheme: 'byEnvVar'
-      versionEnvVar: 'GitVersion.MajorMinorPatch'
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet test'

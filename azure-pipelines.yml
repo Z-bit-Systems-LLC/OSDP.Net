@@ -21,27 +21,16 @@ jobs:
       vmImage: 'windows-latest'
     steps:
       - checkout: self
-        fetchDepth: 0
       - template: ci/build.yml
-      - task: PowerShell@2
-        displayName: 'Set GitVersion variables for package job'
-        inputs:
-          targetType: 'inline'
-          script: |
-            Write-Host "##vso[task.setvariable variable=GitVersion.SemVer;isOutput=true]$(GITVERSION_SEMVER)"
-            Write-Host "##vso[task.setvariable variable=GitVersion.MajorMinorPatch;isOutput=true]$(GITVERSION_MAJORMINORPATCH)"
-        name: GitVersionOutput
-
+        
   - job: package
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
     pool:
       vmImage: 'windows-latest'
     dependsOn:
       build
-    variables:
-      GitVersionSemVer: $[ dependencies.build.outputs['GitVersionOutput.GitVersion.SemVer'] ]
-      GitVersionAssembly: $[ dependencies.build.outputs['GitVersionOutput.GitVersion.MajorMinorPatch'] ]
     steps:
       - checkout: self
-        fetchDepth: 0
+        persistCredentials: true
+        clean: true
       - template: ci/package.yml  

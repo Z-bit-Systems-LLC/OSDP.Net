@@ -34,7 +34,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ci", "ci", "{B139D674-6612-
 	ProjectSection(SolutionItems) = preProject
 		..\ci\build.yml = ..\ci\build.yml
 		..\ci\package.yml = ..\ci\package.yml
-		..\ci\GitVersion.yml = ..\ci\GitVersion.yml
 		..\azure-pipelines.yml = ..\azure-pipelines.yml
 	EndProjectSection
 EndProject
