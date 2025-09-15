@@ -21,35 +21,16 @@ jobs:
       vmImage: 'windows-latest'
     steps:
       - checkout: self
-        fetchDepth: 0
-        persistCredentials: true
       - template: ci/build.yml
-      - task: PowerShell@2
-        displayName: 'Set version variables for package job'
-        inputs:
-          targetType: 'inline'
-          script: |
-            Write-Host "##vso[task.setvariable variable=BuildVersion;isOutput=true]$(UPDATEVERSION_BUILDVERSION)"
-            Write-Host "##vso[task.setvariable variable=NewVersion;isOutput=true]$(UPDATEVERSION_NEWVERSION)"
-        name: VersionOutput
-
+        
   - job: package
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
     pool:
       vmImage: 'windows-latest'
     dependsOn:
       build
-    variables:
-      BuildVersion: $[ dependencies.build.outputs['VersionOutput.BuildVersion'] ]
-      PackageVersion: $[ dependencies.build.outputs['VersionOutput.NewVersion'] ]
     steps:
       - checkout: self
-        fetchDepth: 0
         persistCredentials: true
-      - task: PowerShell@2
-        displayName: 'Update Version for Release'
-        inputs:
-          filePath: 'ci/Update-Version.ps1'
-          arguments: '-BuildSourceBranch "$(Build.SourceBranch)" -BuildReason "$(Build.Reason)"'
-        name: UpdateVersionForRelease
+        clean: true
       - template: ci/package.yml  

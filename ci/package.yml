@@ -5,51 +5,6 @@ steps:
       packageType: 'sdk'
       version: '8.x'
 
-  - task: PowerShell@2
-    displayName: 'Increment patch version'
-    inputs:
-      targetType: 'inline'
-      script: |
-        # Configure git for the build agent
-        git config --global user.email "qubit@z-bitco.com"
-        git config --global user.name "Azure DevOps Build Agent"
-
-        # Get current version for display
-        $currentVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -Format Simple
-        Write-Host "Current version: $currentVersion"
-
-        # Increment patch version
-        & "$(Build.SourcesDirectory)/scripts/Increment-Version.ps1" -IncrementType Patch
-
-        # Get new version
-        $newVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -Format Simple
-        Write-Host "New version: $newVersion"
-
-        # Set pipeline variable for later use
-        Write-Host "##vso[task.setvariable variable=NewVersion]$newVersion"
-
-  - task: PowerShell@2
-    displayName: 'Commit version update and create tag'
-    inputs:
-      targetType: 'inline'
-      script: |
-        $newVersion = "$(NewVersion)"
-
-        # Stage the Directory.Build.props file
-        git add Directory.Build.props
-
-        # Commit the version update
-        git commit -m "Bump version to $newVersion [skip ci]"
-
-        # Create a tag for the release
-        git tag -a "v$newVersion" -m "Release version $newVersion"
-
-        # Push the commit and tag to master
-        git push origin HEAD:master
-        git push origin "v$newVersion"
-
-        Write-Host "Version $newVersion committed and tagged successfully"
-
   - task: DotNetCoreCLI@2
     displayName: 'dotnet pack'
     inputs:
@@ -108,6 +63,51 @@ steps:
   - task: PublishPipelineArtifact@1
     inputs:
       targetPath: '$(Build.ArtifactStagingDirectory)'
+
+  - task: PowerShell@2
+    displayName: 'Increment patch version after successful packaging'
+    inputs:
+      targetType: 'inline'
+      script: |
+        # Configure git for the build agent
+        git config --global user.email "qubit@z-bitco.com"
+        git config --global user.name "Azure DevOps Build Agent"
+
+        # Get current version for display
+        $currentVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -Format Simple
+        Write-Host "Packaging completed successfully. Current version: $currentVersion"
+
+        # Increment patch version
+        & "$(Build.SourcesDirectory)/scripts/Increment-Version.ps1" -IncrementType Patch
+
+        # Get new version
+        $newVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -Format Simple
+        Write-Host "New version: $newVersion"
+
+        # Set pipeline variable for later use
+        Write-Host "##vso[task.setvariable variable=NewVersion]$newVersion"
+
+  - task: PowerShell@2
+    displayName: 'Commit version update and create tag'
+    inputs:
+      targetType: 'inline'
+      script: |
+        $newVersion = "$(NewVersion)"
+
+        # Stage the Directory.Build.props file
+        git add Directory.Build.props
+
+        # Commit the version update
+        git commit -m "Bump version to $newVersion [skip ci]"
+
+        # Create a tag for the release
+        git tag -a "v$newVersion" -m "Release version $newVersion"
+
+        # Push the commit and tag to master
+        git push origin HEAD:master
+        git push origin "v$newVersion"
+
+        Write-Host "Version $newVersion committed and tagged successfully"
 
   - task: PowerShell@2
     displayName: 'Merge version update back to develop'
