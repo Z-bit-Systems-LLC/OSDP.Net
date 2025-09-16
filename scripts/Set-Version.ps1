@@ -18,10 +18,15 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$Version,
-    
+
     [Parameter(Mandatory = $false)]
-    [string]$BuildPropsPath = (Join-Path $PSScriptRoot ".." "Directory.Build.props")
+    [string]$BuildPropsPath
 )
+
+# Set default path if not provided
+if (-not $BuildPropsPath) {
+    $BuildPropsPath = Join-Path $PSScriptRoot ".." "Directory.Build.props"
+}
 
 function Validate-Version {
     param([string]$Version)

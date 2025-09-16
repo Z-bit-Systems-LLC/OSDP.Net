@@ -21,10 +21,15 @@ param(
     [Parameter(Mandatory = $false)]
     [ValidateSet("Major", "Minor", "Patch")]
     [string]$IncrementType = "Patch",
-    
+
     [Parameter(Mandatory = $false)]
-    [string]$BuildPropsPath = (Join-Path $PSScriptRoot ".." "Directory.Build.props")
+    [string]$BuildPropsPath
 )
+
+# Set default path if not provided
+if (-not $BuildPropsPath) {
+    $BuildPropsPath = Join-Path $PSScriptRoot ".." "Directory.Build.props"
+}
 
 function Get-CurrentVersion {
     param([string]$FilePath)
