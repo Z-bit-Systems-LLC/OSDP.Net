@@ -41,7 +41,7 @@ steps:
       command: 'publish'
       publishWebProjects: false
       projects: 'src/ACUConsole/ACUConsole.csproj'
-      arguments: '-r osx-arm64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/osx-arm64'
+      arguments: '-r osx-arm64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/TestConsole/osx-arm64'
       zipAfterPublish: false
       modifyOutputPath: false
 
@@ -53,7 +53,7 @@ steps:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: 'src/ACUConsole/ACUConsole.csproj'
-      arguments: '-r win-x64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/win-x64'
+      arguments: '-r win-x64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/TestConsole/win-x64'
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet publish for linux-x64'
@@ -63,7 +63,7 @@ steps:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: 'src/ACUConsole/ACUConsole.csproj'
-      arguments: '-r linux-x64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-x64'
+      arguments: '-r linux-x64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-x64'
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet publish for linux-arm64'
@@ -73,7 +73,7 @@ steps:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: 'src/ACUConsole/ACUConsole.csproj'      
-      arguments: '-r linux-arm64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeAllContentForSelfExtract=true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-arm64'
+      arguments: '-r linux-arm64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-arm64'
 
   - task: ArchiveFiles@2
     inputs:
