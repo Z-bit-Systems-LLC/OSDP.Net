@@ -15,14 +15,14 @@ steps:
         git config --global user.name "Azure DevOps Build Agent"
 
         # Get current version for display
-        $currentVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -Format Simple
+        $currentVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -BuildPropsPath "$(Build.SourcesDirectory)/Directory.Build.props" -Format Simple
         Write-Host "Packaging completed successfully. Current version: $currentVersion"
 
         # Increment patch version
-        & "$(Build.SourcesDirectory)/scripts/Increment-Version.ps1" -IncrementType Patch
+        & "$(Build.SourcesDirectory)/scripts/Increment-Version.ps1" -BuildPropsPath "$(Build.SourcesDirectory)/Directory.Build.props" -IncrementType Patch
 
         # Get new version
-        $newVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -Format Simple
+        $newVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -BuildPropsPath "$(Build.SourcesDirectory)/Directory.Build.props" -Format Simple
         Write-Host "New version: $newVersion"
 
         # Set pipeline variable for later use
