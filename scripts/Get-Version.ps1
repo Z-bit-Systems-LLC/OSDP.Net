@@ -26,7 +26,12 @@ param(
 
 # Set default path if not provided
 if (-not $BuildPropsPath) {
-    $BuildPropsPath = Join-Path $PSScriptRoot ".." "Directory.Build.props"
+    if ($PSScriptRoot) {
+        $BuildPropsPath = Join-Path $PSScriptRoot ".." "Directory.Build.props"
+    } else {
+        # Fallback for cases where PSScriptRoot is not available
+        $BuildPropsPath = Join-Path (Get-Location) "Directory.Build.props"
+    }
 }
 
 function Get-Version {

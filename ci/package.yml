@@ -89,6 +89,29 @@ steps:
       targetPath: '$(Build.ArtifactStagingDirectory)'
 
   - task: PowerShell@2
+    displayName: 'Increment patch version after successful packaging'
+    inputs:
+      targetType: 'inline'
+      script: |
+        # Configure git for the build agent
+        git config --global user.email "qubit@z-bitco.com"
+        git config --global user.name "Azure DevOps Build Agent"
+
+        # Get current version for display
+        $currentVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -BuildPropsPath "$(Build.SourcesDirectory)/Directory.Build.props" -Format Simple
+        Write-Host "Packaging completed successfully. Current version: $currentVersion"
+
+        # Increment patch version
+        & "$(Build.SourcesDirectory)/scripts/Increment-Version.ps1" -BuildPropsPath "$(Build.SourcesDirectory)/Directory.Build.props" -IncrementType Patch
+
+        # Get new version
+        $newVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -BuildPropsPath "$(Build.SourcesDirectory)/Directory.Build.props" -Format Simple
+        Write-Host "New version: $newVersion"
+
+        # Set pipeline variable for later use
+        Write-Host "##vso[task.setvariable variable=NewVersion]$newVersion"
+
+  - task: PowerShell@2
     displayName: 'Commit version update and create tag'
     inputs:
       targetType: 'inline'
