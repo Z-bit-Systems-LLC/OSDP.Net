@@ -133,23 +133,25 @@ namespace ACUConsole
             // For single-file deployment, use a very basic configuration that avoids Assembly.CodeBase
             try
             {
-                // Use default configuration without specifying repository to avoid Assembly.CodeBase issues
-                var repository = LogManager.CreateRepository(Assembly.GetEntryAssembly(), typeof(log4net.Repository.Hierarchy.Hierarchy));
+                // Use default configuration without specifying a repository to avoid Assembly.CodeBase issues
+                var repository = LogManager.CreateRepository(Assembly.GetEntryAssembly()!, typeof(log4net.Repository.Hierarchy.Hierarchy));
                 ConfigureLog4NetProgrammatically(repository);
             }
             catch
             {
                 // If even this fails, log4net might not work in single-file mode
-                // In this case, logging will simply not work but app won't crash
+                // In this case, logging will simply not work, but app won't crash
                 Console.WriteLine("Warning: Could not initialize logging in single-file mode");
             }
         }
 
         private void ConfigureLog4NetProgrammatically(log4net.Repository.ILoggerRepository repository)
         {
-            // Create appender programmatically to match log4net.config
-            var appender = new ACUConsole.CustomAppender();
-            appender.Layout = new log4net.Layout.PatternLayout("%date | %thread | %-5level | %logger | %message%newline");
+            // Create an appender programmatically to match log4net.config
+            var appender = new CustomAppender
+            {
+                Layout = new log4net.Layout.PatternLayout("%date | %thread | %-5level | %logger | %message%newline")
+            };
             appender.ActivateOptions();
 
             // Configure root logger
@@ -157,7 +159,7 @@ namespace ACUConsole
             rootLogger.Level = log4net.Core.Level.All;
             rootLogger.AddAppender(appender);
 
-            // Mark repository as configured
+            // Mark the repository as configured
             ((log4net.Repository.Hierarchy.Hierarchy)repository).Configured = true;
             
             // Set up custom appender to redirect log messages
@@ -220,40 +222,40 @@ namespace ACUConsole
             }
         }
 
-        private Settings GetDefaultSettings()
+        private static Settings GetDefaultSettings()
         {
             return new Settings
             {
-                SerialConnectionSettings = new ACUConsole.Configuration.SerialConnectionSettings
+                SerialConnectionSettings = new SerialConnectionSettings
                 {
                     PortName = "COM4",
                     BaudRate = 9600,
                     ReplyTimeout = 200
                 },
-                TcpServerConnectionSettings = new ACUConsole.Configuration.TcpServerConnectionSettings
+                TcpServerConnectionSettings = new TcpServerConnectionSettings
                 {
                     PortNumber = 5000,
                     BaudRate = 9600,
                     ReplyTimeout = 200
                 },
-                TcpClientConnectionSettings = new ACUConsole.Configuration.TcpClientConnectionSettings
+                TcpClientConnectionSettings = new TcpClientConnectionSettings
                 {
                     Host = "",
                     PortNumber = 5000,
                     BaudRate = 9600,
                     ReplyTimeout = 200
                 },
-                Devices = new List<ACUConsole.Configuration.DeviceSetting>
-                {
-                    new ACUConsole.Configuration.DeviceSetting
+                Devices =
+                [
+                    new DeviceSetting
                     {
                         Name = "Secure",
                         Address = 0,
                         UseSecureChannel = true,
                         UseCrc = true,
-                        SecureChannelKey = ACUConsole.Configuration.DeviceSetting.DefaultKey
+                        SecureChannelKey = DeviceSetting.DefaultKey
                     }
-                },
+                ],
                 PollingInterval = 200,
                 LastFileTransferDirectory = null,
                 IsTracing = false
