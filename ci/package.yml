@@ -15,14 +15,14 @@ steps:
         git config --global user.name "Azure DevOps Build Agent"
 
         # Get current version for display
-        $currentVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -Format Simple
+        $currentVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -BuildPropsPath "$(Build.SourcesDirectory)/Directory.Build.props" -Format Simple
         Write-Host "Packaging completed successfully. Current version: $currentVersion"
 
         # Increment patch version
-        & "$(Build.SourcesDirectory)/scripts/Increment-Version.ps1" -IncrementType Patch
+        & "$(Build.SourcesDirectory)/scripts/Increment-Version.ps1" -BuildPropsPath "$(Build.SourcesDirectory)/Directory.Build.props" -IncrementType Patch
 
         # Get new version
-        $newVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -Format Simple
+        $newVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -BuildPropsPath "$(Build.SourcesDirectory)/Directory.Build.props" -Format Simple
         Write-Host "New version: $newVersion"
 
         # Set pipeline variable for later use
@@ -41,7 +41,7 @@ steps:
       command: 'publish'
       publishWebProjects: false
       projects: 'src/ACUConsole/ACUConsole.csproj'
-      arguments: '-r osx-arm64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/osx-arm64'
+      arguments: '-r osx-arm64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/TestConsole/osx-arm64'
       zipAfterPublish: false
       modifyOutputPath: false
 
@@ -53,7 +53,7 @@ steps:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: 'src/ACUConsole/ACUConsole.csproj'
-      arguments: '-r win-x64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/win-x64'
+      arguments: '-r win-x64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/TestConsole/win-x64'
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet publish for linux-x64'
@@ -63,7 +63,7 @@ steps:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: 'src/ACUConsole/ACUConsole.csproj'
-      arguments: '-r linux-x64 --configuration $(BuildConfiguration) /p:PublishSingleFile=true /p:IncludeAllContentForSelfExtract=true --self-contained true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-x64'
+      arguments: '-r linux-x64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-x64'
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet publish for linux-arm64'
@@ -73,7 +73,7 @@ steps:
       zipAfterPublish: false
       modifyOutputPath: false
       projects: 'src/ACUConsole/ACUConsole.csproj'      
-      arguments: '-r linux-arm64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeAllContentForSelfExtract=true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-arm64'
+      arguments: '-r linux-arm64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-arm64'
 
   - task: ArchiveFiles@2
     inputs:
