@@ -72,12 +72,95 @@ namespace ACUConsole
 
         private void InitializeLogging()
         {
-            XmlConfigurator.Configure(
-                LogManager.GetRepository(Assembly.GetEntryAssembly() ?? Assembly.GetCallingAssembly()),
-                new FileInfo("log4net.config"));
-            
-            _loggerFactory = new LoggerFactory();
-            _loggerFactory.AddLog4Net();
+            // Check if we're running in a single-file deployment
+            var entryAssembly = Assembly.GetEntryAssembly();
+            var isSingleFile = string.IsNullOrEmpty(entryAssembly?.Location);
+
+            if (!isSingleFile)
+            {
+                // Only configure log4net for regular deployment
+                ConfigureLog4Net();
+                _loggerFactory = new LoggerFactory();
+                _loggerFactory.AddLog4Net();
+            }
+            else
+            {
+                // For single-file deployment, skip complex logging to avoid CodeBase issues
+                _loggerFactory = new LoggerFactory();
+                Console.WriteLine("Running in single-file mode - using basic logging");
+            }
+        }
+
+        private void ConfigureLog4Net()
+        {
+            // Check if we're running in a single-file deployment
+            var entryAssembly = Assembly.GetEntryAssembly();
+            var isSingleFile = string.IsNullOrEmpty(entryAssembly?.Location);
+
+            if (isSingleFile)
+            {
+                // For single-file deployment, use minimal log4net configuration to avoid CodeBase issues
+                ConfigureLog4NetForSingleFile();
+            }
+            else
+            {
+                // For regular deployment, use standard configuration
+                var repository = LogManager.GetRepository(Assembly.GetEntryAssembly() ?? Assembly.GetCallingAssembly());
+
+                var configFile = new FileInfo("log4net.config");
+                if (configFile.Exists)
+                {
+                    try
+                    {
+                        XmlConfigurator.Configure(repository, configFile);
+                    }
+                    catch
+                    {
+                        // Fallback to programmatic configuration if file loading fails
+                        ConfigureLog4NetProgrammatically(repository);
+                    }
+                }
+                else
+                {
+                    // Fallback to programmatic configuration
+                    ConfigureLog4NetProgrammatically(repository);
+                }
+            }
+        }
+
+        private void ConfigureLog4NetForSingleFile()
+        {
+            // For single-file deployment, use a very basic configuration that avoids Assembly.CodeBase
+            try
+            {
+                // Use default configuration without specifying a repository to avoid Assembly.CodeBase issues
+                var repository = LogManager.CreateRepository(Assembly.GetEntryAssembly()!, typeof(log4net.Repository.Hierarchy.Hierarchy));
+                ConfigureLog4NetProgrammatically(repository);
+            }
+            catch
+            {
+                // If even this fails, log4net might not work in single-file mode
+                // In this case, logging will simply not work, but app won't crash
+                Console.WriteLine("Warning: Could not initialize logging in single-file mode");
+            }
+        }
+
+        private void ConfigureLog4NetProgrammatically(log4net.Repository.ILoggerRepository repository)
+        {
+            // Create an appender programmatically to match log4net.config
+            var appender = new CustomAppender
+            {
+                Layout = new log4net.Layout.PatternLayout("%date | %thread | %-5level | %logger | %message%newline")
+            };
+            appender.ActivateOptions();
+
+            // Configure root logger
+            var rootLogger = ((log4net.Repository.Hierarchy.Hierarchy)repository).Root;
+            rootLogger.Level = log4net.Core.Level.All;
+            rootLogger.AddAppender(appender);
+
+            // Mark the repository as configured
+            ((log4net.Repository.Hierarchy.Hierarchy)repository).Configured = true;
             
             // Set up custom appender to redirect log messages
             CustomAppender.MessageHandler = AddLogMessage;
@@ -85,8 +168,28 @@ namespace ACUConsole
 
         private void InitializePaths()
         {
-            _lastConfigFilePath = Path.Combine(Environment.CurrentDirectory, "appsettings.config");
-            _lastOsdpConfigFilePath = Environment.CurrentDirectory;
+            // Use AppContext.BaseDirectory for single-file deployment compatibility
+            var baseDirectory = GetBaseDirectory();
+            _lastConfigFilePath = Path.Combine(baseDirectory, "appsettings.config");
+            _lastOsdpConfigFilePath = baseDirectory;
+        }
+
+        private string GetBaseDirectory()
+        {
+            // Check if we're running in a single-file deployment
+            var entryAssembly = Assembly.GetEntryAssembly();
+            var isSingleFile = string.IsNullOrEmpty(entryAssembly?.Location);
+
+            if (isSingleFile)
+            {
+                // For single-file deployment, use AppContext.BaseDirectory
+                return AppContext.BaseDirectory;
+            }
+            else
+            {
+                // For regular deployment, use current directory
+                return Environment.CurrentDirectory;
+            }
         }
 
         private void InitializeControlPanel()
@@ -99,13 +202,64 @@ namespace ACUConsole
         {
             try
             {
-                string json = File.ReadAllText(Path.Combine(Directory.GetCurrentDirectory(), "appsettings.config"));
-                _settings = JsonSerializer.Deserialize<Settings>(json) ?? new Settings();
+                var baseDirectory = GetBaseDirectory();
+                var configPath = Path.Combine(baseDirectory, "appsettings.config");
+
+                if (File.Exists(configPath))
+                {
+                    string json = File.ReadAllText(configPath);
+                    _settings = JsonSerializer.Deserialize<Settings>(json) ?? GetDefaultSettings();
+                }
+                else
+                {
+                    // Use default settings for single-file deployment or missing config
+                    _settings = GetDefaultSettings();
+                }
             }
             catch
             {
-                _settings = new Settings();
+                _settings = GetDefaultSettings();
             }
+        }
+
+        private static Settings GetDefaultSettings()
+        {
+            return new Settings
+            {
+                SerialConnectionSettings = new SerialConnectionSettings
+                {
+                    PortName = "COM4",
+                    BaudRate = 9600,
+                    ReplyTimeout = 200
+                },
+                TcpServerConnectionSettings = new TcpServerConnectionSettings
+                {
+                    PortNumber = 5000,
+                    BaudRate = 9600,
+                    ReplyTimeout = 200
+                },
+                TcpClientConnectionSettings = new TcpClientConnectionSettings
+                {
+                    Host = "",
+                    PortNumber = 5000,
+                    BaudRate = 9600,
+                    ReplyTimeout = 200
+                },
+                Devices =
+                [
+                    new DeviceSetting
+                    {
+                        Name = "Secure",
+                        Address = 0,
+                        UseSecureChannel = true,
+                        UseCrc = true,
+                        SecureChannelKey = DeviceSetting.DefaultKey
+                    }
+                ],
+                PollingInterval = 200,
+                LastFileTransferDirectory = null,
+                IsTracing = false
+            };
         }
 
         private void RegisterControlPanelEvents()
