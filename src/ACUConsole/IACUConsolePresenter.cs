@@ -52,7 +52,8 @@ namespace ACUConsole
         Task SendEncryptionKeySet(byte address, byte[] key);
         Task SendBiometricRead(byte address, byte readerNumber, byte type, byte format, byte quality);
         Task SendBiometricMatch(byte address, byte readerNumber, byte type, byte format, byte qualityThreshold, byte[] templateData);
-        Task<int> SendFileTransfer(byte address, byte type, byte[] data, byte messageSize);
+        Task<FileTransferResult> SendFileTransfer(byte address, byte type, byte[] data, byte messageSize,
+            Action<OSDP.Net.ControlPanel.FileTransferStatus> progressCallback, CancellationToken cancellationToken);
 
         // Custom Commands
         Task SendCustomCommand(byte address, CommandData commandData);

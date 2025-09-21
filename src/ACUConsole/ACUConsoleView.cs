@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ACUConsole.Dialogs;
+using static ACUConsole.Dialogs.FileTransferStatusDialog;
 using ACUConsole.Model;
 using OSDP.Net.Model.CommandData;
 using Terminal.Gui;
@@ -90,7 +91,7 @@ namespace ACUConsole
                     new MenuItem("Biometric Match", "", () => _ = SendBiometricMatchCommand()),
                     new MenuItem("_Device Capabilities", "", () => SendSimpleCommand("Device capabilities", _presenter.SendDeviceCapabilities)),
                     new MenuItem("Encryption Key Set", "", () => _ = SendEncryptionKeySetCommand()),
-                    new MenuItem("File Transfer", "", () => _ = SendFileTransferCommand()),
+                    new MenuItem("File Transfer", "", SendFileTransferCommand),
                     new MenuItem("_ID Report", "", () => SendSimpleCommand("ID report", _presenter.SendIdReport)),
                     new MenuItem("Input Status", "", () => SendSimpleCommand("Input status", _presenter.SendInputStatus)),
                     new MenuItem("_Local Status", "", () => SendSimpleCommand("Local Status", _presenter.SendLocalStatus)),
@@ -586,7 +587,7 @@ namespace ACUConsole
             }
         }
 
-        private async Task SendFileTransferCommand()
+        private async void SendFileTransferCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -596,17 +597,49 @@ namespace ACUConsole
 
             var deviceList = _presenter.GetDeviceList();
             var input = FileTransferDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
-            
+
             if (!input.WasCancelled)
             {
+                var cancellationTokenSource = new CancellationTokenSource();
+
+                // Define the transfer function
+                async Task DoTransfer(FileTransferStatusDialogHandle statusDialogHandle)
+                {
+                    var result = await _presenter.SendFileTransfer(
+                        input.DeviceAddress,
+                        input.Type,
+                        input.FileData,
+                        input.MessageSize,
+                        status => statusDialogHandle?.UpdateProgress(status, input.FileData.Length),
+                        cancellationTokenSource.Token);
+
+                    if (!cancellationTokenSource.Token.IsCancellationRequested)
+                    {
+                        Application.MainLoop.Invoke(() =>
+                        {
+                            ShowInformation("File Transfer Complete", $"File transferred successfully in {result.FragmentCount} fragments.");
+                        });
+                    }
+                }
+
                 try
                 {
-                    var totalFragments = await _presenter.SendFileTransfer(input.DeviceAddress, input.Type, input.FileData, input.MessageSize);
-                    ShowInformation("File Transfer Complete", $"File transferred successfully in {totalFragments} fragments.");
+                    // Show the dialog and perform the transfer
+                    await FileTransferStatusDialog.Show(
+                        () => cancellationTokenSource.Cancel(),
+                        DoTransfer);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Transfer was cancelled - no need to show error
                 }
                 catch (Exception ex)
                 {
                     ShowError("Error", ex.Message);
+                }
+                finally
+                {
+                    cancellationTokenSource?.Dispose();
                 }
             }
         }
