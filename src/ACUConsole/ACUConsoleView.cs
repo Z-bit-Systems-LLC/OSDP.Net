@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ACUConsole.Dialogs;
-using static ACUConsole.Dialogs.FileTransferStatusDialog;
 using ACUConsole.Model;
 using OSDP.Net.Model.CommandData;
 using Terminal.Gui;
@@ -14,7 +13,7 @@ namespace ACUConsole
     /// <summary>
     /// View class that handles all Terminal.Gui UI elements and interactions for ACU Console
     /// </summary>
-    public class ACUConsoleView : IACUConsoleView
+    public class ACUConsoleView
     {
         private readonly IACUConsolePresenter _presenter;
         
@@ -38,21 +37,7 @@ namespace ACUConsole
             _presenter.ErrorOccurred += OnErrorOccurred;
         }
 
-        public void Initialize()
-        {
-            Application.Init();
-            CreateMainWindow();
-            CreateMenuBar();
-            CreateScrollView();
-            Application.Top.Add(_menuBar, _window);
-        }
-
-        public void Run()
-        {
-            Application.Run();
-        }
-
-        private void CreateMainWindow()
+        public Window CreateMainWindow()
         {
             _window = new Window("OSDP.Net ACU Console")
             {
@@ -61,6 +46,17 @@ namespace ACUConsole
                 Width = Dim.Fill(),
                 Height = Dim.Fill() - 1
             };
+
+            CreateMenuBar();
+            CreateScrollView();
+
+            // Add MenuBar to Application.Top (like PDConsole does)
+            Application.Top.Add(_menuBar);
+
+            // Add ScrollView to the window
+            _window.Add(_scrollView);
+
+            return _window;
         }
 
         private void CreateMenuBar()
@@ -111,6 +107,7 @@ namespace ACUConsole
             ]);
         }
 
+
         private void CreateScrollView()
         {
             _scrollView = new ScrollView(new Rect(0, 0, 0, 0))
@@ -131,23 +128,32 @@ namespace ACUConsole
 
         private void Quit()
         {
-            var result = MessageBox.Query(60, 8, "Exit Application", 
-                "Do you want to save your configuration before exiting?", 
-                2, "Cancel", "Don't Save", "Save");
-
-            switch (result)
+            // Show save configuration dialog before exiting
+            try
             {
-                case 0: // Cancel
-                    // Do nothing, stay in application
-                    break;
-                case 1: // Don't Save
-                    Application.Shutdown();
-                    break;
-                case 2: // Save
+                var shouldSave = MessageBox.ErrorQuery("Exit Application",
+                    "Save configuration before exiting?",
+                    "Yes", "No");
+
+                if (shouldSave == 0) // Yes
+                {
                     _presenter.SaveConfiguration();
-                    Application.Shutdown();
-                    break;
+                }
             }
+            catch (Exception)
+            {
+                // If dialog fails, fall back to auto-save
+                try
+                {
+                    _presenter.SaveConfiguration();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Could not save configuration: {ex.Message}");
+                }
+            }
+
+            Application.RequestStop();
         }
 
         // Connection Methods - Using extracted dialog classes

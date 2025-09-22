@@ -878,8 +878,20 @@ namespace ACUConsole
 
         public void Dispose()
         {
-            _controlPanel?.Shutdown().Wait();
-            _loggerFactory?.Dispose();
+            try
+            {
+                if (_controlPanel != null)
+                {
+                    var shutdownTask = _controlPanel.Shutdown();
+                    shutdownTask?.Wait();
+                }
+                _loggerFactory?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during disposal: {ex.Message}");
+                // Don't re-throw to allow graceful shutdown
+            }
         }
     }
 

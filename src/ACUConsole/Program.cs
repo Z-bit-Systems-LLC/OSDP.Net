@@ -1,4 +1,5 @@
 using System;
+using Terminal.Gui;
 
 namespace ACUConsole
 {
@@ -12,17 +13,25 @@ namespace ACUConsole
 
         private static void Main()
         {
+
             try
             {
                 // Create presenter (handles business logic)
                 _presenter = new ACUConsolePresenter();
-                
+
+                // Initialize Terminal.Gui FIRST (like PDConsole does)
+                Application.Init();
+
                 // Create view (handles UI)
                 _view = new ACUConsoleView(_presenter);
-                
-                // Initialize and run the application
-                _view.Initialize();
-                _view.Run();
+
+                // Create and add main window (like PDConsole)
+                var mainWindow = _view.CreateMainWindow();
+
+                Application.Top.Add(mainWindow);
+
+                // Run the application
+                Application.Run();
             }
             catch (Exception ex)
             {
@@ -39,11 +48,12 @@ namespace ACUConsole
             try
             {
                 _presenter?.Dispose();
-                _view?.Shutdown();
+                Application.Shutdown();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Cleanup error: {ex.Message}");
+                Console.WriteLine($"Cleanup stack trace: {ex.StackTrace}");
             }
         }
     }
