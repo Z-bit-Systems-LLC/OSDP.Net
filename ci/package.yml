@@ -11,7 +11,7 @@ steps:
       targetType: 'inline'
       script: |
         # Configure git for the build agent
-        git config --global user.email "qubit@z-bitco.com"
+        git config --global user.email "byteme@bytedreamer.com"
         git config --global user.name "Azure DevOps Build Agent"
 
         # Get current version for display
