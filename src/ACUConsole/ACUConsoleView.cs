@@ -617,8 +617,10 @@ namespace ACUConsole
                         input.FileData,
                         input.MessageSize,
                         status => statusDialogHandle?.UpdateProgress(status, input.FileData.Length),
+                        // ReSharper disable once AccessToDisposedClosure
                         cancellationTokenSource.Token);
 
+                    // ReSharper disable once AccessToDisposedClosure
                     if (!cancellationTokenSource.Token.IsCancellationRequested)
                     {
                         Application.MainLoop.Invoke(() =>
@@ -645,7 +647,7 @@ namespace ACUConsole
                 }
                 finally
                 {
-                    cancellationTokenSource?.Dispose();
+                    cancellationTokenSource.Dispose();
                 }
             }
         }

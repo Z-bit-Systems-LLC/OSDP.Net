@@ -883,7 +883,7 @@ namespace ACUConsole
                 if (_controlPanel != null)
                 {
                     var shutdownTask = _controlPanel.Shutdown();
-                    shutdownTask?.Wait();
+                    shutdownTask.Wait();
                 }
                 _loggerFactory?.Dispose();
             }

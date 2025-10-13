@@ -1,6 +1,5 @@
 using System;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using Terminal.Gui;
 using OSDP.Net;
@@ -148,12 +147,15 @@ namespace ACUConsole.Dialogs
 
                 if (ProgressBar != null && PercentageLabel != null && totalSize > 0)
                 {
-                    float percentage = (float)status?.CurrentOffset / totalSize;
-                    ProgressBar.Fraction = percentage;
-                    PercentageLabel.Text = percentage.ToString("P");
+                    if (status?.CurrentOffset != null)
+                    {
+                        float percentage = (float)status.CurrentOffset / totalSize;
+                        ProgressBar.Fraction = percentage;
+                        PercentageLabel.Text = percentage.ToString("P");
+                    }
                 }
 
-                // Change Cancel button to Close when transfer is complete or failed
+                // Change the Cancel button to Close when the transfer is complete or failed
                 if (CancelButton != null && status != null)
                 {
                     if (status.Status != OSDP.Net.Model.ReplyData.FileTransferStatus.StatusDetail.OkToProceed &&
