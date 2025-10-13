@@ -27,7 +27,7 @@
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Terminal.Gui" Version="1.17.1" />
+      <PackageReference Include="Terminal.Gui" Version="1.19.0" />
     </ItemGroup>
 
     <ItemGroup>

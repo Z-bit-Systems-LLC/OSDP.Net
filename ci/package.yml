@@ -36,7 +36,7 @@ steps:
       packagesToPack: 'src/OSDP.Net/OSDP.Net.csproj'
 
   - task: DotNetCoreCLI@2
-    displayName: 'dotnet publish for osx-arm64'
+    displayName: 'ACUConsole dotnet publish for osx-arm64'
     inputs:
       command: 'publish'
       publishWebProjects: false
@@ -46,7 +46,7 @@ steps:
       modifyOutputPath: false
 
   - task: DotNetCoreCLI@2
-    displayName: 'dotnet publish for win-x64'
+    displayName: 'ACUConsole dotnet publish for win-x64'
     inputs:
       command: 'publish'
       publishWebProjects: false
@@ -56,7 +56,7 @@ steps:
       arguments: '-r win-x64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/TestConsole/win-x64'
 
   - task: DotNetCoreCLI@2
-    displayName: 'dotnet publish for linux-x64'
+    displayName: 'ACUConsole dotnet publish for linux-x64'
     inputs:
       command: 'publish'
       publishWebProjects: false
@@ -66,7 +66,7 @@ steps:
       arguments: '-r linux-x64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-x64'
 
   - task: DotNetCoreCLI@2
-    displayName: 'dotnet publish for linux-arm64'
+    displayName: 'ACUConsole dotnet publish for linux-arm64'
     inputs:
       command: 'publish'
       publishWebProjects: false
@@ -74,14 +74,6 @@ steps:
       modifyOutputPath: false
       projects: 'src/ACUConsole/ACUConsole.csproj'      
       arguments: '-r linux-arm64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-arm64'
-
-  - task: ArchiveFiles@2
-    inputs:
-      rootFolderOrFile: '$(Build.ArtifactStagingDirectory)/TestConsole'
-      includeRootFolder: false
-      archiveType: 'zip'
-      archiveFile: '$(Build.ArtifactStagingDirectory)/OSDPTestConsole.zip'
-      replaceExistingArchive: true
 
   - task: PublishPipelineArtifact@1
     inputs:

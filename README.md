@@ -11,7 +11,7 @@ Further information can be found at [SIA OSDP Homepage](https://www.securityindu
 
 OSDP.Net supports the following .NET implementations:
 - .NET Framework 4.6.2 and later
-- NET 5.0 and later
+- NET 6.0 and later
 
 ## Getting Started
 
@@ -166,11 +166,16 @@ It simply requires the installation a new NuGet package. The code needs to be up
 
 ## Test Console
 
-There is compiled version of the test console application for all the major platforms available for download. 
+There is a compiled version of the test console application for all the major platforms available for download. 
 It has all the required assemblies included to run as a self-contained executable. 
-The latest version of the package can be found at [https://www.z-bitco.com/downloads/OSDPTestConsole.zip](https://www.z-bitco.com/downloads/OSDPTestConsole.zip)
 
-NOTE: First determine the COM port identifier of the 485 bus connected to the computer. 
+- ACU Console
+  - [ARM64 Linux](https://www.dropbox.com/scl/fi/9io2ot3xi0w2213fx20hw/ACUConsole?rlkey=p1zaev2gsmhxsrddiveh9j20x&st=dnxuvdt8&dl=1)
+  - [x64 Linux](https://www.dropbox.com/scl/fi/fnpteprkr9rjmr1mm653f/ACUConsole?rlkey=c1txkn10ak0a71numayd8uel7&st=8tt2rg46&dl=1)
+  - [ARM64 macOS](https://www.dropbox.com/scl/fi/adks520hl6urybfr1ev85/ACUConsole?rlkey=ph2fiaq0352rdl1yhynqvbgq2&st=5zmrjd5t&dl=1)
+  - [x64 Windows](https://www.dropbox.com/scl/fi/uraj72ufisky91k1xdvtz/ACUConsole.exe?rlkey=f7xvnd34mx79xfthxgnpdzd4j&st=zvqh9p1o&dl=1) 
+
+NOTE: First, determine the COM port identifier of the 485 bus connected to the computer. 
 This will need to be entered when starting the connection. 
 Be sure to save configuration before exiting.
 

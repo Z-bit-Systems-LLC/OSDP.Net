@@ -13,7 +13,7 @@ namespace ACUConsole
     /// <summary>
     /// View class that handles all Terminal.Gui UI elements and interactions for ACU Console
     /// </summary>
-    public class ACUConsoleView : IACUConsoleView
+    public class ACUConsoleView
     {
         private readonly IACUConsolePresenter _presenter;
         
@@ -37,21 +37,7 @@ namespace ACUConsole
             _presenter.ErrorOccurred += OnErrorOccurred;
         }
 
-        public void Initialize()
-        {
-            Application.Init();
-            CreateMainWindow();
-            CreateMenuBar();
-            CreateScrollView();
-            Application.Top.Add(_menuBar, _window);
-        }
-
-        public void Run()
-        {
-            Application.Run();
-        }
-
-        private void CreateMainWindow()
+        public Window CreateMainWindow()
         {
             _window = new Window("OSDP.Net ACU Console")
             {
@@ -60,6 +46,17 @@ namespace ACUConsole
                 Width = Dim.Fill(),
                 Height = Dim.Fill() - 1
             };
+
+            CreateMenuBar();
+            CreateScrollView();
+
+            // Add MenuBar to Application.Top (like PDConsole does)
+            Application.Top.Add(_menuBar);
+
+            // Add ScrollView to the window
+            _window.Add(_scrollView);
+
+            return _window;
         }
 
         private void CreateMenuBar()
@@ -90,7 +87,7 @@ namespace ACUConsole
                     new MenuItem("Biometric Match", "", () => _ = SendBiometricMatchCommand()),
                     new MenuItem("_Device Capabilities", "", () => SendSimpleCommand("Device capabilities", _presenter.SendDeviceCapabilities)),
                     new MenuItem("Encryption Key Set", "", () => _ = SendEncryptionKeySetCommand()),
-                    new MenuItem("File Transfer", "", () => _ = SendFileTransferCommand()),
+                    new MenuItem("File Transfer", "", SendFileTransferCommand),
                     new MenuItem("_ID Report", "", () => SendSimpleCommand("ID report", _presenter.SendIdReport)),
                     new MenuItem("Input Status", "", () => SendSimpleCommand("Input status", _presenter.SendInputStatus)),
                     new MenuItem("_Local Status", "", () => SendSimpleCommand("Local Status", _presenter.SendLocalStatus)),
@@ -109,6 +106,7 @@ namespace ACUConsole
                 ])
             ]);
         }
+
 
         private void CreateScrollView()
         {
@@ -130,23 +128,32 @@ namespace ACUConsole
 
         private void Quit()
         {
-            var result = MessageBox.Query(60, 8, "Exit Application", 
-                "Do you want to save your configuration before exiting?", 
-                2, "Cancel", "Don't Save", "Save");
-
-            switch (result)
+            // Show save configuration dialog before exiting
+            try
             {
-                case 0: // Cancel
-                    // Do nothing, stay in application
-                    break;
-                case 1: // Don't Save
-                    Application.Shutdown();
-                    break;
-                case 2: // Save
+                var shouldSave = MessageBox.ErrorQuery("Exit Application",
+                    "Save configuration before exiting?",
+                    "Yes", "No");
+
+                if (shouldSave == 0) // Yes
+                {
                     _presenter.SaveConfiguration();
-                    Application.Shutdown();
-                    break;
+                }
             }
+            catch (Exception)
+            {
+                // If dialog fails, fall back to auto-save
+                try
+                {
+                    _presenter.SaveConfiguration();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Could not save configuration: {ex.Message}");
+                }
+            }
+
+            Application.RequestStop();
         }
 
         // Connection Methods - Using extracted dialog classes
@@ -586,7 +593,7 @@ namespace ACUConsole
             }
         }
 
-        private async Task SendFileTransferCommand()
+        private async void SendFileTransferCommand()
         {
             if (!_presenter.CanSendCommand())
             {
@@ -596,17 +603,51 @@ namespace ACUConsole
 
             var deviceList = _presenter.GetDeviceList();
             var input = FileTransferDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
-            
+
             if (!input.WasCancelled)
             {
+                var cancellationTokenSource = new CancellationTokenSource();
+
+                // Define the transfer function
+                async Task DoTransfer(FileTransferStatusDialogHandle statusDialogHandle)
+                {
+                    var result = await _presenter.SendFileTransfer(
+                        input.DeviceAddress,
+                        input.Type,
+                        input.FileData,
+                        input.MessageSize,
+                        status => statusDialogHandle?.UpdateProgress(status, input.FileData.Length),
+                        // ReSharper disable once AccessToDisposedClosure
+                        cancellationTokenSource.Token);
+
+                    // ReSharper disable once AccessToDisposedClosure
+                    if (!cancellationTokenSource.Token.IsCancellationRequested)
+                    {
+                        Application.MainLoop.Invoke(() =>
+                        {
+                            ShowInformation("File Transfer Complete", $"File transferred successfully in {result.FragmentCount} fragments.");
+                        });
+                    }
+                }
+
                 try
                 {
-                    var totalFragments = await _presenter.SendFileTransfer(input.DeviceAddress, input.Type, input.FileData, input.MessageSize);
-                    ShowInformation("File Transfer Complete", $"File transferred successfully in {totalFragments} fragments.");
+                    // Show the dialog and perform the transfer
+                    await FileTransferStatusDialog.Show(
+                        () => cancellationTokenSource.Cancel(),
+                        DoTransfer);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Transfer was cancelled - no need to show error
                 }
                 catch (Exception ex)
                 {
                     ShowError("Error", ex.Message);
+                }
+                finally
+                {
+                    cancellationTokenSource.Dispose();
                 }
             }
         }

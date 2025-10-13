@@ -567,11 +567,32 @@ namespace ACUConsole
                     TimeSpan.FromSeconds(30), CancellationToken.None));
         }
 
-        public async Task<int> SendFileTransfer(byte address, byte type, byte[] data, byte messageSize)
+        public async Task<FileTransferResult> SendFileTransfer(byte address, byte type, byte[] data, byte messageSize,
+            Action<ControlPanel.FileTransferStatus> progressCallback, CancellationToken cancellationToken)
         {
+            var fragmentCount = 0;
+
+            // Wrap the progress callback to count fragments
+            Action<ControlPanel.FileTransferStatus> wrappedCallback = status =>
+            {
+                if (status.CurrentOffset > 0)
+                {
+                    // Calculate fragment count based on message size
+                    fragmentCount = (status.CurrentOffset + messageSize - 1) / messageSize;
+                }
+                progressCallback?.Invoke(status);
+            };
+
             var result = await _controlPanel.FileTransfer(_connectionId, address, type, data, messageSize,
-                status => AddLogMessage($"File transfer status: {status?.Status.ToString()}"), CancellationToken.None);
-            return (int)result;
+                wrappedCallback, cancellationToken);
+
+            // Final fragment count calculation
+            if (data.Length > 0)
+            {
+                fragmentCount = (data.Length + messageSize - 1) / messageSize;
+            }
+
+            return new FileTransferResult { FragmentCount = fragmentCount, Status = result };
         }
 
         public async Task SendCustomCommand(byte address, CommandData commandData)
@@ -857,8 +878,36 @@ namespace ACUConsole
 
         public void Dispose()
         {
-            _controlPanel?.Shutdown().Wait();
-            _loggerFactory?.Dispose();
+            try
+            {
+                if (_controlPanel != null)
+                {
+                    var shutdownTask = _controlPanel.Shutdown();
+                    shutdownTask.Wait();
+                }
+                _loggerFactory?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during disposal: {ex.Message}");
+                // Don't re-throw to allow graceful shutdown
+            }
         }
+    }
+
+    /// <summary>
+    /// Result of a file transfer operation containing both fragment count and status
+    /// </summary>
+    public class FileTransferResult
+    {
+        /// <summary>
+        /// Number of fragments sent during the file transfer
+        /// </summary>
+        public int FragmentCount { get; set; }
+
+        /// <summary>
+        /// Final status returned from the device
+        /// </summary>
+        public OSDP.Net.Model.ReplyData.FileTransferStatus.StatusDetail Status { get; set; }
     }
 }
