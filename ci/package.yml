@@ -111,18 +111,3 @@ steps:
   - task: PublishPipelineArtifact@1
     inputs:
       targetPath: '$(Build.ArtifactStagingDirectory)'
-
-  - task: PowerShell@2
-    displayName: 'Create version tag'
-    inputs:
-      targetType: 'inline'
-      script: |
-        $packageVersion = "$(PackageVersion)"
-
-        # Create a tag for the release
-        git tag -a "v$packageVersion" -m "Release version $packageVersion"
-
-        # Push the tag to origin
-        git push origin "v$packageVersion"
-
-        Write-Host "Version $packageVersion tagged successfully"
