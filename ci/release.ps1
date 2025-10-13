@@ -3,12 +3,16 @@
 .SYNOPSIS
     Release script for OSDP.Net project
 .DESCRIPTION
-    This script automates the release process by merging develop into master and triggering CI/CD pipeline
+    This script automates the release process by incrementing version, creating a tag, and triggering CI/CD pipeline
+.PARAMETER IncrementType
+    Type of version increment: Patch (default), Minor, or Major
 .PARAMETER DryRun
     Perform a dry run without making actual changes
 #>
 
 param(
+    [ValidateSet("Patch", "Minor", "Major")]
+    [string]$IncrementType = "Patch",
     [switch]$DryRun = $false
 )
 
@@ -62,54 +66,64 @@ if ($status) {
 $currentBranch = git rev-parse --abbrev-ref HEAD
 Write-Info "Current branch: $currentBranch"
 
-# Ensure we're on develop branch
-if ($currentBranch -ne "develop") {
-    Write-Error "Error: You must be on the 'develop' branch to create a release."
+# Ensure we're on main branch
+if ($currentBranch -ne "main") {
+    Write-Error "Error: You must be on the 'main' branch to create a release."
     Write-Info "Current branch: $currentBranch"
-    Write-Info "Please checkout develop branch: git checkout develop"
+    Write-Info "Please checkout main branch: git checkout main"
     exit 1
 }
 
 # Fetch latest changes
 Write-Info "Fetching latest changes from remote..."
 if (-not $DryRun) {
-    git fetch origin
+    git fetch origin --tags
 }
 
-# Check if develop is ahead of master
-$developCommits = git rev-list --count origin/master..develop 2>$null
-if (-not $developCommits -or $developCommits -eq "0") {
-    Write-Warning "Warning: develop branch is not ahead of master. No changes to release."
-    $continue = Read-Host "Continue anyway? (y/N)"
-    if ($continue -ne "y" -and $continue -ne "Y") {
-        Write-Info "Release cancelled."
-        exit 0
+# Pull latest main
+Write-Info "Pulling latest changes from main..."
+if (-not $DryRun) {
+    $result = git pull origin main 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Error: Failed to pull latest main"
+        Write-Error $result
+        exit 1
     }
-} else {
-    Write-Success "Found $developCommits commit(s) to release"
 }
 
-# Show what will be released
-Write-Info ""
-Write-Info "Changes to be released:"
-Write-Info "======================="
-git log --oneline origin/master..develop
+# Get current version before increment
+$getVersionScript = Join-Path $PSScriptRoot ".." "scripts" "Get-Version.ps1"
+$buildPropsPath = Join-Path $PSScriptRoot ".." "Directory.Build.props"
+$currentVersion = & $getVersionScript -BuildPropsPath $buildPropsPath -Format Simple
+
+Write-Info "Current version: $currentVersion"
+
+# Show recent changes since last tag
+$lastTag = git describe --tags --abbrev=0 2>$null
+if ($lastTag) {
+    Write-Info ""
+    Write-Info "Changes since last release ($lastTag):"
+    Write-Info "======================================="
+    git log --oneline "$lastTag..HEAD"
+} else {
+    Write-Info ""
+    Write-Info "Recent changes:"
+    Write-Info "==============="
+    git log --oneline -10
+}
 
 Write-Info ""
 Write-Info "The release process will:"
-Write-Info "1. Increment patch version in develop"
-Write-Info "2. Commit version bump in develop"
-Write-Info "3. Push develop branch"
-Write-Info "4. Checkout master branch"
-Write-Info "5. Merge develop into master"
-Write-Info "6. Push master to trigger CI/CD pipeline"
-Write-Info "7. Return to develop branch"
+Write-Info "1. Increment $IncrementType version on main branch"
+Write-Info "2. Commit version bump"
+Write-Info "3. Create version tag"
+Write-Info "4. Push main branch and tag"
 Write-Info ""
 Write-Info "The CI pipeline will automatically:"
 Write-Info "- Run tests"
-Write-Info "- Create NuGet packages"
-Write-Info "- Create version tag"
-Write-Info "- Create GitHub release"
+Write-Info "- Build NuGet packages"
+Write-Info "- Build console applications for multiple platforms"
+Write-Info "- Publish artifacts"
 Write-Info ""
 
 if (-not $DryRun) {
@@ -123,13 +137,12 @@ if (-not $DryRun) {
 Write-Info ""
 Write-Info "Starting release process..."
 
-# Increment version in develop branch
-Write-Info "Incrementing patch version in develop branch..."
+# Increment version on main branch
+Write-Info "Incrementing $IncrementType version on main branch..."
 if (-not $DryRun) {
     $scriptPath = Join-Path $PSScriptRoot ".." "scripts" "Increment-Version.ps1"
-    $buildPropsPath = Join-Path $PSScriptRoot ".." "Directory.Build.props"
 
-    & $scriptPath -BuildPropsPath $buildPropsPath -IncrementType Patch
+    & $scriptPath -BuildPropsPath $buildPropsPath -IncrementType $IncrementType
 
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Error: Failed to increment version"
@@ -137,14 +150,13 @@ if (-not $DryRun) {
     }
 
     # Get the new version
-    $getVersionScript = Join-Path $PSScriptRoot ".." "scripts" "Get-Version.ps1"
     $newVersion = & $getVersionScript -BuildPropsPath $buildPropsPath -Format Simple
 
     Write-Success "Version incremented to: $newVersion"
 }
 
-# Commit version bump in develop
-Write-Info "Committing version bump in develop branch..."
+# Commit version bump
+Write-Info "Committing version bump..."
 if (-not $DryRun) {
     git add Directory.Build.props
     $result = git commit -m "Bump version to $newVersion" 2>&1
@@ -155,68 +167,34 @@ if (-not $DryRun) {
     }
 }
 
-# Push develop branch
-Write-Info "Pushing develop branch..."
+# Create version tag
+Write-Info "Creating version tag v$newVersion..."
 if (-not $DryRun) {
-    $result = git push origin develop 2>&1
+    $result = git tag -a "v$newVersion" -m "Release version $newVersion" 2>&1
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "Error: Failed to push develop branch"
+        Write-Error "Error: Failed to create tag"
         Write-Error $result
         exit 1
     }
 }
 
-# Checkout master branch
-Write-Info "Switching to master branch..."
+# Push main branch
+Write-Info "Pushing main branch..."
 if (-not $DryRun) {
-    $result = git checkout master 2>&1
+    $result = git push origin main 2>&1
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "Error: Failed to checkout master branch"
+        Write-Error "Error: Failed to push main branch"
         Write-Error $result
         exit 1
     }
 }
 
-# Pull latest master
-Write-Info "Pulling latest master..."
+# Push tag to trigger CI/CD pipeline
+Write-Info "Pushing tag to trigger CI/CD pipeline..."
 if (-not $DryRun) {
-    $result = git pull origin master 2>&1
+    $result = git push origin "v$newVersion" 2>&1
     if ($LASTEXITCODE -ne 0) {
-        Write-Error "Error: Failed to pull latest master"
-        Write-Error $result
-        exit 1
-    }
-}
-
-# Merge develop into master
-Write-Info "Merging develop into master..."
-if (-not $DryRun) {
-    $result = git merge develop --no-ff -m "Release: Merge develop into master" 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Error: Failed to merge develop into master"
-        Write-Error $result
-        Write-Info "You may need to resolve conflicts manually"
-        exit 1
-    }
-}
-
-# Push master
-Write-Info "Pushing master to trigger CI/CD pipeline..."
-if (-not $DryRun) {
-    $result = git push origin master 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Error: Failed to push master"
-        Write-Error $result
-        exit 1
-    }
-}
-
-# Return to develop branch
-Write-Info "Returning to develop branch..."
-if (-not $DryRun) {
-    $result = git checkout develop 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Error: Failed to return to develop branch"
+        Write-Error "Error: Failed to push tag"
         Write-Error $result
         exit 1
     }
@@ -229,14 +207,14 @@ if ($DryRun) {
 } else {
     Write-Success "Release process completed successfully!"
     Write-Info ""
-    Write-Info "Version $newVersion has been committed in develop and merged to master."
+    Write-Info "Version $newVersion has been committed and tagged on main branch."
     Write-Info ""
     Write-Info "The CI pipeline will automatically:"
     Write-Info "1. Run tests"
-    Write-Info "2. Create NuGet packages"
-    Write-Info "3. Create version tag v$newVersion"
-    Write-Info "4. Publish to NuGet (if configured)"
-    Write-Info "5. Create GitHub release"
+    Write-Info "2. Build NuGet packages"
+    Write-Info "3. Build console applications for multiple platforms"
+    Write-Info "4. Publish artifacts"
+    Write-Info "5. Publish to NuGet (if configured)"
     Write-Info ""
     Write-Info "Monitor the pipeline at: https://dev.azure.com/your-org/your-project/_build"
 }
