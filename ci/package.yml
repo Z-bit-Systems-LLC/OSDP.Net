@@ -65,8 +65,48 @@ steps:
       publishWebProjects: false
       zipAfterPublish: false
       modifyOutputPath: false
-      projects: 'src/ACUConsole/ACUConsole.csproj'      
+      projects: 'src/ACUConsole/ACUConsole.csproj'
       arguments: '-r linux-arm64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/TestConsole/linux-arm64'
+
+  - task: DotNetCoreCLI@2
+    displayName: 'PDConsole dotnet publish for osx-arm64'
+    inputs:
+      command: 'publish'
+      publishWebProjects: false
+      projects: 'src/PDConsole/PDConsole.csproj'
+      arguments: '-r osx-arm64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/PDConsole/osx-arm64'
+      zipAfterPublish: false
+      modifyOutputPath: false
+
+  - task: DotNetCoreCLI@2
+    displayName: 'PDConsole dotnet publish for win-x64'
+    inputs:
+      command: 'publish'
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: 'src/PDConsole/PDConsole.csproj'
+      arguments: '-r win-x64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/PDConsole/win-x64'
+
+  - task: DotNetCoreCLI@2
+    displayName: 'PDConsole dotnet publish for linux-x64'
+    inputs:
+      command: 'publish'
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: 'src/PDConsole/PDConsole.csproj'
+      arguments: '-r linux-x64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/PDConsole/linux-x64'
+
+  - task: DotNetCoreCLI@2
+    displayName: 'PDConsole dotnet publish for linux-arm64'
+    inputs:
+      command: 'publish'
+      publishWebProjects: false
+      zipAfterPublish: false
+      modifyOutputPath: false
+      projects: 'src/PDConsole/PDConsole.csproj'
+      arguments: '-r linux-arm64 --configuration $(BuildConfiguration) --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true --output $(Build.ArtifactStagingDirectory)/PDConsole/linux-arm64'
 
   - task: PublishPipelineArtifact@1
     inputs:
