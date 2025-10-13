@@ -11,7 +11,7 @@ Further information can be found at [SIA OSDP Homepage](https://www.securityindu
 
 OSDP.Net supports the following .NET implementations:
 - .NET Framework 4.6.2 and later
-- NET 5.0 and later
+- NET 6.0 and later
 
 ## Getting Started
 
@@ -175,7 +175,7 @@ It has all the required assemblies included to run as a self-contained executabl
   - [ARM64 macOS](https://www.dropbox.com/scl/fi/adks520hl6urybfr1ev85/ACUConsole?rlkey=ph2fiaq0352rdl1yhynqvbgq2&st=5zmrjd5t&dl=1)
   - [x64 Windows](https://www.dropbox.com/scl/fi/uraj72ufisky91k1xdvtz/ACUConsole.exe?rlkey=f7xvnd34mx79xfthxgnpdzd4j&st=zvqh9p1o&dl=1) 
 
-NOTE: First determine the COM port identifier of the 485 bus connected to the computer. 
+NOTE: First, determine the COM port identifier of the 485 bus connected to the computer. 
 This will need to be entered when starting the connection. 
 Be sure to save configuration before exiting.
 
