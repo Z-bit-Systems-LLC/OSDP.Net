@@ -97,15 +97,18 @@ git log --oneline origin/master..develop
 
 Write-Info ""
 Write-Info "The release process will:"
-Write-Info "1. Checkout master branch"
-Write-Info "2. Merge develop into master"
-Write-Info "3. Push master to trigger CI/CD pipeline"
-Write-Info "4. Return to develop branch"
+Write-Info "1. Increment patch version in develop"
+Write-Info "2. Commit version bump in develop"
+Write-Info "3. Push develop branch"
+Write-Info "4. Checkout master branch"
+Write-Info "5. Merge develop into master"
+Write-Info "6. Push master to trigger CI/CD pipeline"
+Write-Info "7. Return to develop branch"
 Write-Info ""
 Write-Info "The CI pipeline will automatically:"
-Write-Info "- Calculate version using GitVersion"
 Write-Info "- Run tests"
 Write-Info "- Create NuGet packages"
+Write-Info "- Create version tag"
 Write-Info "- Create GitHub release"
 Write-Info ""
 
@@ -119,6 +122,49 @@ if (-not $DryRun) {
 
 Write-Info ""
 Write-Info "Starting release process..."
+
+# Increment version in develop branch
+Write-Info "Incrementing patch version in develop branch..."
+if (-not $DryRun) {
+    $scriptPath = Join-Path $PSScriptRoot ".." "scripts" "Increment-Version.ps1"
+    $buildPropsPath = Join-Path $PSScriptRoot ".." "Directory.Build.props"
+
+    & $scriptPath -BuildPropsPath $buildPropsPath -IncrementType Patch
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Error: Failed to increment version"
+        exit 1
+    }
+
+    # Get the new version
+    $getVersionScript = Join-Path $PSScriptRoot ".." "scripts" "Get-Version.ps1"
+    $newVersion = & $getVersionScript -BuildPropsPath $buildPropsPath -Format Simple
+
+    Write-Success "Version incremented to: $newVersion"
+}
+
+# Commit version bump in develop
+Write-Info "Committing version bump in develop branch..."
+if (-not $DryRun) {
+    git add Directory.Build.props
+    $result = git commit -m "Bump version to $newVersion" 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Error: Failed to commit version bump"
+        Write-Error $result
+        exit 1
+    }
+}
+
+# Push develop branch
+Write-Info "Pushing develop branch..."
+if (-not $DryRun) {
+    $result = git push origin develop 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Error: Failed to push develop branch"
+        Write-Error $result
+        exit 1
+    }
+}
 
 # Checkout master branch
 Write-Info "Switching to master branch..."
@@ -183,10 +229,12 @@ if ($DryRun) {
 } else {
     Write-Success "Release process completed successfully!"
     Write-Info ""
+    Write-Info "Version $newVersion has been committed in develop and merged to master."
+    Write-Info ""
     Write-Info "The CI pipeline will automatically:"
     Write-Info "1. Run tests"
-    Write-Info "2. Calculate version using GitVersion"
-    Write-Info "3. Create NuGet packages"
+    Write-Info "2. Create NuGet packages"
+    Write-Info "3. Create version tag v$newVersion"
     Write-Info "4. Publish to NuGet (if configured)"
     Write-Info "5. Create GitHub release"
     Write-Info ""

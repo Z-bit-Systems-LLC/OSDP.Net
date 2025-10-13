@@ -6,7 +6,7 @@ steps:
       version: '8.x'
       
   - task: PowerShell@2
-    displayName: 'Increment patch version'
+    displayName: 'Get current version'
     inputs:
       targetType: 'inline'
       script: |
@@ -14,19 +14,12 @@ steps:
         git config --global user.email "byteme@bytedreamer.com"
         git config --global user.name "Azure DevOps Build Agent"
 
-        # Get current version for display
+        # Get current version
         $currentVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -BuildPropsPath "$(Build.SourcesDirectory)/Directory.Build.props" -Format Simple
-        Write-Host "Packaging completed successfully. Current version: $currentVersion"
-
-        # Increment patch version
-        & "$(Build.SourcesDirectory)/scripts/Increment-Version.ps1" -BuildPropsPath "$(Build.SourcesDirectory)/Directory.Build.props" -IncrementType Patch
-
-        # Get new version
-        $newVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -BuildPropsPath "$(Build.SourcesDirectory)/Directory.Build.props" -Format Simple
-        Write-Host "New version: $newVersion"
+        Write-Host "Packaging version: $currentVersion"
 
         # Set pipeline variable for later use
-        Write-Host "##vso[task.setvariable variable=NewVersion]$newVersion"
+        Write-Host "##vso[task.setvariable variable=PackageVersion]$currentVersion"
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet pack'
@@ -80,42 +73,16 @@ steps:
       targetPath: '$(Build.ArtifactStagingDirectory)'
 
   - task: PowerShell@2
-    displayName: 'Commit version update and create tag'
+    displayName: 'Create version tag'
     inputs:
       targetType: 'inline'
       script: |
-        $newVersion = "$(NewVersion)"
-
-        # Stage the Directory.Build.props file
-        git add Directory.Build.props
-
-        # Commit the version update
-        git commit -m "Bump version to $newVersion [skip ci]"
+        $packageVersion = "$(PackageVersion)"
 
         # Create a tag for the release
-        git tag -a "v$newVersion" -m "Release version $newVersion"
+        git tag -a "v$packageVersion" -m "Release version $packageVersion"
 
-        # Push the commit and tag to master
-        git push origin HEAD:master
-        git push origin "v$newVersion"
+        # Push the tag to origin
+        git push origin "v$packageVersion"
 
-        Write-Host "Version $newVersion committed and tagged successfully"
-
-  - task: PowerShell@2
-    displayName: 'Merge version update back to develop'
-    inputs:
-      targetType: 'inline'
-      script: |
-        $newVersion = "$(NewVersion)"
-
-        # Checkout develop branch
-        git fetch origin develop
-        git checkout develop
-
-        # Merge the version update from master
-        git merge origin/master --no-ff -m "Merge version bump $newVersion from master [skip ci]"
-
-        # Push the merge back to develop
-        git push origin develop
-
-        Write-Host "Version update $newVersion merged back to develop successfully"
+        Write-Host "Version $packageVersion tagged successfully"
