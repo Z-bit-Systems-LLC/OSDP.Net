@@ -11,11 +11,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OSDP.Net.Tests", "OSDP.Net.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PDConsole", "PDConsole\PDConsole.csproj", "{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Settings", "Settings", "{5CE38FA4-377F-4C0D-A680-9CEA9A7CDBEE}"
-	ProjectSection(SolutionItems) = preProject
-		..\azure-pipelines.yml = ..\azure-pipelines.yml
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{B304A16C-CA32-4692-9AED-D8886CC9184C}"
 	ProjectSection(SolutionItems) = preProject
 		..\CODE_OF_CONDUCT.md = ..\CODE_OF_CONDUCT.md
@@ -34,10 +29,19 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ci", "ci", "{B139D674-6612-
 	ProjectSection(SolutionItems) = preProject
 		..\ci\build.yml = ..\ci\build.yml
 		..\ci\package.yml = ..\ci\package.yml
-		..\azure-pipelines.yml = ..\azure-pipelines.yml
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimplePDDevice", "samples\SimplePDDevice\SimplePDDevice.csproj", "{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{9C496298-4302-4CF5-BED0-E2E508E58382}"
+	ProjectSection(SolutionItems) = preProject
+		..\scripts\api-diff-check.ps1 = ..\scripts\api-diff-check.ps1
+		..\scripts\generate-api-baseline.ps1 = ..\scripts\generate-api-baseline.ps1
+		..\scripts\Get-Version.ps1 = ..\scripts\Get-Version.ps1
+		..\scripts\Increment-Version.ps1 = ..\scripts\Increment-Version.ps1
+		..\scripts\Set-Version.ps1 = ..\scripts\Set-Version.ps1
+		..\scripts\validate-api.ps1 = ..\scripts\validate-api.ps1
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
