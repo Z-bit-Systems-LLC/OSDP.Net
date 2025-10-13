@@ -4,8 +4,12 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
 
 trigger:
-- master
-- develop
+  branches:
+    include:
+    - main
+  tags:
+    include:
+    - v*
 
 pool:
   vmImage: 'windows-latest'
@@ -24,7 +28,7 @@ jobs:
       - template: ci/build.yml
         
   - job: package
-    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
     pool:
       vmImage: 'windows-latest'
     dependsOn:
