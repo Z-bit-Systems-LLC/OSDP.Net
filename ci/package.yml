@@ -111,3 +111,18 @@ steps:
   - task: PublishPipelineArtifact@1
     inputs:
       targetPath: '$(Build.ArtifactStagingDirectory)'
+
+  - task: PowerShell@2
+    displayName: 'Tag build if Git tag'
+    inputs:
+      targetType: 'inline'
+      script: |
+        $sourceBranch = "$(Build.SourceBranch)"
+        Write-Host "Source branch: $sourceBranch"
+
+        if ($sourceBranch -like "refs/tags/*") {
+          Write-Host "Build triggered by Git tag - adding 'release' build tag"
+          Write-Host "##vso[build.addbuildtag]release"
+        } else {
+          Write-Host "Build not triggered by Git tag - skipping build tag"
+        }
