@@ -619,6 +619,7 @@ namespace OSDP.Net
         {
             int totalSize = fileData.Length;
             int offset = 0;
+            bool isFirstMessage = true;
 
             // Keep going until
             // * operation's cancelled
@@ -631,11 +632,18 @@ namespace OSDP.Net
                 // Get the fragment size if it doesn't exceed the total size
                 var nextFragmentSize = (ushort)Math.Min(fragmentSize, totalSize - offset);
 
-                var reply = await SendCommand(connectionId, address, 
+                var reply = await SendCommand(connectionId, address,
             new FileTransferFragment(fileType, totalSize, offset, nextFragmentSize,
                             fileData.Skip(offset).Take(nextFragmentSize).ToArray()),
                         cancellationToken, throwOnNak: false)
                     .ConfigureAwait(false);
+
+                // On the first message, calculate the proper fragment size based on whether encryption is being used
+                if (isFirstMessage)
+                {
+                    isFirstMessage = false;
+                    fragmentSize = Message.CalculateMaximumMessageSize(fragmentSize, reply.IsSecureMessage);
+                }
 
                 // Update offset
                 offset += nextFragmentSize;
