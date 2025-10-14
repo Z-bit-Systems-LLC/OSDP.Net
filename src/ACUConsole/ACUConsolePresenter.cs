@@ -39,6 +39,7 @@ namespace ACUConsole
         private Settings _settings;
         private string _lastConfigFilePath;
         private string _lastOsdpConfigFilePath;
+        private string _currentConfigFilePath;
 
         // Events
         public event EventHandler<ACUEvent> MessageReceived;
@@ -49,7 +50,7 @@ namespace ACUConsole
         // Properties
         public bool IsConnected => _connectionId != Guid.Empty;
         public Guid ConnectionId => _connectionId;
-        public IReadOnlyList<ACUEvent> MessageHistory 
+        public IReadOnlyList<ACUEvent> MessageHistory
         {
             get
             {
@@ -60,6 +61,7 @@ namespace ACUConsole
             }
         }
         public Settings Settings => _settings;
+        public string CurrentConfigFilePath => _currentConfigFilePath;
 
         public ACUConsolePresenter()
         {
@@ -209,16 +211,19 @@ namespace ACUConsole
                 {
                     string json = File.ReadAllText(configPath);
                     _settings = JsonSerializer.Deserialize<Settings>(json) ?? GetDefaultSettings();
+                    _currentConfigFilePath = configPath;
                 }
                 else
                 {
                     // Use default settings for single-file deployment or missing config
                     _settings = GetDefaultSettings();
+                    _currentConfigFilePath = configPath;
                 }
             }
             catch
             {
                 _settings = GetDefaultSettings();
+                _currentConfigFilePath = Path.Combine(GetBaseDirectory(), "appsettings.config");
             }
         }
 
@@ -610,11 +615,22 @@ namespace ACUConsole
 
         public void SaveConfiguration()
         {
+            SaveConfiguration(_currentConfigFilePath ?? _lastConfigFilePath);
+        }
+
+        public void SaveConfiguration(string filePath)
+        {
             try
             {
+                if (string.IsNullOrWhiteSpace(filePath))
+                {
+                    throw new ArgumentException("File path cannot be empty", nameof(filePath));
+                }
+
                 var json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(_lastConfigFilePath, json);
-                AddLogMessage("Configuration saved successfully");
+                File.WriteAllText(filePath, json);
+                _currentConfigFilePath = filePath;
+                AddLogMessage($"Configuration saved successfully to {Path.GetFileName(filePath)}");
             }
             catch (Exception ex)
             {
@@ -624,10 +640,27 @@ namespace ACUConsole
 
         public void LoadConfiguration()
         {
+            LoadConfiguration(_lastConfigFilePath);
+        }
+
+        public void LoadConfiguration(string filePath)
+        {
             try
             {
-                LoadSettings();
-                AddLogMessage("Configuration loaded successfully");
+                if (string.IsNullOrWhiteSpace(filePath))
+                {
+                    throw new ArgumentException("File path cannot be empty", nameof(filePath));
+                }
+
+                if (!File.Exists(filePath))
+                {
+                    throw new FileNotFoundException($"Configuration file not found: {filePath}");
+                }
+
+                string json = File.ReadAllText(filePath);
+                _settings = JsonSerializer.Deserialize<Settings>(json) ?? GetDefaultSettings();
+                _currentConfigFilePath = filePath;
+                AddLogMessage($"Configuration loaded successfully from {Path.GetFileName(filePath)}");
             }
             catch (Exception ex)
             {

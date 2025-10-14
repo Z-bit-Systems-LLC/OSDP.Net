@@ -24,6 +24,7 @@ namespace ACUConsole
         Guid ConnectionId { get; }
         IReadOnlyList<ACUEvent> MessageHistory { get; }
         Settings Settings { get; }
+        string CurrentConfigFilePath { get; }
 
         // Connection Methods
         Task StartSerialConnection(string portName, int baudRate, int replyTimeout);
@@ -61,7 +62,9 @@ namespace ACUConsole
         // Configuration Methods
         void UpdateConnectionSettings(int pollingInterval, bool isTracing);
         void SaveConfiguration();
+        void SaveConfiguration(string filePath);
         void LoadConfiguration();
+        void LoadConfiguration(string filePath);
         void ParseOSDPCapFile(string filePath, byte? filterAddress, bool ignorePollsAndAcks, byte[] key);
 
         // Utility Methods

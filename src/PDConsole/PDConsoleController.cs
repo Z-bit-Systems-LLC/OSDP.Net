@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
 using System.Threading;
 using OSDP.Net;
 using OSDP.Net.Connections;
@@ -12,12 +14,13 @@ namespace PDConsole
     /// </summary>
     public class PDConsoleController(Settings settings) : IPDConsoleController
     {
-        private readonly Settings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        private Settings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         private readonly List<CommandEvent> _commandHistory = new();
-        
+
         private PDDevice _device;
         private IOsdpConnectionListener _connectionListener;
         private CancellationTokenSource _cancellationTokenSource;
+        private string _currentSettingsFilePath;
 
         // Events
         public event EventHandler<CommandEvent> CommandReceived;
@@ -29,6 +32,7 @@ namespace PDConsole
         public bool IsDeviceRunning => _device != null && _connectionListener != null;
         public IReadOnlyList<CommandEvent> CommandHistory => _commandHistory.AsReadOnly();
         public Settings Settings => _settings;
+        public string CurrentSettingsFilePath => _currentSettingsFilePath;
 
         // Device Control Methods
         public void StartDevice()
@@ -139,6 +143,72 @@ namespace PDConsole
         public string GetDeviceStatusText()
         {
             return $"Address: {_settings.Device.Address} | Security: {(_settings.Security.RequireSecureChannel ? "Enabled" : "Disabled")}";
+        }
+
+        // Settings Management Methods
+        public void LoadSettings(string filePath)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(filePath))
+                {
+                    throw new ArgumentException("File path cannot be empty", nameof(filePath));
+                }
+
+                if (!File.Exists(filePath))
+                {
+                    throw new FileNotFoundException($"Settings file not found: {filePath}");
+                }
+
+                if (IsDeviceRunning)
+                {
+                    throw new InvalidOperationException("Cannot load settings while device is running. Stop the device first.");
+                }
+
+                var json = File.ReadAllText(filePath);
+                _settings = JsonSerializer.Deserialize<Settings>(json, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                }) ?? new Settings();
+
+                _currentSettingsFilePath = filePath;
+                StatusChanged?.Invoke(this, $"Settings loaded from {Path.GetFileName(filePath)}");
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke(this, ex);
+                throw;
+            }
+        }
+
+        public void SaveSettings(string filePath)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(filePath))
+                {
+                    throw new ArgumentException("File path cannot be empty", nameof(filePath));
+                }
+
+                var json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+
+                File.WriteAllText(filePath, json);
+                _currentSettingsFilePath = filePath;
+                StatusChanged?.Invoke(this, $"Settings saved to {Path.GetFileName(filePath)}");
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke(this, ex);
+                throw;
+            }
+        }
+
+        public void SetCurrentSettingsFilePath(string filePath)
+        {
+            _currentSettingsFilePath = filePath;
         }
 
         // Private Methods

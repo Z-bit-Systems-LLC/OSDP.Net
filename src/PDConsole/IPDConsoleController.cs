@@ -19,6 +19,7 @@ namespace PDConsole
         bool IsDeviceRunning { get; }
         IReadOnlyList<CommandEvent> CommandHistory { get; }
         Settings Settings { get; }
+        string CurrentSettingsFilePath { get; }
 
         // Methods
         void StartDevice();
@@ -27,5 +28,10 @@ namespace PDConsole
         void SimulateKeypadEntry(string keys);
         void ClearHistory();
         string GetDeviceStatusText();
+
+        // Settings Methods
+        void LoadSettings(string filePath);
+        void SaveSettings(string filePath);
+        void SetCurrentSettingsFilePath(string filePath);
     }
 }

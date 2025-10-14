@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using Terminal.Gui;
 
@@ -69,7 +70,9 @@ namespace PDConsole
         {
             return new MenuBar([
                 new MenuBarItem("_File", [
-                    new MenuItem("_Settings", "", ShowSettingsDialog),
+                    new MenuItem("_Load Settings", "", LoadSettingsDialog),
+                    new MenuItem("_Save Settings", "", SaveSettingsDialog),
+                    null, // Separator
                     new MenuItem("_Quit", "", () => Application.RequestStop())
                 ]),
                 new MenuBarItem("_Device", [
@@ -290,9 +293,69 @@ namespace PDConsole
             Application.Run(dialog);
         }
 
-        private void ShowSettingsDialog()
+        private void LoadSettingsDialog()
         {
-            MessageBox.Query("Settings", "Settings dialog not yet implemented.\nEdit appsettings.json manually.", "OK");
+            if (_controller.IsDeviceRunning)
+            {
+                MessageBox.ErrorQuery("Error", "Cannot load settings while device is running.\nStop the device first.", "OK");
+                return;
+            }
+
+            var openDialog = new OpenDialog("Load Settings", string.Empty, [".json"]);
+            Application.Run(openDialog);
+
+            if (!openDialog.Canceled && !string.IsNullOrEmpty(openDialog.FilePath?.ToString()))
+            {
+                var filePath = openDialog.FilePath.ToString();
+
+                if (File.Exists(filePath))
+                {
+                    try
+                    {
+                        _controller.LoadSettings(filePath);
+
+                        // Update status label with new settings
+                        if (_statusLabel != null)
+                            _statusLabel.Text = _controller.GetDeviceStatusText();
+
+                        MessageBox.Query(40, 6, "Load Settings",
+                            $"Settings loaded successfully from:\n{Path.GetFileName(filePath)}", "OK");
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.ErrorQuery(40, 8, "Error", ex.Message, "OK");
+                    }
+                }
+                else
+                {
+                    MessageBox.ErrorQuery(40, 8, "Error", "Selected file does not exist", "OK");
+                }
+            }
+        }
+
+        private void SaveSettingsDialog()
+        {
+            var saveDialog = new SaveDialog("Save Settings", string.Empty, [".json"])
+            {
+                FilePath = _controller.CurrentSettingsFilePath ?? "appsettings.json"
+            };
+            Application.Run(saveDialog);
+
+            if (!saveDialog.Canceled && !string.IsNullOrEmpty(saveDialog.FilePath?.ToString()))
+            {
+                var filePath = saveDialog.FilePath.ToString();
+
+                try
+                {
+                    _controller.SaveSettings(filePath);
+                    MessageBox.Query(40, 6, "Save Settings",
+                        $"Settings saved successfully to:\n{Path.GetFileName(filePath)}", "OK");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.ErrorQuery(40, 8, "Error", ex.Message, "OK");
+                }
+            }
         }
 
         // Controller Event Handlers

@@ -19,10 +19,11 @@ namespace PDConsole
             try
             {
                 // Load settings
-                var settings = LoadSettings();
-                
+                var (settings, settingsFilePath) = LoadSettings();
+
                 // Create controller (ViewModel)
                 _controller = new PDConsoleController(settings);
+                _controller.SetCurrentSettingsFilePath(settingsFilePath);
                 
                 // Initialize Terminal.Gui
                 Application.Init();
@@ -47,35 +48,36 @@ namespace PDConsole
             }
         }
 
-        private static Settings LoadSettings()
+        private static (Settings, string) LoadSettings()
         {
             const string settingsFile = "appsettings.json";
-            
+
             if (File.Exists(settingsFile))
             {
                 try
                 {
                     var json = File.ReadAllText(settingsFile);
-                    return JsonSerializer.Deserialize<Settings>(json, new JsonSerializerOptions
+                    var settings = JsonSerializer.Deserialize<Settings>(json, new JsonSerializerOptions
                     {
                         PropertyNameCaseInsensitive = true
-                    });
+                    }) ?? new Settings();
+                    return (settings, Path.GetFullPath(settingsFile));
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Fatal error: {ex.Message}");
-                    return new Settings();
+                    Console.WriteLine($"Error loading settings: {ex.Message}");
+                    return (new Settings(), Path.GetFullPath(settingsFile));
                 }
             }
             else
             {
                 var defaultSettings = new Settings();
-                SaveSettings(defaultSettings);
-                return defaultSettings;
+                SaveSettings(defaultSettings, settingsFile);
+                return (defaultSettings, Path.GetFullPath(settingsFile));
             }
         }
 
-        private static void SaveSettings(Settings settings)
+        private static void SaveSettings(Settings settings, string filePath)
         {
             try
             {
@@ -83,11 +85,11 @@ namespace PDConsole
                 {
                     WriteIndented = true
                 });
-                File.WriteAllText("appsettings.json", json);
+                File.WriteAllText(filePath, json);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Fatal error: {ex.Message}");
+                Console.WriteLine($"Error saving settings: {ex.Message}");
             }
         }
 

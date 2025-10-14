@@ -67,7 +67,7 @@ namespace ACUConsole
                     new MenuItem("_Connection Settings", "", UpdateConnectionSettings),
                     new MenuItem("_Parse OSDP Cap File", "", ParseOSDPCapFile),
                     new MenuItem("_Load Configuration", "", LoadConfigurationSettings),
-                    new MenuItem("_Save Configuration", "", () => _presenter.SaveConfiguration()),
+                    new MenuItem("_Save Configuration", "", SaveConfigurationSettings),
                     new MenuItem("_Quit", "", Quit)
                 ]),
                 new MenuBarItem("Co_nnections", [
@@ -137,7 +137,15 @@ namespace ACUConsole
 
                 if (shouldSave == 0) // Yes
                 {
-                    _presenter.SaveConfiguration();
+                    // If a config file path exists, save to it, otherwise show save dialog
+                    if (!string.IsNullOrEmpty(_presenter.CurrentConfigFilePath))
+                    {
+                        _presenter.SaveConfiguration();
+                    }
+                    else
+                    {
+                        SaveConfigurationSettings();
+                    }
                 }
             }
             catch (Exception)
@@ -240,12 +248,47 @@ namespace ACUConsole
             var openDialog = new OpenDialog("Load Configuration", string.Empty, [".config"]);
             Application.Run(openDialog);
 
-            if (!openDialog.Canceled && File.Exists(openDialog.FilePath?.ToString()))
+            if (!openDialog.Canceled && !string.IsNullOrEmpty(openDialog.FilePath?.ToString()))
             {
+                var filePath = openDialog.FilePath.ToString();
+
+                if (File.Exists(filePath))
+                {
+                    try
+                    {
+                        _presenter.LoadConfiguration(filePath);
+                        MessageBox.Query(40, 6, "Load Configuration",
+                            $"Configuration loaded successfully from:\n{Path.GetFileName(filePath)}", "OK");
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.ErrorQuery(40, 8, "Error", ex.Message, "OK");
+                    }
+                }
+                else
+                {
+                    MessageBox.ErrorQuery(40, 8, "Error", "Selected file does not exist", "OK");
+                }
+            }
+        }
+
+        private void SaveConfigurationSettings()
+        {
+            var saveDialog = new SaveDialog("Save Configuration", string.Empty, [".config"])
+            {
+                FilePath = _presenter.CurrentConfigFilePath ?? "appsettings.config"
+            };
+            Application.Run(saveDialog);
+
+            if (!saveDialog.Canceled && !string.IsNullOrEmpty(saveDialog.FilePath?.ToString()))
+            {
+                var filePath = saveDialog.FilePath.ToString();
+
                 try
                 {
-                    _presenter.LoadConfiguration();
-                    MessageBox.Query(40, 6, "Load Configuration", "Load completed successfully", "OK");
+                    _presenter.SaveConfiguration(filePath);
+                    MessageBox.Query(40, 6, "Save Configuration",
+                        $"Configuration saved successfully to:\n{Path.GetFileName(filePath)}", "OK");
                 }
                 catch (Exception ex)
                 {
