@@ -8,12 +8,15 @@
     Type of version increment: Patch (default), Minor, or Major
 .PARAMETER DryRun
     Perform a dry run without making actual changes
+.PARAMETER AutoConfirm
+    Skip confirmation prompt and proceed automatically
 #>
 
 param(
     [ValidateSet("Patch", "Minor", "Major")]
     [string]$IncrementType = "Patch",
-    [switch]$DryRun = $false
+    [switch]$DryRun = $false,
+    [switch]$AutoConfirm = $false
 )
 
 # Color functions for better output
@@ -127,10 +130,14 @@ Write-Info "- Publish artifacts"
 Write-Info ""
 
 if (-not $DryRun) {
-    $confirm = Read-Host "Proceed with release? (y/N)"
-    if ($confirm -ne "y" -and $confirm -ne "Y") {
-        Write-Info "Release cancelled."
-        exit 0
+    if (-not $AutoConfirm) {
+        $confirm = Read-Host "Proceed with release? (y/N)"
+        if ($confirm -ne "y" -and $confirm -ne "Y") {
+            Write-Info "Release cancelled."
+            exit 0
+        }
+    } else {
+        Write-Info "Auto-confirm enabled: Proceeding with release automatically..."
     }
 }
 
