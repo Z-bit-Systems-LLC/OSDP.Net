@@ -10,7 +10,7 @@ namespace PDConsole
     /// </summary>
     public class PDConsoleView
     {
-        private readonly IPDConsoleController _controller;
+        private readonly IPDConsolePresenter _controller;
         
         // UI Controls
         private Window _mainWindow;
@@ -22,7 +22,7 @@ namespace PDConsole
         private Button _sendCardButton;
         private Button _sendKeypadButton;
 
-        public PDConsoleView(IPDConsoleController controller)
+        public PDConsoleView(IPDConsolePresenter controller)
         {
             _controller = controller ?? throw new ArgumentNullException(nameof(controller));
             

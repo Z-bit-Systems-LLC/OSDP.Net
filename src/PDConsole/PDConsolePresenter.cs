@@ -10,9 +10,9 @@ using PDConsole.Configuration;
 namespace PDConsole
 {
     /// <summary>
-    /// Controller class that manages the PDConsole business logic and device interactions
+    /// Presenter class that manages the PDConsole business logic and device interactions
     /// </summary>
-    public class PDConsoleController(Settings settings) : IPDConsoleController
+    public class PDConsolePresenter(Settings settings) : IPDConsolePresenter
     {
         private Settings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         private readonly List<CommandEvent> _commandHistory = new();

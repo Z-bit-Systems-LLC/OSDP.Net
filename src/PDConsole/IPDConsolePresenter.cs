@@ -5,9 +5,9 @@ using PDConsole.Configuration;
 namespace PDConsole
 {
     /// <summary>
-    /// Interface for PDConsole controller to enable testing and alternative implementations
+    /// Interface for PDConsole presenter to enable testing and alternative implementations
     /// </summary>
-    public interface IPDConsoleController : IDisposable
+    public interface IPDConsolePresenter : IDisposable
     {
         // Events
         event EventHandler<CommandEvent> CommandReceived;

@@ -11,7 +11,7 @@ namespace PDConsole
     /// </summary>
     class Program
     {
-        private static PDConsoleController _controller;
+        private static PDConsolePresenter _presenter;
         private static PDConsoleView _view;
 
         static void Main()
@@ -22,14 +22,14 @@ namespace PDConsole
                 var (settings, settingsFilePath) = LoadSettings();
 
                 // Create controller (ViewModel)
-                _controller = new PDConsoleController(settings);
-                _controller.SetCurrentSettingsFilePath(settingsFilePath);
+                _presenter = new PDConsolePresenter(settings);
+                _presenter.SetCurrentSettingsFilePath(settingsFilePath);
                 
                 // Initialize Terminal.Gui
                 Application.Init();
                 
                 // Create view
-                _view = new PDConsoleView(_controller);
+                _view = new PDConsoleView(_presenter);
                 
                 // Create and add a main window
                 var mainWindow = _view.CreateMainWindow();
@@ -97,7 +97,7 @@ namespace PDConsole
         {
             try
             {
-                _controller?.Dispose();
+                _presenter?.Dispose();
                 Application.Shutdown();
             }
             catch (Exception ex)
