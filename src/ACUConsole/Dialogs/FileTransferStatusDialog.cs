@@ -54,7 +54,7 @@ namespace ACUConsole.Dialogs
                 {
                     await transferFunc(handle);
 
-                    // Transfer completed successfully
+                    // Transfer completed successfully - change Cancel to Close button but don't auto-close
                     Application.MainLoop.Invoke(() =>
                     {
                         if (handle.CancelButton != null)
@@ -62,7 +62,6 @@ namespace ACUConsole.Dialogs
                             handle.CancelButton.Text = "Close";
                         }
                         completionSource.TrySetResult(true);
-                        Application.RequestStop(dialog);
                     });
                 }
                 catch (OperationCanceledException)
@@ -76,7 +75,7 @@ namespace ACUConsole.Dialogs
                 }
                 catch (Exception ex)
                 {
-                    // Transfer failed
+                    // Transfer failed - change Cancel to Close button but don't auto-close
                     Application.MainLoop.Invoke(() =>
                     {
                         if (handle.CancelButton != null)
@@ -84,7 +83,6 @@ namespace ACUConsole.Dialogs
                             handle.CancelButton.Text = "Close";
                         }
                         completionSource.TrySetException(ex);
-                        Application.RequestStop(dialog);
                     });
                 }
             });
