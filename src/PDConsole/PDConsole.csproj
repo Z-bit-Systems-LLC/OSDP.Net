@@ -6,7 +6,8 @@
         <LangVersion>default</LangVersion>
         <AssemblyName>PDConsole</AssemblyName>
         <RootNamespace>PDConsole</RootNamespace>
-        <AssemblyVersion>$(VersionPrefix.Substring(0,3)).0.0</AssemblyVersion>
+        <AssemblyVersion>$(VersionPrefix)</AssemblyVersion>
+        <FileVersion>$(VersionPrefix)</FileVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">

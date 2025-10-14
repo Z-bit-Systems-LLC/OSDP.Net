@@ -87,7 +87,7 @@ namespace ACUConsole
                     new MenuItem("Biometric Match", "", () => _ = SendBiometricMatchCommand()),
                     new MenuItem("_Device Capabilities", "", () => SendSimpleCommand("Device capabilities", _presenter.SendDeviceCapabilities)),
                     new MenuItem("Encryption Key Set", "", () => _ = SendEncryptionKeySetCommand()),
-                    new MenuItem("File Transfer", "", SendFileTransferCommand),
+                    new MenuItem("File Transfer", "", () => _ = SendFileTransferCommand()),
                     new MenuItem("_ID Report", "", () => SendSimpleCommand("ID report", _presenter.SendIdReport)),
                     new MenuItem("Input Status", "", () => SendSimpleCommand("Input status", _presenter.SendInputStatus)),
                     new MenuItem("_Local Status", "", () => SendSimpleCommand("Local Status", _presenter.SendLocalStatus)),
@@ -120,7 +120,7 @@ namespace ACUConsole
         }
 
         // System Menu Actions
-        private void ShowAbout()
+        private static void ShowAbout()
         {
             var version = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version;
             MessageBox.Query(40, 6, "About", $"OSDP.Net ACU Console\nVersion: {version}", 0, "OK");
@@ -128,7 +128,7 @@ namespace ACUConsole
 
         private void Quit()
         {
-            // Show save configuration dialog before exiting
+            // Show save the configuration dialog before exiting
             try
             {
                 var shouldSave = MessageBox.ErrorQuery("Exit Application",
@@ -593,7 +593,7 @@ namespace ACUConsole
             }
         }
 
-        private async void SendFileTransferCommand()
+        private async Task SendFileTransferCommand()
         {
             if (!_presenter.CanSendCommand())
             {

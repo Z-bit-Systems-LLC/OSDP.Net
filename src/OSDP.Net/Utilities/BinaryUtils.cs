@@ -8,7 +8,7 @@ namespace OSDP.Net.Utilities;
 
 /// <summary>
 /// Helper routines for manipulating binary representations of data that are used
-/// within OSDP.NET library and its unit tests
+/// within the OSDP.NET library and its unit tests
 /// </summary>
 public static class BinaryUtils
 {
@@ -59,7 +59,7 @@ public static class BinaryUtils
     }
 
     /// <summary>
-    /// Convert BitArray instance to a binary string representation
+    /// Convert the BitArray instance to a binary string representation
     /// </summary>
     /// <param name="arr">BitArray to be converted</param>
     /// <returns>A string consisting almost entirely of 0s and 1s</returns>
