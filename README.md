@@ -1,6 +1,6 @@
 # OSDP.Net
 
-[![Build Status](https://dev.azure.com/jonathanhorvath/OSDP.Net/_apis/build/status/bytedreamer.OSDP.Net?branchName=develop)](https://dev.azure.com/jonathanhorvath/OSDP.Net/_build/latest?definitionId=1&branchName=develop)
+[![Build Status](https://dev.azure.com/Z-bitSystems/OSDP.Net/_apis/build/status%2FZ-bit-Systems-LLC.OSDP.Net?branchName=main)](https://dev.azure.com/Z-bitSystems/OSDP.Net/_build/latest?definitionId=5&branchName=main)
 [![NuGet](https://img.shields.io/nuget/v/OSDP.Net.svg?style=flat)](https://www.nuget.org/packages/OSDP.Net/)
 
 OSDP.Net is a .NET implementation of the Open Supervised Device Protocol (OSDP). 
