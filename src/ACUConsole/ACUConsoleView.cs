@@ -245,50 +245,34 @@ namespace ACUConsole
 
         private void LoadConfigurationSettings()
         {
-            var openDialog = new OpenDialog("Load Configuration", string.Empty, [".config"]);
-            Application.Run(openDialog);
+            var input = LoadConfigurationDialog.Show();
 
-            if (!openDialog.Canceled && !string.IsNullOrEmpty(openDialog.FilePath?.ToString()))
+            if (!input.WasCancelled)
             {
-                var filePath = openDialog.FilePath.ToString();
-
-                if (File.Exists(filePath))
+                try
                 {
-                    try
-                    {
-                        _presenter.LoadConfiguration(filePath);
-                        MessageBox.Query(40, 6, "Load Configuration",
-                            $"Configuration loaded successfully from:\n{Path.GetFileName(filePath)}", "OK");
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.ErrorQuery(40, 8, "Error", ex.Message, "OK");
-                    }
+                    _presenter.LoadConfiguration(input.FilePath);
+                    MessageBox.Query(40, 6, "Load Configuration",
+                        $"Configuration loaded successfully from:\n{Path.GetFileName(input.FilePath)}", "OK");
                 }
-                else
+                catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(40, 8, "Error", "Selected file does not exist", "OK");
+                    MessageBox.ErrorQuery(40, 8, "Error", ex.Message, "OK");
                 }
             }
         }
 
         private void SaveConfigurationSettings()
         {
-            var saveDialog = new SaveDialog("Save Configuration", string.Empty, [".config"])
-            {
-                FilePath = _presenter.CurrentConfigFilePath ?? "appsettings.config"
-            };
-            Application.Run(saveDialog);
+            var input = SaveConfigurationDialog.Show(_presenter.CurrentConfigFilePath);
 
-            if (!saveDialog.Canceled && !string.IsNullOrEmpty(saveDialog.FilePath?.ToString()))
+            if (!input.WasCancelled)
             {
-                var filePath = saveDialog.FilePath.ToString();
-
                 try
                 {
-                    _presenter.SaveConfiguration(filePath);
+                    _presenter.SaveConfiguration(input.FilePath);
                     MessageBox.Query(40, 6, "Save Configuration",
-                        $"Configuration saved successfully to:\n{Path.GetFileName(filePath)}", "OK");
+                        $"Configuration saved successfully to:\n{Path.GetFileName(input.FilePath)}", "OK");
                 }
                 catch (Exception ex)
                 {
