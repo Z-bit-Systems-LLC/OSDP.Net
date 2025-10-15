@@ -1,46 +1,46 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34408.163
 MinimumVisualStudioVersion = 15.0.26124.0
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OSDP.Net", "OSDP.Net\OSDP.Net.csproj", "{50AC5FD2-8C50-48E4-AC4E-4A275D0A879E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OSDP.Net", "src\OSDP.Net\OSDP.Net.csproj", "{50AC5FD2-8C50-48E4-AC4E-4A275D0A879E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ACUConsole", "ACUConsole\ACUConsole.csproj", "{182D66E4-7909-4B18-AF01-BF0FE8B932BC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ACUConsole", "src\ACUConsole\ACUConsole.csproj", "{182D66E4-7909-4B18-AF01-BF0FE8B932BC}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OSDP.Net.Tests", "OSDP.Net.Tests\OSDP.Net.Tests.csproj", "{0018DA90-BBB2-491D-A6C3-086F21D7C29A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OSDP.Net.Tests", "src\OSDP.Net.Tests\OSDP.Net.Tests.csproj", "{0018DA90-BBB2-491D-A6C3-086F21D7C29A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PDConsole", "PDConsole\PDConsole.csproj", "{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PDConsole", "src\PDConsole\PDConsole.csproj", "{9F1C4E3D-8B7A-4C2E-9D1F-5A8B3C7E9F4D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{B304A16C-CA32-4692-9AED-D8886CC9184C}"
 	ProjectSection(SolutionItems) = preProject
-		..\CODE_OF_CONDUCT.md = ..\CODE_OF_CONDUCT.md
-		..\docs\powershell.md = ..\docs\powershell.md
-		..\README.md = ..\README.md
-		..\docs\supported_commands.md = ..\docs\supported_commands.md
+		CODE_OF_CONDUCT.md = CODE_OF_CONDUCT.md
+		docs\powershell.md = docs\powershell.md
+		README.md = README.md
+		docs\supported_commands.md = docs\supported_commands.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{A57B307A-A240-4F4F-A3A8-A078093B2809}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PivDataReader", "samples\PivDataReader\PivDataReader.csproj", "{AC0ADC7D-3A78-4937-80B0-F8AA3B7B17BD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PivDataReader", "src\samples\PivDataReader\PivDataReader.csproj", "{AC0ADC7D-3A78-4937-80B0-F8AA3B7B17BD}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CardReader", "samples\CardReader\CardReader.csproj", "{B6E1FC35-3DEC-495F-8FD2-A0CB9C3B4C6A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CardReader", "src\samples\CardReader\CardReader.csproj", "{B6E1FC35-3DEC-495F-8FD2-A0CB9C3B4C6A}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ci", "ci", "{B139D674-6612-4E3A-931E-511D09A0F18F}"
 	ProjectSection(SolutionItems) = preProject
-		..\ci\build.yml = ..\ci\build.yml
-		..\ci\package.yml = ..\ci\package.yml
+		ci\build.yml = ci\build.yml
+		ci\package.yml = ci\package.yml
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimplePDDevice", "samples\SimplePDDevice\SimplePDDevice.csproj", "{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimplePDDevice", "src\samples\SimplePDDevice\SimplePDDevice.csproj", "{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{9C496298-4302-4CF5-BED0-E2E508E58382}"
 	ProjectSection(SolutionItems) = preProject
-		..\scripts\api-diff-check.ps1 = ..\scripts\api-diff-check.ps1
-		..\scripts\generate-api-baseline.ps1 = ..\scripts\generate-api-baseline.ps1
-		..\scripts\Get-Version.ps1 = ..\scripts\Get-Version.ps1
-		..\scripts\Increment-Version.ps1 = ..\scripts\Increment-Version.ps1
-		..\scripts\Set-Version.ps1 = ..\scripts\Set-Version.ps1
-		..\scripts\validate-api.ps1 = ..\scripts\validate-api.ps1
+		scripts\api-diff-check.ps1 = scripts\api-diff-check.ps1
+		scripts\generate-api-baseline.ps1 = scripts\generate-api-baseline.ps1
+		scripts\Get-Version.ps1 = scripts\Get-Version.ps1
+		scripts\Increment-Version.ps1 = scripts\Increment-Version.ps1
+		scripts\Set-Version.ps1 = scripts\Set-Version.ps1
+		scripts\validate-api.ps1 = scripts\validate-api.ps1
 	EndProjectSection
 EndProject
 Global
