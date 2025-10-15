@@ -96,7 +96,7 @@ namespace OSDP.Net.Messages.SecureChannel
             }
 
             var commandHandled = await HandleCommand(command);
-            return commandHandled ? await ReadNextCommand() : command;
+            return commandHandled ? await ReadNextCommand(cancellationToken) : command;
         }
 
         internal async Task SendReply(OutgoingReply reply, bool sendUnsecured = false)

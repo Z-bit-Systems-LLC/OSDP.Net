@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using PDConsole.Configuration;
 
 namespace PDConsole
@@ -22,8 +23,8 @@ namespace PDConsole
         string CurrentSettingsFilePath { get; }
 
         // Methods
-        void StartDevice();
-        void StopDevice();
+        Task StartDevice();
+        Task StopDevice();
         void SendSimulatedCardRead(string cardData);
         void SimulateKeypadEntry(string keys);
         void ClearHistory();

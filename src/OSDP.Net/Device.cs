@@ -27,6 +27,7 @@ public class Device : IDisposable
     private volatile int _connectionContextCounter;
     private DeviceConfiguration _deviceConfiguration;
     private IOsdpConnectionListener _connectionListener;
+    private CancellationTokenSource _cancellationTokenSource;
     private DateTime _lastValidReceivedCommand = DateTime.MinValue;
 
     /// <summary>
@@ -86,9 +87,10 @@ public class Device : IDisposable
     /// Starts listening for commands from the ACU through the specified connection listener.
     /// </summary>
     /// <param name="connectionListener">The connection listener used to accept incoming connections from ACUs.</param>
-    public async void StartListening(IOsdpConnectionListener connectionListener)
+    public async Task StartListening(IOsdpConnectionListener connectionListener)
     {
         _connectionListener = connectionListener ?? throw new ArgumentNullException(nameof(connectionListener));
+        _cancellationTokenSource = new CancellationTokenSource();
         await _connectionListener.Start(ClientListenLoop);
     }
 
@@ -99,7 +101,7 @@ public class Device : IDisposable
             var currentContextCount = _connectionContextCounter;
             var channel = new PdMessageSecureChannel(
                 incomingConnection, _deviceConfiguration.SecurityKey, loggerFactory: _loggerFactory)
-            { 
+            {
                 Address = _deviceConfiguration.Address,
                 SecurityMode = !_deviceConfiguration.RequireSecurity
                     ? SecurityMode.Unsecured
@@ -110,9 +112,9 @@ public class Device : IDisposable
                 AllowUnsecured = _deviceConfiguration.AllowUnsecured ?? [],
             };
 
-            while (incomingConnection.IsOpen)
+            while (incomingConnection.IsOpen && !_cancellationTokenSource.Token.IsCancellationRequested)
             {
-                var command = await channel.ReadNextCommand();
+                var command = await channel.ReadNextCommand(_cancellationTokenSource.Token);
 
                 if (command == null) continue;
 
@@ -125,6 +127,10 @@ public class Device : IDisposable
                     break;
                 }
             }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger?.LogInformation("Connection loop cancelled");
         }
         catch (Exception exception)
         {
@@ -141,7 +147,10 @@ public class Device : IDisposable
     /// </summary>
     public async Task StopListening()
     {
+        _cancellationTokenSource?.Cancel();
         await (_connectionListener?.Stop() ?? Task.CompletedTask);
+        _cancellationTokenSource?.Dispose();
+        _cancellationTokenSource = null;
         _connectionListener = null;
     }
 

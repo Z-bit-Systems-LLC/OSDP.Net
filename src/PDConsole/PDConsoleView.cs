@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Terminal.Gui;
 
 namespace PDConsole
@@ -76,8 +77,8 @@ namespace PDConsole
                     new MenuItem("_Quit", "", () => Application.RequestStop())
                 ]),
                 new MenuBarItem("_Device", [
-                    new MenuItem("_Start", "", StartDevice),
-                    new MenuItem("S_top", "", StopDevice),
+                    new MenuItem("_Start", "", () => _ = StartDevice()),
+                    new MenuItem("S_top", "", () => _ = StopDevice()),
                     new MenuItem("_Clear History", "", ClearHistory)
                 ])
             ]);
@@ -185,11 +186,11 @@ namespace PDConsole
         }
 
         // UI Event Handlers
-        private void StartDevice()
+        private async Task StartDevice()
         {
             try
             {
-                _controller.StartDevice();
+                await _controller.StartDevice();
                 UpdateButtonStates();
             }
             catch (Exception ex)
@@ -198,11 +199,11 @@ namespace PDConsole
             }
         }
 
-        private void StopDevice()
+        private async Task StopDevice()
         {
             try
             {
-                _controller.StopDevice();
+                await _controller.StopDevice();
                 UpdateButtonStates();
             }
             catch (Exception ex)

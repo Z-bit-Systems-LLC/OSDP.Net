@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
 using OSDP.Net;
 using OSDP.Net.Connections;
 using PDConsole.Configuration;
@@ -35,7 +36,7 @@ namespace PDConsole
         public string CurrentSettingsFilePath => _currentSettingsFilePath;
 
         // Device Control Methods
-        public void StartDevice()
+        public async Task StartDevice()
         {
             if (IsDeviceRunning)
             {
@@ -62,7 +63,7 @@ namespace PDConsole
                 _connectionListener = CreateConnectionListener();
 
                 // Start listening
-                _device.StartListening(_connectionListener);
+                await _device.StartListening(_connectionListener);
 
                 var connectionString = GetConnectionString();
                 ConnectionStatusChanged?.Invoke(this, $"Listening on {connectionString}");
@@ -70,13 +71,13 @@ namespace PDConsole
             }
             catch (Exception ex)
             {
-                StopDevice();
+                await StopDevice();
                 ErrorOccurred?.Invoke(this, ex);
                 throw;
             }
         }
 
-        public void StopDevice()
+        public async Task StopDevice()
         {
             try
             {
@@ -86,7 +87,7 @@ namespace PDConsole
                 if (_device != null)
                 {
                     _device.CommandReceived -= OnDeviceCommandReceived;
-                    _ = _device.StopListening();
+                    await _device.StopListening();
                 }
 
                 ConnectionStatusChanged?.Invoke(this, "Not Started");
@@ -256,7 +257,7 @@ namespace PDConsole
 
         public void Dispose()
         {
-            StopDevice();
+            _ = StopDevice();
             _cancellationTokenSource?.Dispose();
         }
     }
