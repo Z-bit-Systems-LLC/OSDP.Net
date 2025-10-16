@@ -526,7 +526,7 @@ namespace OSDP.Net
         {
             var replyBuffer = new Collection<byte>();
 
-            if (!await WaitForStartOfMessage(Connection, replyBuffer, device.IsSendingMultipartMessage, cancellationToken).ConfigureAwait(false))
+            if (!await WaitForStartOfMessage(Connection, replyBuffer, device.IsSendingMultipartMessage ? TimeSpan.FromSeconds(1) : TimeSpan.Zero, cancellationToken).ConfigureAwait(false))
             {
                 throw new TimeoutException("Timeout waiting for reply message");
             }
@@ -602,13 +602,13 @@ namespace OSDP.Net
             return true;
         }
 
-        internal static async Task<bool> WaitForStartOfMessage(IOsdpConnection connection, ICollection<byte> replyBuffer, bool waitLonger, CancellationToken cancellationToken)
+        internal static async Task<bool> WaitForStartOfMessage(IOsdpConnection connection, ICollection<byte> replyBuffer, TimeSpan extraWait, CancellationToken cancellationToken)
         {
             while (true)
             {
                 byte[] readBuffer = new byte[1];
                 int bytesRead = await TimeOutReadAsync(connection, readBuffer,
-                        connection.ReplyTimeout + (waitLonger ? TimeSpan.FromSeconds(1) : TimeSpan.Zero),
+                        connection.ReplyTimeout + extraWait,
                         cancellationToken)
                     .ConfigureAwait(false);
                 if (bytesRead == 0)

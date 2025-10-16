@@ -70,7 +70,7 @@ namespace OSDP.Net.Messages.SecureChannel
         {
             var commandBuffer = new Collection<byte>();
 
-            if (!await Bus.WaitForStartOfMessage(_connection, commandBuffer, true, cancellationToken)
+            if (!await Bus.WaitForStartOfMessage(_connection, commandBuffer, TimeSpan.FromSeconds(8), cancellationToken)
                     .ConfigureAwait(false))
             {
                 return null;

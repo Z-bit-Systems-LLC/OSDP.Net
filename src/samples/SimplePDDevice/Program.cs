@@ -58,7 +58,7 @@ internal class Program
         logger.LogInformation("Device Address: {Address}", deviceAddress);
         logger.LogInformation("Security Required: {RequireSecurity}", requireSecurity);
         
-        device.StartListening(connectionListener);
+        await device.StartListening(connectionListener);
 
         logger.LogInformation("Device is now listening for ACU connections...");
         logger.LogInformation("Press 'q' to quit");

@@ -54,11 +54,11 @@ internal class Program
                 Console.WriteLine("Restarting communications with new baud rate");
                 communications = new SerialPortConnectionListener(portName, args.NewBaudRate, loggerFactory);
                 await mySampleDevice.StopListening();
-                mySampleDevice.StartListening(communications);
+                await mySampleDevice.StartListening(communications);
             }
         };
         
-        device.StartListening(communications);
+        await device.StartListening(communications);
 
         await Task.Run(async () =>
         {
