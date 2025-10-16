@@ -159,7 +159,7 @@ public class PeripheryDeviceTest : IntegrationTestFixtureBase
             TargetDevice.Dispose();
 
             // Re-init the device with new baud rate
-            InitTestTargetDevice(baudRate: e.NewBaudRate);
+            await InitTestTargetDevice(baudRate: e.NewBaudRate);
         };
 
         AddDeviceToPanel();

@@ -124,7 +124,7 @@ public class IntegrationTestFixtureBase
         ConnectionId = TargetPanel.StartConnection(new TcpClientOsdpConnection("localhost", 6000, baudRate));
     }
 
-    protected void InitTestTargetDevice(
+    protected async Task InitTestTargetDevice(
         Action<DeviceConfiguration> configureDevice = null, int baudRate = IntegrationConsts.DefaultTestBaud)
     {
         var deviceConfig = new DeviceConfiguration() { Address = IntegrationConsts.DefaultTestDeviceAddr };
@@ -133,7 +133,7 @@ public class IntegrationTestFixtureBase
         DeviceAddress = deviceConfig.Address;
 
         TargetDevice = new TestDevice(deviceConfig, LoggerFactory);
-        TargetDevice.StartListening(new TcpConnectionListener(6000, baudRate, LoggerFactory));
+        await TargetDevice.StartListening(new TcpConnectionListener(6000, baudRate, LoggerFactory));
     }
 
     protected void AddDeviceToPanel(
