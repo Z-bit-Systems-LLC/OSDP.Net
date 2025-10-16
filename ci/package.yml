@@ -4,28 +4,12 @@ steps:
     inputs:
       packageType: 'sdk'
       version: '8.x'
-      
-  - task: PowerShell@2
-    displayName: 'Get current version'
-    inputs:
-      targetType: 'inline'
-      script: |
-        # Configure git for the build agent
-        git config --global user.email "byteme@bytedreamer.com"
-        git config --global user.name "Azure DevOps Build Agent"
-
-        # Get current version
-        $currentVersion = & "$(Build.SourcesDirectory)/scripts/Get-Version.ps1" -BuildPropsPath "$(Build.SourcesDirectory)/Directory.Build.props" -Format Simple
-        Write-Host "Packaging version: $currentVersion"
-
-        # Set pipeline variable for later use
-        Write-Host "##vso[task.setvariable variable=PackageVersion]$currentVersion"
 
   - task: DotNetCoreCLI@2
     displayName: 'dotnet pack'
     inputs:
       command: 'pack'
-      arguments: '--configuration $(buildConfiguration)'
+      arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
       packagesToPack: 'src/OSDP.Net/OSDP.Net.csproj'
 
   - task: DotNetCoreCLI@2
