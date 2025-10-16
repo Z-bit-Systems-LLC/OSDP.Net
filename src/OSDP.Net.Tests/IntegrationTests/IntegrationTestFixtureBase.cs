@@ -63,7 +63,7 @@ public class IntegrationTestFixtureBase
         Action<DeviceConfiguration> configureDevice = null,
         Action<PanelConfiguration> configurePanel = null)
     {
-        InitTestTargetDevice(configureDevice, baudRate: IntegrationConsts.DefaultTestBaud);
+        await InitTestTargetDevice(configureDevice, baudRate: IntegrationConsts.DefaultTestBaud);
         await InitTestTargetPanel(configurePanel, baudRate: IntegrationConsts.DefaultTestBaud);
     }
 
