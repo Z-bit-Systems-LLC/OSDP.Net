@@ -36,29 +36,45 @@ if (-not $BuildPropsPath) {
 
 function Get-Version {
     param([string]$FilePath)
-    
+
     if (-not (Test-Path $FilePath)) {
         throw "Directory.Build.props not found at: $FilePath"
     }
-    
+
     $content = Get-Content $FilePath -Raw
     $versionMatch = [regex]::Match($content, '<VersionPrefix>([^<]+)</VersionPrefix>')
-    
+
     if (-not $versionMatch.Success) {
         throw "Could not find VersionPrefix in Directory.Build.props"
     }
-    
-    return $versionMatch.Groups[1].Value
+
+    $versionPrefix = $versionMatch.Groups[1].Value
+
+    # Also extract VersionSuffix if present
+    $suffixMatch = [regex]::Match($content, '<VersionSuffix>([^<]+)</VersionSuffix>')
+    $versionSuffix = if ($suffixMatch.Success) { $suffixMatch.Groups[1].Value } else { "" }
+
+    return @{
+        VersionPrefix = $versionPrefix
+        VersionSuffix = $versionSuffix
+        FullVersion = if ($versionSuffix) { "$versionPrefix-$versionSuffix" } else { $versionPrefix }
+    }
 }
 
 try {
-    $version = Get-Version -FilePath $BuildPropsPath
-    
+    $versionInfo = Get-Version -FilePath $BuildPropsPath
+
     if ($Format -eq "Simple") {
-        Write-Output $version
+        Write-Output $versionInfo.FullVersion
     } else {
         Write-Host "Current version: " -NoNewline -ForegroundColor Yellow
-        Write-Host $version -ForegroundColor Green
+        Write-Host $versionInfo.VersionPrefix -ForegroundColor Green
+        if ($versionInfo.VersionSuffix) {
+            Write-Host "Version suffix: " -NoNewline -ForegroundColor Yellow
+            Write-Host $versionInfo.VersionSuffix -ForegroundColor Green
+            Write-Host "Full version: " -NoNewline -ForegroundColor Yellow
+            Write-Host $versionInfo.FullVersion -ForegroundColor Green
+        }
     }
 }
 catch {

@@ -101,6 +101,14 @@ $currentVersion = & $getVersionScript -BuildPropsPath $buildPropsPath -Format Si
 
 Write-Info "Current version: $currentVersion"
 
+# Get version details including suffix
+$content = Get-Content $buildPropsPath -Raw
+$suffixMatch = [regex]::Match($content, '<VersionSuffix>([^<]+)</VersionSuffix>')
+if ($suffixMatch.Success) {
+    $versionSuffix = $suffixMatch.Groups[1].Value
+    Write-Info "Version suffix: $versionSuffix"
+}
+
 # Show recent changes since last tag
 $lastTag = git describe --tags --abbrev=0 2>$null
 if ($lastTag) {
