@@ -174,7 +174,7 @@ public class IntegrationTestFixtureBase
     protected async Task AssertPanelToDeviceCommsAreHealthy()
     {
         var capabilities = await TargetPanel.DeviceCapabilities(ConnectionId, DeviceAddress);
-        Assert.NotNull(capabilities);
+        Assert.That(capabilities, Is.Not.Null);
     }
 
     protected async Task SetupCheckpointForExpectedTestEvent(TestEventType eventType, int timeout = 10000)

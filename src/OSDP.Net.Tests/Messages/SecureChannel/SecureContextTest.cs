@@ -15,10 +15,10 @@ namespace OSDP.Net.Tests.Messages.SecureChannel
 
             Assert.Multiple(() =>
             {
-                Assert.True(new SecurityContext().IsUsingDefaultKey, "default constructor");
-                Assert.True(new SecurityContext(SecurityContext.DefaultKey).IsUsingDefaultKey, "with static def key");
-                Assert.True(new SecurityContext(defaultKey).IsUsingDefaultKey, "with local def key");
-                Assert.False(new SecurityContext(nonDefaultKey).IsUsingDefaultKey, "non-def key");
+                Assert.That(new SecurityContext().IsUsingDefaultKey, Is.True, "default constructor");
+                Assert.That(new SecurityContext(SecurityContext.DefaultKey).IsUsingDefaultKey, Is.True, "with static def key");
+                Assert.That(new SecurityContext(defaultKey).IsUsingDefaultKey, Is.True, "with local def key");
+                Assert.That(new SecurityContext(nonDefaultKey).IsUsingDefaultKey, Is.False, "non-def key");
             });
         }
     }

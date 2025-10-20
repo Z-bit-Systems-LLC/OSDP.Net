@@ -103,9 +103,9 @@ public class PeripheryDeviceTest : IntegrationTestFixtureBase
         await WaitForDeviceOnlineStatus();
 
         var newKey = new byte[] { 0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf };
-        var result = await TargetPanel.EncryptionKeySet(ConnectionId, 0, 
+        var result = await TargetPanel.EncryptionKeySet(ConnectionId, 0,
             new EncryptionKeyConfiguration(KeyType.SecureChannelBaseKey, newKey));
-        Assert.True(result);
+        Assert.That(result, Is.True);
 
         await AssertPanelToDeviceCommsAreHealthy();
 
@@ -172,8 +172,8 @@ public class PeripheryDeviceTest : IntegrationTestFixtureBase
         var commSettings = new Net.Model.CommandData.CommunicationConfiguration(DeviceAddress, newBaudRate);
         var results = await TargetPanel.CommunicationConfiguration(ConnectionId, 0, commSettings);
 
-        Assert.AreEqual(results.Address, DeviceAddress);
-        Assert.AreEqual(results.BaudRate, newBaudRate);
+        Assert.That(results.Address, Is.EqualTo(DeviceAddress));
+        Assert.That(results.BaudRate, Is.EqualTo(newBaudRate));
 
         await connLostCheckpoint;
 
@@ -184,10 +184,10 @@ public class PeripheryDeviceTest : IntegrationTestFixtureBase
         var eventArgs = (DeviceComSetUpdatedEventArgs)mockComSetUpdate.Invocations.First().Arguments[1];
         Assert.Multiple(() =>
         {
-            Assert.AreEqual(0, eventArgs.OldAddress);
-            Assert.AreEqual(0, eventArgs.NewAddress);
-            Assert.AreEqual(9600, eventArgs.OldBaudRate);
-            Assert.AreEqual(19200, eventArgs.NewBaudRate);
+            Assert.That(eventArgs.OldAddress, Is.EqualTo(0));
+            Assert.That(eventArgs.NewAddress, Is.EqualTo(0));
+            Assert.That(eventArgs.OldBaudRate, Is.EqualTo(9600));
+            Assert.That(eventArgs.NewBaudRate, Is.EqualTo(19200));
         });
 
         RemoveDeviceFromPanel();

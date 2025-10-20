@@ -37,7 +37,7 @@ namespace OSDP.Net.Tests.IntegrationTests
                     var command = BuildTestCommand(commandType);
                     Assert.DoesNotThrowAsync(async () => {
                         var reply = await command.Run();
-                        Assert.NotNull(reply, $"command: {commandType}");
+                        Assert.That(reply, Is.Not.Null, $"command: {commandType}");
                     }, $"command: {commandType}");
                 }
 
@@ -114,7 +114,7 @@ namespace OSDP.Net.Tests.IntegrationTests
                     var command = BuildTestCommand(commandType);
                     Assert.DoesNotThrowAsync(async () => {
                         var reply = await command.Run();
-                        Assert.NotNull(reply, $"command: {commandType}");
+                        Assert.That(reply, Is.Not.Null, $"command: {commandType}");
                     }, $"command: {commandType}");
                 }
 
@@ -158,7 +158,7 @@ namespace OSDP.Net.Tests.IntegrationTests
                     var command = BuildTestCommand(commandType);
                     Assert.DoesNotThrowAsync(async () => {
                         var reply = await command.Run();
-                        Assert.NotNull(reply, $"command: {commandType}");
+                        Assert.That(reply, Is.Not.Null, $"command: {commandType}");
                     }, $"command: {commandType}");
                 }
             });
@@ -194,7 +194,7 @@ namespace OSDP.Net.Tests.IntegrationTests
                     var command = BuildTestCommand(commandType);
                     Assert.DoesNotThrowAsync(async () => {
                         var reply = await command.Run();
-                        Assert.NotNull(reply, $"command: {commandType}");
+                        Assert.That(reply, Is.Not.Null, $"command: {commandType}");
                     }, $"command: {commandType}");
                 }
             });
