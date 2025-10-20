@@ -2,8 +2,6 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using PDConsole.Dialogs;
-using PDConsole.Model.DialogInputs;
 using Terminal.Gui;
 
 namespace PDConsole

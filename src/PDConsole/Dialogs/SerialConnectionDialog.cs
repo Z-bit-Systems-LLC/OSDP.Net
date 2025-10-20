@@ -1,6 +1,5 @@
 using System;
 using System.IO.Ports;
-using System.Linq;
 using PDConsole.Configuration;
 using PDConsole.Model.DialogInputs;
 using Terminal.Gui;
