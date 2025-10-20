@@ -231,7 +231,7 @@ if ($DryRun) {
     Write-Info "4. Publish artifacts"
     Write-Info "5. Publish to NuGet (if configured)"
     Write-Info ""
-    Write-Info "Monitor the pipeline at: https://dev.azure.com/your-org/your-project/_build"
+    Write-Info "Monitor the pipeline at: https://dev.azure.com/Z-bitSystems/OSDP.Net/_build"
 }
 
 Write-Info ""

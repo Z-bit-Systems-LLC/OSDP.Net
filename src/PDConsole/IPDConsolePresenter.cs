@@ -34,5 +34,6 @@ namespace PDConsole
         void LoadSettings(string filePath);
         void SaveSettings(string filePath);
         void SetCurrentSettingsFilePath(string filePath);
+        void UpdateSerialConnection(string portName, int baudRate);
     }
 }

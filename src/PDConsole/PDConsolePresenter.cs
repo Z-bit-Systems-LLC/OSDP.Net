@@ -212,6 +212,18 @@ namespace PDConsole
             _currentSettingsFilePath = filePath;
         }
 
+        public void UpdateSerialConnection(string portName, int baudRate)
+        {
+            if (IsDeviceRunning)
+            {
+                throw new InvalidOperationException("Cannot update connection settings while device is running. Stop the device first.");
+            }
+
+            _settings.Connection.SerialPortName = portName;
+            _settings.Connection.SerialBaudRate = baudRate;
+            StatusChanged?.Invoke(this, "Serial connection settings updated");
+        }
+
         // Private Methods
         private IOsdpConnectionListener CreateConnectionListener()
         {

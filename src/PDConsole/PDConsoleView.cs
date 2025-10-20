@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using PDConsole.Dialogs;
+using PDConsole.Model.DialogInputs;
 using Terminal.Gui;
 
 namespace PDConsole
@@ -79,6 +81,9 @@ namespace PDConsole
                 new MenuBarItem("_Device", [
                     new MenuItem("_Start", "", () => _ = StartDevice()),
                     new MenuItem("S_top", "", () => _ = StopDevice()),
+                    null, // Separator
+                    new MenuItem("_Serial Connection...", "", SerialConnectionDialog),
+                    null, // Separator
                     new MenuItem("_Clear History", "", ClearHistory)
                 ])
             ]);
@@ -302,55 +307,65 @@ namespace PDConsole
                 return;
             }
 
-            var openDialog = new OpenDialog("Load Settings", string.Empty, [".json"]);
-            Application.Run(openDialog);
+            var input = Dialogs.LoadSettingsDialog.Show();
 
-            if (!openDialog.Canceled && !string.IsNullOrEmpty(openDialog.FilePath?.ToString()))
+            if (!input.WasCancelled)
             {
-                var filePath = openDialog.FilePath.ToString();
-
-                if (File.Exists(filePath))
+                try
                 {
-                    try
-                    {
-                        _controller.LoadSettings(filePath);
+                    _controller.LoadSettings(input.FilePath);
 
-                        // Update status label with new settings
-                        if (_statusLabel != null)
-                            _statusLabel.Text = _controller.GetDeviceStatusText();
+                    // Update the status label with new settings
+                    if (_statusLabel != null)
+                        _statusLabel.Text = _controller.GetDeviceStatusText();
 
-                        MessageBox.Query(40, 6, "Load Settings",
-                            $"Settings loaded successfully from:\n{Path.GetFileName(filePath)}", "OK");
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.ErrorQuery(40, 8, "Error", ex.Message, "OK");
-                    }
+                    MessageBox.Query(40, 6, "Load Settings",
+                        $"Settings loaded successfully from:\n{Path.GetFileName(input.FilePath)}", "OK");
                 }
-                else
+                catch (Exception exception)
                 {
-                    MessageBox.ErrorQuery(40, 8, "Error", "Selected file does not exist", "OK");
+                    MessageBox.ErrorQuery(40, 8, "Error", exception.Message, "OK");
                 }
             }
         }
 
         private void SaveSettingsDialog()
         {
-            var saveDialog = new SaveDialog("Save Settings", string.Empty, [".json"])
-            {
-                FilePath = _controller.CurrentSettingsFilePath ?? "appsettings.json"
-            };
-            Application.Run(saveDialog);
+            var input = Dialogs.SaveSettingsDialog.Show(_controller.CurrentSettingsFilePath);
 
-            if (!saveDialog.Canceled && !string.IsNullOrEmpty(saveDialog.FilePath?.ToString()))
+            if (!input.WasCancelled)
             {
-                var filePath = saveDialog.FilePath.ToString();
-
                 try
                 {
-                    _controller.SaveSettings(filePath);
+                    _controller.SaveSettings(input.FilePath);
                     MessageBox.Query(40, 6, "Save Settings",
-                        $"Settings saved successfully to:\n{Path.GetFileName(filePath)}", "OK");
+                        $"Settings saved successfully to:\n{Path.GetFileName(input.FilePath)}", "OK");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.ErrorQuery(40, 8, "Error", ex.Message, "OK");
+                }
+            }
+        }
+
+        private void SerialConnectionDialog()
+        {
+            if (_controller.IsDeviceRunning)
+            {
+                MessageBox.ErrorQuery("Error", "Cannot change connection settings while device is running.\nStop the device first.", "OK");
+                return;
+            }
+
+            var input = Dialogs.SerialConnectionDialog.Show(_controller.Settings.Connection);
+
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    _controller.UpdateSerialConnection(input.PortName, input.BaudRate);
+
+                    MessageBox.Query(40, 7, "Serial Connection",
+                        $"Serial connection settings updated:\n\nPort: {input.PortName}\nBaud Rate: {input.BaudRate}", "OK");
                 }
                 catch (Exception ex)
                 {
