@@ -148,15 +148,14 @@ namespace PDConsole
             }
         }
         
-        // Method to simulate keypad entry (using formatted card data as a workaround)
+        // Method to simulate keypad entry
         public void SimulateKeypadEntry(string keys)
         {
             if (string.IsNullOrEmpty(keys)) return;
-            
+
             try
             {
-                // Note: KeypadData doesn't inherit from PayloadData, so we use FormattedCardData as a workaround
-                EnqueuePollReply(new FormattedCardData(0, ReadDirection.Forward, keys));
+                EnqueuePollReply(new KeypadData(0, keys));
                 LogCommand("Simulated Keypad Entry", new { Keys = keys });
             }
             catch (Exception)
