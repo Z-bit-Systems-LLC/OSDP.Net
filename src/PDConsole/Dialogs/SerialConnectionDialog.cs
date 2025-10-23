@@ -17,7 +17,8 @@ namespace PDConsole.Dialogs
             "19200",
             "38400",
             "57600",
-            "115200"
+            "115200",
+            "230400"
         ];
 
         /// <summary>
@@ -62,7 +63,7 @@ namespace PDConsole.Dialogs
                 Application.RequestStop();
             }
 
-            var applyButton = new Button("Apply", true);
+            var applyButton = new Button("Start", true);
             applyButton.Clicked += ApplyButtonClicked;
             var cancelButton = new Button("Cancel");
             cancelButton.Clicked += CancelButtonClicked;
