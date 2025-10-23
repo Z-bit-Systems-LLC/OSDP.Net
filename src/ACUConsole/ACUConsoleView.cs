@@ -64,10 +64,13 @@ namespace ACUConsole
             _menuBar = new MenuBar([
                 new MenuBarItem("_System", [
                     new MenuItem("_About", "", ShowAbout),
+                    null, // Separator
                     new MenuItem("_Connection Settings", "", UpdateConnectionSettings),
                     new MenuItem("_Parse OSDP Cap File", "", ParseOSDPCapFile),
+                    null, // Separator
                     new MenuItem("_Load Configuration", "", LoadConfigurationSettings),
                     new MenuItem("_Save Configuration", "", SaveConfigurationSettings),
+                    null, // Separator
                     new MenuItem("_Quit", "", Quit)
                 ]),
                 new MenuBarItem("Co_nnections", [
