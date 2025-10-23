@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -16,12 +17,25 @@ namespace ACUConsole
     public class ACUConsoleView
     {
         private readonly IACUConsolePresenter _presenter;
-        
+
         // UI Components
         private Window _window;
         private ScrollView _scrollView;
+        private FrameView _deviceStatusFrame;
+        private ListView _deviceStatusList;
         private MenuBar _menuBar;
         private readonly MenuItem _discoverMenuItem;
+
+        // Device status tracking
+        private readonly Dictionary<byte, DeviceConnectionStatus> _deviceStatuses = new();
+
+        private class DeviceConnectionStatus
+        {
+            public string DeviceName { get; set; }
+            public byte Address { get; set; }
+            public bool IsConnected { get; set; }
+            public bool IsSecureChannelEstablished { get; set; }
+        }
         
         public ACUConsoleView(IACUConsolePresenter presenter)
         {
@@ -49,12 +63,17 @@ namespace ACUConsole
 
             CreateMenuBar();
             CreateScrollView();
+            CreateDeviceStatusPanel();
 
             // Add MenuBar to Application.Top (like PDConsole does)
             Application.Top.Add(_menuBar);
 
-            // Add ScrollView to the window
+            // Add ScrollView and Device Status Panel to the window
             _window.Add(_scrollView);
+            _window.Add(_deviceStatusFrame);
+
+            // Initialize device statuses from configured devices
+            InitializeDeviceStatuses();
 
             return _window;
         }
@@ -119,7 +138,71 @@ namespace ACUConsole
                 ShowVerticalScrollIndicator = true,
                 ShowHorizontalScrollIndicator = true
             };
-            _window.Add(_scrollView);
+        }
+
+        private void CreateDeviceStatusPanel()
+        {
+            // Create device status frame (right side panel, 30 characters wide)
+            _deviceStatusFrame = new FrameView("Device Status")
+            {
+                X = Pos.AnchorEnd(30),
+                Y = 0,
+                Width = 30,
+                Height = Dim.Fill()
+            };
+
+            // Create ListView for device status display
+            _deviceStatusList = new ListView
+            {
+                X = 0,
+                Y = 0,
+                Width = Dim.Fill(),
+                Height = Dim.Fill()
+            };
+
+            _deviceStatusFrame.Add(_deviceStatusList);
+        }
+
+        private void InitializeDeviceStatuses()
+        {
+            // Initialize device statuses from configured devices
+            _deviceStatuses.Clear();
+            foreach (var device in _presenter.Settings.Devices)
+            {
+                _deviceStatuses[device.Address] = new DeviceConnectionStatus
+                {
+                    DeviceName = device.Name,
+                    Address = device.Address,
+                    IsConnected = false,
+                    IsSecureChannelEstablished = false
+                };
+            }
+            UpdateDeviceStatusDisplay();
+        }
+
+        private void UpdateDeviceStatusDisplay()
+        {
+            Application.MainLoop.Invoke(() =>
+            {
+                // Build display list from device statuses
+                var displayItems = _deviceStatuses.Values
+                    .OrderBy(d => d.Address)
+                    .Select(d =>
+                    {
+                        var connStatus = d.IsConnected ? "CONN" : "DISC";
+                        var secStatus = d.IsSecureChannelEstablished ? "SEC " : "--- ";
+                        return $"{d.DeviceName,-12} ({d.Address}) {connStatus} {secStatus}";
+                    })
+                    .ToList();
+
+                // If no devices, show message
+                if (displayItems.Count == 0)
+                {
+                    displayItems.Add("No devices configured");
+                }
+
+                _deviceStatusList.SetSource(displayItems);
+            });
         }
 
         // System Menu Actions
@@ -255,6 +338,10 @@ namespace ACUConsole
                 try
                 {
                     _presenter.LoadConfiguration(input.FilePath);
+
+                    // Reinitialize device statuses after loading new configuration
+                    InitializeDeviceStatuses();
+
                     MessageBox.Query(40, 6, "Load Configuration",
                         $"Configuration loaded successfully from:\n{Path.GetFileName(input.FilePath)}", "OK");
                 }
@@ -294,13 +381,25 @@ namespace ACUConsole
             }
 
             var input = AddDeviceDialog.Show(_presenter.Settings.Devices.ToArray());
-            
+
             if (!input.WasCancelled)
             {
                 try
                 {
-                    _presenter.AddDevice(input.Name, input.Address, input.UseCrc, 
+                    _presenter.AddDevice(input.Name, input.Address, input.UseCrc,
                         input.UseSecureChannel, input.SecureChannelKey);
+
+                    // Add device to status tracking
+                    _deviceStatuses[input.Address] = new DeviceConnectionStatus
+                    {
+                        DeviceName = input.Name,
+                        Address = input.Address,
+                        IsConnected = false,
+                        IsSecureChannelEstablished = false
+                    };
+
+                    // Update the status display
+                    UpdateDeviceStatusDisplay();
                 }
                 catch (Exception ex)
                 {
@@ -319,12 +418,18 @@ namespace ACUConsole
 
             var deviceList = _presenter.GetDeviceList();
             var input = RemoveDeviceDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
-            
+
             if (!input.WasCancelled)
             {
                 try
                 {
                     _presenter.RemoveDevice(input.DeviceAddress);
+
+                    // Remove device from status tracking
+                    _deviceStatuses.Remove(input.DeviceAddress);
+
+                    // Update the status display
+                    UpdateDeviceStatusDisplay();
                 }
                 catch (Exception ex)
                 {
@@ -741,7 +846,27 @@ namespace ACUConsole
 
         private void OnConnectionStatusChanged(object sender, ConnectionStatusChangedEventArgs args)
         {
-            // Connection status updates are handled through messages
+            // Update device status tracking
+            if (_deviceStatuses.ContainsKey(args.Address))
+            {
+                _deviceStatuses[args.Address].IsConnected = args.IsConnected;
+                _deviceStatuses[args.Address].IsSecureChannelEstablished = args.IsSecureChannelEstablished;
+                _deviceStatuses[args.Address].DeviceName = args.DeviceName;
+            }
+            else
+            {
+                // Device not in our tracking dictionary, add it
+                _deviceStatuses[args.Address] = new DeviceConnectionStatus
+                {
+                    DeviceName = args.DeviceName,
+                    Address = args.Address,
+                    IsConnected = args.IsConnected,
+                    IsSecureChannelEstablished = args.IsSecureChannelEstablished
+                };
+            }
+
+            // Refresh the device status display
+            UpdateDeviceStatusDisplay();
         }
 
         private void OnErrorOccurred(object sender, Exception ex)
@@ -761,7 +886,8 @@ namespace ACUConsole
                     return;
                 }
 
-                _scrollView.Frame = new Rect(1, 0, _window.Frame.Width - 3, _window.Frame.Height - 2);
+                // Adjust ScrollView frame to account for device status panel (30 chars wide + margins)
+                _scrollView.Frame = new Rect(1, 0, _window.Frame.Width - 33, _window.Frame.Height - 2);
                 _scrollView.RemoveAll();
 
                 int index = 0;
