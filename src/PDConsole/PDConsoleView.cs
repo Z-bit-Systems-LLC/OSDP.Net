@@ -82,8 +82,6 @@ namespace PDConsole
                     new MenuItem("_Start", "", () => _ = StartDevice()),
                     new MenuItem("S_top", "", () => _ = StopDevice()),
                     null, // Separator
-                    new MenuItem("_Serial Connection...", "", SerialConnectionDialog),
-                    null, // Separator
                     new MenuItem("_Clear History", "", ClearHistory)
                 ])
             ]);
@@ -193,8 +191,20 @@ namespace PDConsole
         // UI Event Handlers
         private async Task StartDevice()
         {
+            // Show serial connection dialog first
+            var input = Dialogs.SerialConnectionDialog.Show(_controller.Settings.Connection);
+
+            if (input.WasCancelled)
+            {
+                return;
+            }
+
             try
             {
+                // Update connection settings
+                _controller.UpdateSerialConnection(input.PortName, input.BaudRate);
+
+                // Start the device
                 await _controller.StartDevice();
                 UpdateButtonStates();
             }
@@ -313,31 +323,6 @@ namespace PDConsole
             }
         }
 
-        private void SerialConnectionDialog()
-        {
-            if (_controller.IsDeviceRunning)
-            {
-                MessageBox.ErrorQuery("Error", "Cannot change connection settings while device is running.\nStop the device first.", "OK");
-                return;
-            }
-
-            var input = Dialogs.SerialConnectionDialog.Show(_controller.Settings.Connection);
-
-            if (!input.WasCancelled)
-            {
-                try
-                {
-                    _controller.UpdateSerialConnection(input.PortName, input.BaudRate);
-
-                    MessageBox.Query(40, 7, "Serial Connection",
-                        $"Serial connection settings updated:\n\nPort: {input.PortName}\nBaud Rate: {input.BaudRate}", "OK");
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.ErrorQuery(40, 8, "Error", ex.Message, "OK");
-                }
-            }
-        }
 
         // Controller Event Handlers
         private void OnCommandReceived(object sender, CommandEvent e)
