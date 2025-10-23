@@ -132,8 +132,12 @@ namespace ACUConsole
 
         private void CreateScrollView()
         {
-            _scrollView = new ScrollView(new Rect(0, 0, 0, 0))
+            _scrollView = new ScrollView
             {
+                X = 1,
+                Y = 0,
+                Width = Dim.Fill() - 32,  // Leave room for device status panel (30 chars + borders)
+                Height = Dim.Fill(),
                 ContentSize = new Size(500, 100),
                 ShowVerticalScrollIndicator = true,
                 ShowHorizontalScrollIndicator = true
@@ -184,19 +188,27 @@ namespace ACUConsole
         {
             Application.MainLoop.Invoke(() =>
             {
+                var displayItems = new List<string>();
+
+                // Add header if there are devices
+                if (_deviceStatuses.Count > 0)
+                {
+                    displayItems.Add("Device     Addr   Con   Sec");
+                    displayItems.Add("----------------------------");
+                }
+
                 // Build display list from device statuses
-                var displayItems = _deviceStatuses.Values
+                displayItems.AddRange(_deviceStatuses.Values
                     .OrderBy(d => d.Address)
                     .Select(d =>
                     {
-                        var connStatus = d.IsConnected ? "CONN" : "DISC";
-                        var secStatus = d.IsSecureChannelEstablished ? "SEC " : "--- ";
-                        return $"{d.DeviceName,-12} ({d.Address}) {connStatus} {secStatus}";
-                    })
-                    .ToList();
+                        var connSymbol = d.IsConnected ? "●" : "○";
+                        var secSymbol = d.IsSecureChannelEstablished ? "●" : "○";
+                        return $"{d.DeviceName, -12}{d.Address, 3} {connSymbol, 5} {secSymbol, 5}";
+                    }));
 
                 // If no devices, show message
-                if (displayItems.Count == 0)
+                if (_deviceStatuses.Count == 0)
                 {
                     displayItems.Add("No devices configured");
                 }
@@ -886,8 +898,6 @@ namespace ACUConsole
                     return;
                 }
 
-                // Adjust ScrollView frame to account for device status panel (30 chars wide + margins)
-                _scrollView.Frame = new Rect(1, 0, _window.Frame.Width - 33, _window.Frame.Height - 2);
                 _scrollView.RemoveAll();
 
                 int index = 0;
