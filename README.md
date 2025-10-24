@@ -15,7 +15,7 @@ We have switched to trunk-based development. The `main` branch is now the defaul
 
 OSDP.Net supports the following .NET implementations:
 - .NET Framework 4.6.2 and later
-- NET 6.0 and later
+- NET 8.0 and later
 
 ## Getting Started
 
