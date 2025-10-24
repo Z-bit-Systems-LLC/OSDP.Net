@@ -27,7 +27,7 @@ PM> Install-Package OSDP.Net
 ``` 
 
 A control panel can be created and started with a few lines. 
-Be sure to register events before start the connection.
+Be sure to register events before starting the connection.
 
 ```c#
 var panel = new ControlPanel();
@@ -56,7 +56,7 @@ bool successfulSet = await panel.EncryptionKeySet(connectionId, address,
     new EncryptionKeyConfiguration(KeyType.SecureChannelBaseKey, uniqueKey));
 ```
 
-The ControlPanel object can then be used to send command to the PD.
+The ControlPanel object can then be used to send a command to the PD.
 
 ```c#
 var returnReplyData = await panel.OutputControl(connectionId, address, new OutputControls(new[]
@@ -160,8 +160,8 @@ catch (Exception ex)
 
 ## Custom Communication Implementations
 
-OSDP.Net is able to plugin different methods of communications beyond what is included with the default package. 
-It simply requires the installation a new NuGet package. The code needs to be updated by using it's implementation of the IOsdpConnection interface when starting a connection for the ControlPanel.
+OSDP.Net is able to plug in different methods of communications beyond what is included with the default package. 
+It simply requires the installation of a new NuGet package. The code needs to be updated by using its implementation of the IOsdpConnection interface when starting a connection for the ControlPanel.
 
 - **SerialPortStream**
   - Author: Fredrik Hall 
@@ -195,5 +195,5 @@ Be sure to save configuration before exiting.
 
 ## Contributing
 
-The current goal is to properly support all the commands and replies outlined the OSDP v2.2 standard. 
+The current goal is to properly support all the commands and replies outlined in OSDP v2.2 standard. 
 The document that outlines the specific of the standard can be found on the [SIA website](https://mysia.securityindustry.org/ProductCatalog/Product.aspx?ID=16773). Contact me through my consulting company [Z-bit System, LLC](https://z-bitco.com) if you're interested in collaborating on the OSDP.Net library.
