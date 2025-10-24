@@ -120,17 +120,17 @@ namespace PDConsole
             };
 
             // Card data controls
-            var cardDataLabel = new Label("Card Data (Hex):")
+            var cardDataLabel = new Label("Card Data (Binary):")
             {
                 X = 1,
                 Y = 1
             };
 
-            _cardDataField = new TextField("0123456789ABCDEF")
+            _cardDataField = new TextField(_controller.Settings.Simulation.CardNumber)
             {
                 X = Pos.Right(cardDataLabel) + 1,
                 Y = 1,
-                Width = 30
+                Width = 40
             };
 
             _sendCardButton = new Button("Send Card")
@@ -147,7 +147,7 @@ namespace PDConsole
                 Y = 3
             };
 
-            _keypadField = new TextField("1234")
+            _keypadField = new TextField(_controller.Settings.Simulation.PinNumber)
             {
                 X = Pos.Right(keypadLabel) + 1,
                 Y = 3,
@@ -294,6 +294,12 @@ namespace PDConsole
                     if (_statusLabel != null)
                         _statusLabel.Text = _controller.GetDeviceStatusText();
 
+                    // Update simulation fields with loaded settings
+                    if (_cardDataField != null)
+                        _cardDataField.Text = _controller.Settings.Simulation.CardNumber;
+                    if (_keypadField != null)
+                        _keypadField.Text = _controller.Settings.Simulation.PinNumber;
+
                     MessageBox.Query(40, 6, "Load Settings",
                         $"Settings loaded successfully from:\n{Path.GetFileName(input.FilePath)}", "OK");
                 }
@@ -312,6 +318,11 @@ namespace PDConsole
             {
                 try
                 {
+                    // Update simulation settings with current field values before saving
+                    _controller.UpdateSimulationSettings(
+                        _cardDataField?.Text.ToString(),
+                        _keypadField?.Text.ToString());
+
                     _controller.SaveSettings(input.FilePath);
                     MessageBox.Query(40, 6, "Save Settings",
                         $"Settings saved successfully to:\n{Path.GetFileName(input.FilePath)}", "OK");

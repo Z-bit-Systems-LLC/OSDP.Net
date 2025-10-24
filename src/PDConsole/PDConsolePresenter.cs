@@ -224,6 +224,12 @@ namespace PDConsole
             StatusChanged?.Invoke(this, "Serial connection settings updated");
         }
 
+        public void UpdateSimulationSettings(string cardNumber, string pinNumber)
+        {
+            _settings.Simulation.CardNumber = cardNumber ?? _settings.Simulation.CardNumber;
+            _settings.Simulation.PinNumber = pinNumber ?? _settings.Simulation.PinNumber;
+        }
+
         // Private Methods
         private IOsdpConnectionListener CreateConnectionListener()
         {

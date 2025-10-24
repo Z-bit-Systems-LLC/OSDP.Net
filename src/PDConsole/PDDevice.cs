@@ -134,16 +134,28 @@ namespace PDConsole
             {
                 try
                 {
-                    var cardBytes = ConvertHexStringToBytes(cardData, cardData.Length / 2);
-                    var bitArray = new BitArray(cardBytes);
-                    
+                    // Validate that the input contains only 0s and 1s
+                    cardData = cardData.Trim();
+                    if (!System.Text.RegularExpressions.Regex.IsMatch(cardData, @"^[01]+$"))
+                    {
+                        throw new ArgumentException("Card data must contain only binary digits (0 and 1)");
+                    }
+
+                    // Convert binary string directly to BitArray
+                    var bitArray = new BitArray(cardData.Length);
+                    for (int i = 0; i < cardData.Length; i++)
+                    {
+                        bitArray[i] = cardData[i] == '1';
+                    }
+
                     // Enqueue the card data reply for the next poll
                     EnqueuePollReply(new RawCardData(0, FormatCode.NotSpecified, bitArray));
-                    LogCommand("Simulated Card Read", new { CardData = cardData });
+                    LogCommand("Simulated Card Read", new { CardData = cardData, BitLength = cardData.Length });
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    LogCommand("Error Simulating Card Read");
+                    LogCommand("Error Simulating Card Read", new { Error = ex.Message });
+                    throw;
                 }
             }
         }

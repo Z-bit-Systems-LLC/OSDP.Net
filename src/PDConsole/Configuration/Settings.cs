@@ -6,13 +6,15 @@ namespace PDConsole.Configuration
     public class Settings
     {
         public ConnectionSettings Connection { get; set; } = new();
-        
+
         public DeviceSettings Device { get; set; } = new();
-        
+
         public SecuritySettings Security { get; set; } = new();
-        
+
+        public SimulationSettings Simulation { get; set; } = new();
+
         public bool EnableLogging { get; set; } = true;
-        
+
         public bool EnableTracing { get; set; } = false;
     }
     
@@ -69,9 +71,16 @@ namespace PDConsole.Configuration
     {
         public static readonly byte[] DefaultKey =
             [0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F];
-        
+
         public bool RequireSecureChannel { get; set; } = false;
-        
+
         public byte[] SecureChannelKey { get; set; } = DefaultKey;
+    }
+
+    public class SimulationSettings
+    {
+        public string CardNumber { get; set; } = "01010101010101010101010101";
+
+        public string PinNumber { get; set; } = "1234#";
     }
 }

@@ -35,5 +35,6 @@ namespace PDConsole
         void SaveSettings(string filePath);
         void SetCurrentSettingsFilePath(string filePath);
         void UpdateSerialConnection(string portName, int baudRate);
+        void UpdateSimulationSettings(string cardNumber, string pinNumber);
     }
 }
