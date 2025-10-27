@@ -79,7 +79,7 @@ namespace PDConsole
                     new MenuItem("_Quit", "", () => Application.RequestStop())
                 ]),
                 new MenuBarItem("_Device", [
-                    new MenuItem("_Start", "", () => _ = StartDevice()),
+                    new MenuItem("_Activate", "", () => _ = StartDevice()),
                     new MenuItem("S_top", "", () => _ = StopDevice()),
                     null, // Separator
                     new MenuItem("_Clear History", "", ClearHistory)
