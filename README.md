@@ -184,9 +184,19 @@ They have all the required assemblies included to run as a self-contained execut
   - [ARM64 macOS](https://www.dropbox.com/scl/fi/nspczsnbhmv6ygtbgfvxw/PDConsole?rlkey=685ohfx01ac1o6jz29hp585cw&st=vgpy6e8z&dl=1)
   - [x64 Windows](https://www.dropbox.com/scl/fi/5wksm69vs4o4s7kfsjiz4/PDConsole.exe?rlkey=1jcbtnq3nj5wqehtjkiyw3tf8&st=161okkhr&dl=1)
 
-NOTE: First, determine the COM port identifier of the 485 bus connected to the computer. 
-This will need to be entered when starting the connection. 
+NOTE: First, determine the COM port identifier of the 485 bus connected to the computer.
+This will need to be entered when starting the connection.
 Be sure to save configuration before exiting.
+
+### PuTTY SSH Sessions
+
+If you experience rendering issues (blank screen) when running PDConsole or ACUConsole through a PuTTY SSH session, set the terminal type to support 256 colors:
+
+```bash
+export TERM=xterm-256color
+```
+
+For more information, see the [Terminal.Gui PuTTY discussion](https://github.com/gui-cs/Terminal.Gui/discussions/1455).
 
 ## Documentation 
 
