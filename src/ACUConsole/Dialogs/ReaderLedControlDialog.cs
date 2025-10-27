@@ -23,7 +23,9 @@ namespace ACUConsole.Dialogs
 
             // First, collect LED control parameters
             var ledNumberTextField = new TextField(25, 1, 25, "0");
-            var colorComboBox = new ComboBox(new Rect(25, 3, 25, 8), new[] { "Black", "Red", "Green", "Amber", "Blue", "Magenta", "Cyan", "White" })
+            // IMPORTANT: Width must be at least ComboBoxExtensions.MinimumRecommendedWidth (30)
+            // for dropdown list to display correctly. See ComboBoxExtensions documentation.
+            var colorComboBox = new ComboBox(new Rect(25, 3, 30, 8), new[] { "Black", "Red", "Green", "Amber", "Blue", "Magenta", "Cyan", "White" })
             {
                 SelectedItem = 1 // Default to Red
             }.ConfigureForOptimalUX();

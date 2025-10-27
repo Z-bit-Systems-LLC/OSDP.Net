@@ -21,6 +21,8 @@ namespace ACUConsole.Dialogs
             var result = new DiscoverDeviceInput { WasCancelled = true };
 
             var portNames = SerialPort.GetPortNames();
+            // IMPORTANT: Width must be at least ComboBoxExtensions.MinimumRecommendedWidth (30)
+            // for dropdown list to display correctly. See ComboBoxExtensions documentation.
             var portNameComboBox = new ComboBox(new Rect(15, 1, 35, 5), portNames);
 
             // Select default port name

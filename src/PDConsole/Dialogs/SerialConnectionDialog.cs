@@ -91,6 +91,8 @@ namespace PDConsole.Dialogs
                 portNames = ["No ports available"];
             }
 
+            // IMPORTANT: Width must be at least ComboBoxExtensions.MinimumRecommendedWidth (30)
+            // for dropdown list to display correctly. See ComboBoxExtensions documentation.
             var portNameComboBox = new ComboBox(new Rect(x, y, 30, 5), portNames);
 
             // Select default port name
@@ -106,6 +108,8 @@ namespace PDConsole.Dialogs
 
         private static ComboBox CreateBaudRateComboBox(int x, int y, int currentBaudRate)
         {
+            // IMPORTANT: Width must be at least ComboBoxExtensions.MinimumRecommendedWidth (30)
+            // for dropdown list to display correctly. See ComboBoxExtensions documentation.
             var baudRateComboBox = new ComboBox(new Rect(x, y, 30, 5), StandardBaudRates);
 
             // Select default baud rate
