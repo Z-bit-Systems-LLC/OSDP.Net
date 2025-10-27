@@ -1,5 +1,6 @@
 using System;
 using System.IO.Ports;
+using ACUConsole.Extensions;
 using ACUConsole.Model.DialogInputs;
 using Terminal.Gui;
 
@@ -21,14 +22,16 @@ namespace ACUConsole.Dialogs
 
             var portNames = SerialPort.GetPortNames();
             var portNameComboBox = new ComboBox(new Rect(15, 1, 35, 5), portNames);
-            
+
             // Select default port name
             if (portNames.Length > 0)
             {
                 portNameComboBox.SelectedItem = Math.Max(
-                    Array.FindIndex(portNames, port => 
+                    Array.FindIndex(portNames, port =>
                         string.Equals(port, defaultPortName)), 0);
             }
+
+            portNameComboBox.ConfigureForOptimalUX();
             var pingTimeoutTextField = new TextField(25, 3, 25, "1000");
             var reconnectDelayTextField = new TextField(25, 5, 25, "0");
 

@@ -1,6 +1,7 @@
 using System;
 using System.IO.Ports;
 using PDConsole.Configuration;
+using PDConsole.Extensions;
 using PDConsole.Model.DialogInputs;
 using Terminal.Gui;
 
@@ -30,8 +31,10 @@ namespace PDConsole.Dialogs
         {
             var result = new SerialConnectionInput { WasCancelled = true };
 
-            var portNameComboBox = CreatePortNameComboBox(15, 1, currentSettings.SerialPortName);
-            var baudRateComboBox = CreateBaudRateComboBox(15, 3, currentSettings.SerialBaudRate);
+            var portNameComboBox = CreatePortNameComboBox(15, 1, currentSettings.SerialPortName)
+                .ConfigureForOptimalUX();
+            var baudRateComboBox = CreateBaudRateComboBox(15, 3, currentSettings.SerialBaudRate)
+                .ConfigureForOptimalUX();
 
             void ApplyButtonClicked()
             {

@@ -1,4 +1,5 @@
 using ACUConsole.Configuration;
+using ACUConsole.Extensions;
 using ACUConsole.Model.DialogInputs;
 using OSDP.Net.Model.CommandData;
 using Terminal.Gui;
@@ -25,7 +26,7 @@ namespace ACUConsole.Dialogs
             var colorComboBox = new ComboBox(new Rect(25, 3, 25, 8), new[] { "Black", "Red", "Green", "Amber", "Blue", "Magenta", "Cyan", "White" })
             {
                 SelectedItem = 1 // Default to Red
-            };
+            }.ConfigureForOptimalUX();
 
             void NextButtonClicked()
             {

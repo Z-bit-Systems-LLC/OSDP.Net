@@ -1,6 +1,7 @@
 using System;
 using System.IO.Ports;
 using ACUConsole.Configuration;
+using ACUConsole.Extensions;
 using ACUConsole.Model.DialogInputs;
 using Terminal.Gui;
 
@@ -20,7 +21,8 @@ namespace ACUConsole.Dialogs
         {
             var result = new SerialConnectionInput { WasCancelled = true };
 
-            var portNameComboBox = CreatePortNameComboBox(15, 1, currentSettings.PortName);
+            var portNameComboBox = CreatePortNameComboBox(15, 1, currentSettings.PortName)
+                .ConfigureForOptimalUX();
             var baudRateTextField = new TextField(25, 3, 25, currentSettings.BaudRate.ToString());
             var replyTimeoutTextField = new TextField(25, 5, 25, currentSettings.ReplyTimeout.ToString());
 
