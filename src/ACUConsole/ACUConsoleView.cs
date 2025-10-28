@@ -32,7 +32,7 @@ namespace ACUConsole
         private class DeviceConnectionStatus
         {
             public string DeviceName { get; set; }
-            public byte Address { get; set; }
+            public byte Address { get; init; }
             public bool IsConnected { get; set; }
             public bool IsSecureChannelEstablished { get; set; }
         }
@@ -190,7 +190,7 @@ namespace ACUConsole
             {
                 var displayItems = new List<string>();
 
-                // Add header if there are devices
+                // Add a header if there are devices
                 if (_deviceStatuses.Count > 0)
                 {
                     displayItems.Add("Device     Addr   Con   Sec");
@@ -207,7 +207,7 @@ namespace ACUConsole
                         return $"{d.DeviceName, -12}{d.Address, 3} {connSymbol, 5} {secSymbol, 5}";
                     }));
 
-                // If no devices, show message
+                // If no devices, show a message
                 if (_deviceStatuses.Count == 0)
                 {
                     displayItems.Add("No devices configured");
@@ -235,7 +235,7 @@ namespace ACUConsole
 
                 if (shouldSave == 0) // Yes
                 {
-                    // If a config file path exists, save to it, otherwise show save dialog
+                    // If a config file path exists, save to it, otherwise show a save dialog
                     if (!string.IsNullOrEmpty(_presenter.CurrentConfigFilePath))
                     {
                         _presenter.SaveConfiguration();
@@ -248,7 +248,7 @@ namespace ACUConsole
             }
             catch (Exception)
             {
-                // If dialog fails, fall back to auto-save
+                // If a dialog fails, fall back to auto-save
                 try
                 {
                     _presenter.SaveConfiguration();
@@ -437,7 +437,7 @@ namespace ACUConsole
                 {
                     _presenter.RemoveDevice(input.DeviceAddress);
 
-                    // Remove device from status tracking
+                    // Remove a device from status tracking
                     _deviceStatuses.Remove(input.DeviceAddress);
 
                     // Update the status display
@@ -483,7 +483,7 @@ namespace ACUConsole
                 }
                 catch (OperationCanceledException)
                 {
-                    // Discovery was cancelled - this is expected, no need to show error
+                    // Discovery was cancelled - this is expected, no need to show an error
                 }
                 catch (Exception ex)
                 {
@@ -858,6 +858,12 @@ namespace ACUConsole
 
         private void OnConnectionStatusChanged(object sender, ConnectionStatusChangedEventArgs args)
         {
+            // Filter out the configuration address (127 / 0x7F) used during discovery
+            if (args.Address == 127)
+            {
+                return;
+            }
+
             // Update device status tracking
             if (_deviceStatuses.ContainsKey(args.Address))
             {
