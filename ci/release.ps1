@@ -168,12 +168,36 @@ if (-not $DryRun) {
     $newVersion = & $getVersionScript -BuildPropsPath $buildPropsPath -Format Simple
 
     Write-Success "Version incremented to: $newVersion"
+
+    # Update README.md with new version and release date
+    Write-Info "Updating README.md Test Console section..."
+    $readmePath = Join-Path $PSScriptRoot ".." "README.md"
+
+    # Get current date with ordinal suffix (1st, 2nd, 3rd, 4th, etc.)
+    $day = (Get-Date).Day
+    $suffix = switch -Regex ($day) {
+        '1(1|2|3)$' { 'th'; break }
+        '.1$' { 'st'; break }
+        '.2$' { 'nd'; break }
+        '.3$' { 'rd'; break }
+        default { 'th' }
+    }
+    $releaseDate = Get-Date -Format "MMMM $day'$suffix', yyyy"
+
+    # Update README.md
+    $readmeContent = Get-Content $readmePath -Raw
+    $pattern = '(## Test Console\s*\n\s*\n)\*\*Current Version [^\*]+\*\*'
+    $replacement = "`$1**Current Version $newVersion released $releaseDate**"
+    $readmeContent = $readmeContent -replace $pattern, $replacement
+    Set-Content $readmePath -Value $readmeContent -NoNewline
+
+    Write-Success "README.md updated with version $newVersion released $releaseDate"
 }
 
 # Commit version bump
 Write-Info "Committing version bump..."
 if (-not $DryRun) {
-    git add Directory.Build.props
+    git add Directory.Build.props README.md
     $result = git commit -m "Bump version to $newVersion" 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Error: Failed to commit version bump"

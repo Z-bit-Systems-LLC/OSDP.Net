@@ -170,6 +170,8 @@ It simply requires the installation of a new NuGet package. The code needs to be
 
 ## Test Console
 
+**Current Version 5.0.21-beta released October 27th, 2025**
+
 There are compiled versions of the test console applications for all the major platforms available for download. 
 They have all the required assemblies included to run as a self-contained executable. 
 
