@@ -38,4 +38,7 @@ _UpgradeReport_Files/
 # those tools seem to leave behind
 *.orig
 
+# ReSharper code inspection results
+inspectcode-results.xml
+
 .claude

@@ -11,6 +11,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Run a specific test: `dotnet test --filter "FullyQualifiedName=OSDP.Net.Tests.{TestClass}.{TestMethod}"`
 - Run tests with specific configuration: `dotnet test --configuration Release`
 
+## Code Inspection
+- **IMPORTANT**: Azure pipeline runs ReSharper code inspection and will fail the build if there are any warnings or errors
+- Always run ReSharper code inspection before committing changes
+- Run inspection: `jb inspectcode OSDP.Net.sln --output=inspectcode-results.xml`
+- The command will create a SARIF JSON report with inspection results
+- Check counts:
+  - Errors: `(Select-String -Path inspectcode-results.xml -Pattern '"level": "error",' -SimpleMatch).Count` (must be 0)
+  - Warnings: `(Select-String -Path inspectcode-results.xml -Pattern '"level": "warning",' -SimpleMatch).Count` (must be 0)
+- View details of errors and warnings:
+```powershell
+$json = Get-Content inspectcode-results.xml -Raw | ConvertFrom-Json
+$issues = $json.runs[0].results | Where-Object { $_.level -eq 'error' -or $_.level -eq 'warning' }
+foreach ($issue in $issues) {
+    Write-Host "$($issue.level.ToUpper()): $($issue.ruleId)" -ForegroundColor $(if($issue.level -eq 'error'){'Red'}else{'Yellow'})
+    Write-Host "  Message: $($issue.message.text)"
+    Write-Host "  File: $($issue.locations[0].physicalLocation.artifactLocation.uri)"
+    Write-Host "  Line: $($issue.locations[0].physicalLocation.region.startLine)"
+    Write-Host ""
+}
+```
+- "note" level issues are style suggestions and don't block builds
+- If JetBrains.ReSharper.GlobalTools is not installed, run: `dotnet tool install -g JetBrains.ReSharper.GlobalTools`
+- Fix all warnings and errors before creating commits
+
 ## Code Style Guidelines
 - Follow default ReSharper C# coding style conventions
 - Maintain abbreviations in uppercase (ACU, LED, OSDP, PIN, PIV, UID, SCBK)
