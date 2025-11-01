@@ -429,9 +429,15 @@ namespace ACUConsole
         }
 
         // Command Methods - Individual command implementations
+        public async Task SendACUReceiveSize(byte address, byte maximumReceiveSize)
+        {
+            await ExecuteCommand("ACU Receive Size", address,
+                () => _controlPanel.ACUReceiveSize(_connectionId, address, maximumReceiveSize));
+        }
+
         public async Task SendDeviceCapabilities(byte address)
         {
-            await ExecuteCommand("Device capabilities", address, 
+            await ExecuteCommand("Device capabilities", address,
                 () => _controlPanel.DeviceCapabilities(_connectionId, address));
         }
 
@@ -567,9 +573,25 @@ namespace ACUConsole
         {
             var biometricTemplate = new BiometricTemplateData(readerNumber, (BiometricType)type, (BiometricFormat)format,
                 qualityThreshold, templateData);
-            await ExecuteCommandWithTimeout("Biometric Match Command", address, 
-                () => _controlPanel.ScanAndMatchBiometricTemplate(_connectionId, address, biometricTemplate, 
+            await ExecuteCommandWithTimeout("Biometric Match Command", address,
+                () => _controlPanel.ScanAndMatchBiometricTemplate(_connectionId, address, biometricTemplate,
                     TimeSpan.FromSeconds(30), CancellationToken.None));
+        }
+
+        public async Task<byte[]> SendGetPIVData(byte address, byte[] objectId, byte elementId, byte dataOffset)
+        {
+            var getPIVData = new GetPIVData(objectId, elementId, dataOffset);
+            var result = await ExecuteCommand("Get PIV Data Command", address,
+                () => _controlPanel.GetPIVData(_connectionId, address, getPIVData,
+                    TimeSpan.FromSeconds(30), CancellationToken.None));
+
+            if (result.Length > 0)
+            {
+                await File.WriteAllBytesAsync("PivData.bin", result);
+                AddLogMessage($"PIV data saved to PivData.bin ({result.Length} bytes)");
+            }
+
+            return result;
         }
 
         public async Task<FileTransferResult> SendFileTransfer(byte address, byte type, byte[] data, byte messageSize,

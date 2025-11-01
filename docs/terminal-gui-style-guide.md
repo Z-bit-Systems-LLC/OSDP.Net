@@ -59,12 +59,16 @@ Terminal.Gui uses a character-based coordinate system where:
 - **Example:** `new Label(1, 1, "Port:")`
 
 #### Text Fields and ComboBoxes
-- **X position:** Align based on longest label length
-  - Short labels (4-6 chars): x = 15
-  - Medium labels (7-12 chars): x = 20
-  - Long labels (13-18 chars): x = 25
+- **X position:** Align based on longest label length with **minimum 5 characters spacing**
+  - Calculate: x = longest_label_length + 5 (minimum)
+  - Standard positions:
+    - Short labels (up to 10 chars): x = 15
+    - Medium labels (11-15 chars): x = 20
+    - Long labels (16-20 chars): x = 25
+    - Very long labels (21-25 chars): x = 30
+    - Extra long labels (26+ chars): x = 31
 - **Width:**
-  - TextField: 25, 30, or 35 characters
+  - TextField: 15 (small values), 25, or 35 characters
   - ComboBox: Minimum 30 characters (required for dropdown)
 
 #### CheckBoxes
@@ -104,14 +108,19 @@ var textField = new TextField(x, y, width, defaultValue);
 ```
 
 **Standard Widths:**
+- 15 characters: Small values (hex codes, small numbers)
 - 25 characters: Short inputs (numbers, codes)
 - 30 characters: Medium inputs (names, single-line text)
 - 35 characters: Long inputs (paths, descriptions)
 
 **Example:**
 ```csharp
-var nameField = new TextField(15, 1, 35, string.Empty);
-var portField = new TextField(20, 3, 30, "9600");
+// Label "Object ID (hex):" (18 chars) + 5 spacing = x:23
+var hexField = new TextField(23, 1, 15, "5FC105");
+// Label "Name:" (5 chars) + 5 spacing = x:10, use minimum x:15
+var nameField = new TextField(15, 3, 35, string.Empty);
+// Label "Port:" (5 chars) + 5 spacing = x:10, use minimum x:15
+var portField = new TextField(15, 5, 30, "9600");
 ```
 
 ### ComboBox

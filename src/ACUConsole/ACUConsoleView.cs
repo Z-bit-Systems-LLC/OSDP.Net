@@ -104,12 +104,14 @@ namespace ACUConsole
                     _discoverMenuItem
                 ]),
                 new MenuBarItem("_Commands", [
+                    new MenuItem("ACU Receive Size", "", () => _ = SendACUReceiveSizeCommand()),
                     new MenuItem("Communication Configuration", "", () => _ = SendCommunicationConfiguration()),
                     new MenuItem("Biometric Read", "", () => _ = SendBiometricReadCommand()),
                     new MenuItem("Biometric Match", "", () => _ = SendBiometricMatchCommand()),
                     new MenuItem("_Device Capabilities", "", () => SendSimpleCommand("Device capabilities", _presenter.SendDeviceCapabilities)),
                     new MenuItem("Encryption Key Set", "", () => _ = SendEncryptionKeySetCommand()),
                     new MenuItem("File Transfer", "", () => _ = SendFileTransferCommand()),
+                    new MenuItem("Get PIV Data", "", () => _ = SendGetPIVDataCommand()),
                     new MenuItem("_ID Report", "", () => SendSimpleCommand("ID report", _presenter.SendIdReport)),
                     new MenuItem("Input Status", "", () => SendSimpleCommand("Input status", _presenter.SendInputStatus)),
                     new MenuItem("_Local Status", "", () => SendSimpleCommand("Local Status", _presenter.SendLocalStatus)),
@@ -529,17 +531,41 @@ namespace ACUConsole
 
             var deviceList = _presenter.GetDeviceList();
             var input = CommunicationConfigurationDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList, _presenter.Settings.SerialConnectionSettings.BaudRate);
-            
+
             if (!input.WasCancelled)
             {
                 try
                 {
                     await _presenter.SendCommunicationConfiguration(input.DeviceAddress, input.NewAddress, input.NewBaudRate);
-                    
+
                     if (_presenter.Settings.SerialConnectionSettings.BaudRate != input.NewBaudRate)
                     {
                         ShowInformation("Info", $"The connection needs to be restarted with baud rate of {input.NewBaudRate}");
                     }
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
+        }
+
+        private async Task SendACUReceiveSizeCommand()
+        {
+            if (!_presenter.CanSendCommand())
+            {
+                ShowCommandRequirementsError();
+                return;
+            }
+
+            var deviceList = _presenter.GetDeviceList();
+            var input = ACUReceiveSizeDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+
+            if (!input.WasCancelled)
+            {
+                try
+                {
+                    await _presenter.SendACUReceiveSize(input.DeviceAddress, input.MaximumReceiveSize);
                 }
                 catch (Exception ex)
                 {
@@ -726,12 +752,41 @@ namespace ACUConsole
 
             var deviceList = _presenter.GetDeviceList();
             var input = BiometricMatchDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
-            
+
             if (!input.WasCancelled)
             {
                 try
                 {
                     await _presenter.SendBiometricMatch(input.DeviceAddress, input.ReaderNumber, input.Type, input.Format, input.QualityThreshold, input.TemplateData);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
+        }
+
+        private async Task SendGetPIVDataCommand()
+        {
+            if (!_presenter.CanSendCommand())
+            {
+                ShowCommandRequirementsError();
+                return;
+            }
+
+            var deviceList = _presenter.GetDeviceList();
+            var input = GetPIVDataDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+
+            if (!input.WasCancelled)
+            {
+                // Prompt user to present PIV card
+                MessageBox.Query(60, 8, "Present PIV Card",
+                    "Press OK and then present card to reader.",
+                    "OK");
+
+                try
+                {
+                    await _presenter.SendGetPIVData(input.DeviceAddress, input.ObjectId, input.ElementId, input.DataOffset);
                 }
                 catch (Exception ex)
                 {

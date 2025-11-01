@@ -38,6 +38,7 @@ namespace ACUConsole
         Task<string> DiscoverDevice(string portName, int pingTimeout, int reconnectDelay, CancellationToken cancellationToken = default);
 
         // Command Methods
+        Task SendACUReceiveSize(byte address, byte maximumReceiveSize);
         Task SendDeviceCapabilities(byte address);
         Task SendIdReport(byte address);
         Task SendInputStatus(byte address);
@@ -55,6 +56,7 @@ namespace ACUConsole
         Task SendBiometricMatch(byte address, byte readerNumber, byte type, byte format, byte qualityThreshold, byte[] templateData);
         Task<FileTransferResult> SendFileTransfer(byte address, byte type, byte[] data, byte messageSize,
             Action<OSDP.Net.ControlPanel.FileTransferStatus> progressCallback, CancellationToken cancellationToken);
+        Task<byte[]> SendGetPIVData(byte address, byte[] objectId, byte elementId, byte dataOffset);
 
         // Custom Commands
         Task SendCustomCommand(byte address, CommandData commandData);
