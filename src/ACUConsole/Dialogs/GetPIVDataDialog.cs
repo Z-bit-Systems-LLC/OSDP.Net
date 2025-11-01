@@ -10,6 +10,11 @@ namespace ACUConsole.Dialogs
     /// </summary>
     public static class GetPIVDataDialog
     {
+        // Static fields to persist values between calls
+        private static string _lastObjectId = "5FC105";
+        private static string _lastElementId = "70";
+        private static string _lastDataOffset = "00";
+
         /// <summary>
         /// Shows the get PIV data dialog and returns user input
         /// </summary>
@@ -20,10 +25,10 @@ namespace ACUConsole.Dialogs
         {
             var result = new GetPIVDataInput { WasCancelled = true };
 
-            // Create controls
-            var objectIdTextField = new TextField(23, 1, 15, "5FC105");
-            var elementIdTextField = new TextField(23, 3, 15, "70");
-            var dataOffsetTextField = new TextField(23, 5, 15, "00");
+            // Create controls with persisted values
+            var objectIdTextField = new TextField(23, 1, 15, _lastObjectId);
+            var elementIdTextField = new TextField(23, 3, 15, _lastElementId);
+            var dataOffsetTextField = new TextField(23, 5, 15, _lastDataOffset);
 
             void NextButtonClicked()
             {
@@ -100,6 +105,11 @@ namespace ACUConsole.Dialogs
                     MessageBox.ErrorQuery(40, 10, "Error", "Invalid hex characters in Data Offset!", "OK");
                     return;
                 }
+
+                // Save values for next time (after validation succeeds)
+                _lastObjectId = objectIdText;
+                _lastElementId = elementIdText;
+                _lastDataOffset = dataOffsetText;
 
                 Application.RequestStop();
 
