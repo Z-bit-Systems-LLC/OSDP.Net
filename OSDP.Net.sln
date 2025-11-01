@@ -17,6 +17,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{B304A16C-C
 		docs\powershell.md = docs\powershell.md
 		README.md = README.md
 		docs\supported_commands.md = docs\supported_commands.md
+		docs\terminal-gui-style-guide.md = docs\terminal-gui-style-guide.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{A57B307A-A240-4F4F-A3A8-A078093B2809}"
