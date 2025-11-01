@@ -76,7 +76,9 @@ namespace ACUConsole
         {
             // Check if we're running in a single-file deployment
             var entryAssembly = Assembly.GetEntryAssembly();
+#pragma warning disable IL3000 // Deliberately checking Location to detect single-file deployment
             var isSingleFile = string.IsNullOrEmpty(entryAssembly?.Location);
+#pragma warning restore IL3000
 
             if (!isSingleFile)
             {
@@ -97,7 +99,9 @@ namespace ACUConsole
         {
             // Check if we're running in a single-file deployment
             var entryAssembly = Assembly.GetEntryAssembly();
+#pragma warning disable IL3000 // Deliberately checking Location to detect single-file deployment
             var isSingleFile = string.IsNullOrEmpty(entryAssembly?.Location);
+#pragma warning restore IL3000
 
             if (isSingleFile)
             {
@@ -180,7 +184,9 @@ namespace ACUConsole
         {
             // Check if we're running in a single-file deployment
             var entryAssembly = Assembly.GetEntryAssembly();
+#pragma warning disable IL3000 // Deliberately checking Location to detect single-file deployment
             var isSingleFile = string.IsNullOrEmpty(entryAssembly?.Location);
+#pragma warning restore IL3000
 
             if (isSingleFile)
             {
