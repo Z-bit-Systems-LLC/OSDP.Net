@@ -53,6 +53,13 @@ foreach ($issue in $issues) {
 - Console application in `/src/Console`
 - Sample applications in `/src/samples`
 
+## Terminal GUI Development
+- **Style Guide**: See `/docs/terminal-gui-style-guide.md` for comprehensive guidelines on creating dialogs and UI components
+- **Console Applications**: PDConsole and ACUConsole use Terminal.Gui for interactive terminal interfaces
+- **Dialog Standards**: All dialogs must follow the established patterns for layout, spacing, validation, and user experience
+- **ComboBox Requirements**: All ComboBox instances MUST use `.ConfigureForOptimalUX()` extension and have minimum width of 30 characters
+- **Dialog Organization**: Place dialogs in `{Console}/Dialogs/` and input models in `{Console}/Model/DialogInputs/`
+
 ## OSDP Implementation
 - **Command Implementation Status**: See `/docs/supported_commands.md` for current implementation status of OSDP v2.2 commands and replies
 - **Device (PD) Implementation**: The `Device` class in `/src/OSDP.Net/Device.cs` provides the base implementation for OSDP Peripheral Devices
