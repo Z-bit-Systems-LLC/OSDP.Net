@@ -4,7 +4,10 @@ using OSDP.Net.Messages.SecureChannel;
 
 namespace OSDP.Net.Model.CommandData;
 
-internal class IdReport : CommandData
+/// <summary>
+/// Represents a command data type for generating an ID report request.
+/// </summary>
+public class IdReport : CommandData
 {
     /// <inheritdoc />
     public override CommandType CommandType => CommandType.IdReport;
@@ -18,6 +21,6 @@ internal class IdReport : CommandData
     /// <inheritdoc />
     public override byte[] BuildData()
     {
-        return new byte[] {0x00};
+        return [0x00];
     }
 }

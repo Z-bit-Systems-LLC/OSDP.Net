@@ -633,8 +633,9 @@ namespace OSDP.Net
                 var nextFragmentSize = (ushort)Math.Min(fragmentSize, totalSize - offset);
 
                 var reply = await SendCommand(connectionId, address,
-            new FileTransferFragment(fileType, totalSize, offset, nextFragmentSize,
-                            fileData.Skip(offset).Take(nextFragmentSize).ToArray()),
+            new FileTransferFragment(fileType,
+                new MessageDataFragment(totalSize, offset, nextFragmentSize,
+                    fileData.Skip(offset).Take(nextFragmentSize).ToArray())),
                         cancellationToken, throwOnNak: false)
                     .ConfigureAwait(false);
 

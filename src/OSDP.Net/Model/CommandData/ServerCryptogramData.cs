@@ -4,7 +4,11 @@ using OSDP.Net.Messages.SecureChannel;
 
 namespace OSDP.Net.Model.CommandData;
 
-internal class ServerCryptogramData : CommandData
+/// <summary>
+/// Represents the server cryptogram data used in a secure communication sequence.
+/// Encapsulates information such as the server cryptogram and whether a default key is being used.
+/// </summary>
+public class ServerCryptogramData : CommandData
 {
     /// <inheritdoc />
     public ServerCryptogramData(byte[] serverCryptogram, bool isDefaultKey)
@@ -12,9 +16,17 @@ internal class ServerCryptogramData : CommandData
         ServerCryptogram = serverCryptogram ?? throw new ArgumentNullException(nameof(serverCryptogram));
         IsDefaultKey = isDefaultKey;
     }
-    
+
+    /// <summary>
+    /// Gets the cryptographic data provided by the server during a secure communication exchange.
+    /// This property holds the server's cryptogram used for encrypting or authenticating messages.
+    /// </summary>
     public byte[] ServerCryptogram { get; }
-    
+
+    /// <summary>
+    /// Indicates whether the default encryption key is used for secure communications.
+    /// This property specifies if the default key is applied during the security initialization process.
+    /// </summary>
     public bool IsDefaultKey { get; }
     
     /// <inheritdoc />

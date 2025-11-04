@@ -13,7 +13,7 @@ internal class FileTransferFragmentTest
         0x01, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x09, 0x08, 0x07, 0x06, 0x05
     ];
 
-    private FileTransferFragment TestFileTransferFragment => new(0x01, 10, 0, 5, [0x09, 0x08, 0x07, 0x06, 0x05]);
+    private FileTransferFragment TestFileTransferFragment => new(0x01, new MessageDataFragment(10, 0, 5, [0x09, 0x08, 0x07, 0x06, 0x05]));
 
     [Test]
     public void CheckConstantValues()
@@ -41,9 +41,9 @@ internal class FileTransferFragmentTest
         var actual = FileTransferFragment.ParseData(TestData);
 
         Assert.That(actual.Type, Is.EqualTo(TestFileTransferFragment.Type));
-        Assert.That(actual.TotalSize, Is.EqualTo(TestFileTransferFragment.TotalSize));
-        Assert.That(actual.Offset, Is.EqualTo(TestFileTransferFragment.Offset));
-        Assert.That(actual.FragmentSize, Is.EqualTo(TestFileTransferFragment.FragmentSize));
-        Assert.That(actual.DataFragment, Is.EqualTo(TestFileTransferFragment.DataFragment));
+        Assert.That(actual.Fragment.TotalSize, Is.EqualTo(TestFileTransferFragment.Fragment.TotalSize));
+        Assert.That(actual.Fragment.Offset, Is.EqualTo(TestFileTransferFragment.Fragment.Offset));
+        Assert.That(actual.Fragment.FragmentSize, Is.EqualTo(TestFileTransferFragment.Fragment.FragmentSize));
+        Assert.That(actual.Fragment.DataFragment, Is.EqualTo(TestFileTransferFragment.Fragment.DataFragment));
     }
 }

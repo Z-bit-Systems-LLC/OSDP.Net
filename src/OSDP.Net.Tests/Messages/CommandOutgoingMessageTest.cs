@@ -107,7 +107,7 @@ internal class CommandOutgoingMessageTest
         device.MessageControl.IncrementSequence(1);
 
         var outgoingMessage = new OutgoingMessage(device.Address, device.MessageControl,
-            new FileTransferFragment(3, 1000, 10, 5, new byte[] { 0x01, 0x02, 0x03, 0x04, 0x05 }));
+            new FileTransferFragment(3, new MessageDataFragment(1000, 10, 5, new byte[] { 0x01, 0x02, 0x03, 0x04, 0x05 })));
 
         return BitConverter.ToString(outgoingMessage.BuildMessage(CreateSecureChannel(device.UseSecureChannel)));
     }

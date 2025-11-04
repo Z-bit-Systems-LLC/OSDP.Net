@@ -8,6 +8,7 @@ using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
 using PDConsole.Configuration;
 using CommunicationConfiguration = OSDP.Net.Model.CommandData.CommunicationConfiguration;
+using DeviceCapabilities = OSDP.Net.Model.ReplyData.DeviceCapabilities;
 
 namespace PDConsole
 {

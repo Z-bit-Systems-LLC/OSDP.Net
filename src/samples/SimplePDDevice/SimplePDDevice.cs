@@ -3,6 +3,7 @@ using OSDP.Net.Model;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
 using CommunicationConfiguration = OSDP.Net.Model.CommandData.CommunicationConfiguration;
+using DeviceCapabilities = OSDP.Net.Model.ReplyData.DeviceCapabilities;
 
 namespace SimplePDDevice;
 

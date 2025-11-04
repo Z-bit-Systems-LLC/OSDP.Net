@@ -4,7 +4,10 @@ using OSDP.Net.Messages.SecureChannel;
 
 namespace OSDP.Net.Model.CommandData;
 
-internal class DeviceCapabilities : CommandData
+/// <summary>
+/// Represents the capabilities of a device within the context of OSDP (Open Supervised Device Protocol).
+/// </summary>
+public class DeviceCapabilities : CommandData
 {
     /// <inheritdoc />
     public override CommandType CommandType => CommandType.DeviceCapabilities;
@@ -18,6 +21,6 @@ internal class DeviceCapabilities : CommandData
     /// <inheritdoc />
     public override byte[] BuildData()
     {
-        return new byte[] {0x00};
+        return [0x00];
     }
 }

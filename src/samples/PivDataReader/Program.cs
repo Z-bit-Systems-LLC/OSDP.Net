@@ -31,7 +31,7 @@ internal class Program
         byte elementId = Convert.FromHexString(pivDataSection["ElementId"]!)[0];
         ushort offset = ushort.Parse(pivDataSection["Offset"]!);
         
-        var panel = new ControlPanel(NullLoggerFactory.Instance);
+        var panel = new ControlPanel(new NullLoggerFactory());
         panel.ConnectionStatusChanged += async (_, eventArgs) =>
         {
             Console.WriteLine();
@@ -63,7 +63,7 @@ internal class Program
         else
         {
             _connectionId = panel.StartConnection(new SerialPortOsdpConnection(portName, baudRate)
-                { ReplyTimeout = TimeSpan.FromSeconds(2) });
+                { ReplyTimeout = TimeSpan.FromSeconds(2) }, TimeSpan.FromMilliseconds(100), true);
         }
         panel.AddDevice(_connectionId, deviceAddress, true, useSecureChannel, securityKey);
 
@@ -131,6 +131,16 @@ internal class Program
                     new GetPIVData(objectId, elementId, offset), TimeSpan.FromSeconds(30));
                 await File.WriteAllBytesAsync("PivData.bin", data);
                 Console.Write(BitConverter.ToString(data));
+                
+                Console.Write("***Attempting to send Authentication Challenge***");
+                data = await panel.AuthenticationChallenge(_connectionId, deviceAddress, 0x11, 0x9E, [
+                    0xA5, 0x91, 0xA6, 0xD4, 0x0B, 0xF4, 0x20,
+                    0x40, 0x4A, 0x01, 0x17, 0x33, 0xCF, 0xB7, 0xB1,
+                    0x90, 0xD6, 0x2C, 0x65, 0xBF, 0x0B, 0xCD, 0xA3,
+                    0x2B, 0x57, 0xB2, 0x77, 0xD9, 0xAD, 0x9F, 0x14,
+                    0x6E
+                ], 128,TimeSpan.FromSeconds(30), CancellationToken.None);
+                Console.Write(BitConverter.ToString(data));
             }
             catch (TimeoutException)
             {
@@ -140,7 +150,7 @@ internal class Program
             {
                 Console.WriteLine($"Exception: {exception}");
             }
-            
+           
             Console.WriteLine();
             Console.Write("Press enter to continue");
             Console.ReadLine();
