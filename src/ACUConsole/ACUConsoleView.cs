@@ -538,6 +538,28 @@ namespace ACUConsole
                 {
                     await _presenter.SendCommunicationConfiguration(input.DeviceAddress, input.NewAddress, input.NewBaudRate);
 
+                    // Update device status tracking when address changes
+                    if (input.DeviceAddress != input.NewAddress && _deviceStatuses.ContainsKey(input.DeviceAddress))
+                    {
+                        // Copy the existing status to preserve connection state
+                        var existingStatus = _deviceStatuses[input.DeviceAddress];
+
+                        // Remove the old address entry
+                        _deviceStatuses.Remove(input.DeviceAddress);
+
+                        // Add new entry with updated address
+                        _deviceStatuses[input.NewAddress] = new DeviceConnectionStatus
+                        {
+                            DeviceName = existingStatus.DeviceName,
+                            Address = input.NewAddress,
+                            IsConnected = existingStatus.IsConnected,
+                            IsSecureChannelEstablished = existingStatus.IsSecureChannelEstablished
+                        };
+
+                        // Update the display
+                        UpdateDeviceStatusDisplay();
+                    }
+
                     if (_presenter.Settings.SerialConnectionSettings.BaudRate != input.NewBaudRate)
                     {
                         ShowInformation("Info", $"The connection needs to be restarted with baud rate of {input.NewBaudRate}");
