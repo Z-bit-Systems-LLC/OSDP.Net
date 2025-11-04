@@ -1,5 +1,7 @@
+using System;
 using System.Linq;
 using ACUConsole.Configuration;
+using ACUConsole.Extensions;
 using ACUConsole.Model.DialogInputs;
 using Terminal.Gui;
 
@@ -26,7 +28,8 @@ namespace ACUConsole.Dialogs
 
             // First, collect communication configuration parameters
             var newAddressTextField = new TextField(25, 1, 25, suggestedAddress);
-            var newBaudRateTextField = new TextField(25, 3, 25, currentBaudRate.ToString());
+            var newBaudRateComboBox = CreateBaudRateComboBox(25, 3, currentBaudRate)
+                .ConfigureForOptimalUX();
 
             void NextButtonClicked()
             {
@@ -38,9 +41,9 @@ namespace ACUConsole.Dialogs
                 }
 
                 // Validate new baud rate
-                if (!int.TryParse(newBaudRateTextField.Text.ToString(), out var newBaudRate))
+                if (!int.TryParse(newBaudRateComboBox.Text.ToString(), out var newBaudRate))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid baud rate entered!", "OK");
+                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid baud rate selected!", "OK");
                     return;
                 }
 
@@ -72,12 +75,27 @@ namespace ACUConsole.Dialogs
 
             var dialog = new Dialog("Communication Configuration", 60, 11, cancelButton, nextButton);
             dialog.Add(new Label(1, 1, "New Address:"), newAddressTextField,
-                      new Label(1, 3, "New Baud Rate:"), newBaudRateTextField);
+                      new Label(1, 3, "New Baud Rate:"), newBaudRateComboBox);
             newAddressTextField.SetFocus();
 
             Application.Run(dialog);
-            
+
             return result;
+        }
+
+        private static ComboBox CreateBaudRateComboBox(int x, int y, int currentBaudRate)
+        {
+            // IMPORTANT: Width must be at least ComboBoxExtensions.MinimumRecommendedWidth (30)
+            // for dropdown list to display correctly. See ComboBoxExtensions documentation.
+            var baudRateComboBox = new ComboBox(new Rect(x, y, 30, 5), Constants.StandardBaudRates);
+
+            // Select default baud rate
+            var currentBaudRateString = currentBaudRate.ToString();
+            var index = Array.FindIndex(Constants.StandardBaudRates, rate =>
+                string.Equals(rate, currentBaudRateString));
+            baudRateComboBox.SelectedItem = Math.Max(index, 0);
+
+            return baudRateComboBox;
         }
     }
 }

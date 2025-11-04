@@ -12,15 +12,6 @@ namespace ACUConsole.Dialogs
     /// </summary>
     public static class SerialConnectionDialog
     {
-        private static readonly string[] StandardBaudRates =
-        [
-            "9600",
-            "19200",
-            "38400",
-            "57600",
-            "115200",
-            "230400"
-        ];
 
         /// <summary>
         /// Shows the serial connection dialog and returns user input
@@ -113,11 +104,11 @@ namespace ACUConsole.Dialogs
         {
             // IMPORTANT: Width must be at least ComboBoxExtensions.MinimumRecommendedWidth (30)
             // for dropdown list to display correctly. See ComboBoxExtensions documentation.
-            var baudRateComboBox = new ComboBox(new Rect(x, y, 30, 5), StandardBaudRates);
+            var baudRateComboBox = new ComboBox(new Rect(x, y, 30, 5), Constants.StandardBaudRates);
 
             // Select default baud rate
             var currentBaudRateString = currentBaudRate.ToString();
-            var index = Array.FindIndex(StandardBaudRates, rate =>
+            var index = Array.FindIndex(Constants.StandardBaudRates, rate =>
                 string.Equals(rate, currentBaudRateString));
             baudRateComboBox.SelectedItem = Math.Max(index, 0);
 
