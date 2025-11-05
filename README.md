@@ -179,12 +179,12 @@ They have all the required assemblies included to run as a self-contained execut
   - [ARM64 Linux](https://www.dropbox.com/scl/fi/9io2ot3xi0w2213fx20hw/ACUConsole?rlkey=p1zaev2gsmhxsrddiveh9j20x&st=dnxuvdt8&dl=1)
   - [x64 Linux](https://www.dropbox.com/scl/fi/fnpteprkr9rjmr1mm653f/ACUConsole?rlkey=c1txkn10ak0a71numayd8uel7&st=8tt2rg46&dl=1)
   - [ARM64 macOS](https://www.dropbox.com/scl/fi/adks520hl6urybfr1ev85/ACUConsole?rlkey=ph2fiaq0352rdl1yhynqvbgq2&st=5zmrjd5t&dl=1)
-  - [x64 Windows](https://www.dropbox.com/scl/fi/uraj72ufisky91k1xdvtz/ACUConsole.exe?rlkey=f7xvnd34mx79xfthxgnpdzd4j&st=zvqh9p1o&dl=1) 
+  - [x64 Windows (Excutable should be signed)](https://www.dropbox.com/scl/fi/uraj72ufisky91k1xdvtz/ACUConsole.exe?rlkey=f7xvnd34mx79xfthxgnpdzd4j&st=zvqh9p1o&dl=1) 
 - PD Console (Beta)
   - [ARM64 Linux](https://www.dropbox.com/scl/fi/wpa167qd4njrz1zmfutqe/PDConsole?rlkey=qe8uot0op8owtgnemji980y7s&st=fp3fw4dc&dl=1)
   - [x64 Linux](https://www.dropbox.com/scl/fi/xa5kbaxm6226uah7faryg/PDConsole?rlkey=ibwa6bjory8q1tl0qyj4km7kl&st=4zpzb34b&dl=1)
   - [ARM64 macOS](https://www.dropbox.com/scl/fi/nspczsnbhmv6ygtbgfvxw/PDConsole?rlkey=685ohfx01ac1o6jz29hp585cw&st=vgpy6e8z&dl=1)
-  - [x64 Windows](https://www.dropbox.com/scl/fi/5wksm69vs4o4s7kfsjiz4/PDConsole.exe?rlkey=1jcbtnq3nj5wqehtjkiyw3tf8&st=161okkhr&dl=1)
+  - [x64 Windows (Excutable should be signed)](https://www.dropbox.com/scl/fi/5wksm69vs4o4s7kfsjiz4/PDConsole.exe?rlkey=1jcbtnq3nj5wqehtjkiyw3tf8&st=161okkhr&dl=1)
 
 NOTE: First, determine the COM port identifier of the 485 bus connected to the computer.
 This will need to be entered when starting the connection.
