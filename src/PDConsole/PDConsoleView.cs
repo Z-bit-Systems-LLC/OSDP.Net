@@ -235,8 +235,7 @@ namespace PDConsole
 
         private static void ShowAbout()
         {
-            var version = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version;
-            MessageBox.Query(40, 6, "About", $"OSDP.Net PD Console\nVersion: {version}", 0, "OK");
+            Dialogs.AboutDialog.Show();
         }
 
         private void SendCardClicked()

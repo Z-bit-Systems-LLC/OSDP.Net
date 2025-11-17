@@ -222,8 +222,7 @@ namespace ACUConsole
         // System Menu Actions
         private static void ShowAbout()
         {
-            var version = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version;
-            MessageBox.Query(40, 6, "About", $"OSDP.Net ACU Console\nVersion: {version}", 0, "OK");
+            AboutDialog.Show();
         }
 
         private void Quit()
