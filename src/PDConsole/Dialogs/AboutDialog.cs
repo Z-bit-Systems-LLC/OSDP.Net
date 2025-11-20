@@ -19,9 +19,9 @@ namespace PDConsole.Dialogs
             var logo =
 @"█████
     █     █    █  ███
-   █      █    █   █
+   █      █        █
   █  ███  █▀▄  █   █
- █        █▄▀  █   █
+ █        █▄▀  █   █ 
 █
 ███████████████████████";
             var logoLabel = new Label(15, 1, logo);

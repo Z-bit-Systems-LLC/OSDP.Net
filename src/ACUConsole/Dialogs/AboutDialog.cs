@@ -19,7 +19,7 @@ namespace ACUConsole.Dialogs
             var logo =
 @"█████
     █     █    █  ███
-   █      █    █   █
+   █      █        █
   █  ███  █▀▄  █   █
  █        █▄▀  █   █
 █
