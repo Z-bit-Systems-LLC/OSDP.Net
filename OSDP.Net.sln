@@ -31,6 +31,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ci", "ci", "{B139D674-6612-
 		ci\build.yml = ci\build.yml
 		ci\package.yml = ci\package.yml
 		ci\release.ps1 = ci\release.ps1
+		ci\azure-pipelines.yml = ci\azure-pipelines.yml
+		ci\Update-Version.ps1 = ci\Update-Version.ps1
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimplePDDevice", "src\samples\SimplePDDevice\SimplePDDevice.csproj", "{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}"
