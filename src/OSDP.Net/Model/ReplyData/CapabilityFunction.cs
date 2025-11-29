@@ -183,6 +183,17 @@ namespace OSDP.Net.Model.ReplyData
         ///   <para />
         ///   <para>Number Of: N/A, set to 0.</para>
         /// </summary>
-        OSDPVersion = 16
+        OSDPVersion = 16,
+
+        /// <summary>
+        ///   <para>Extended ID response support for the PD.</para>
+        ///   <para />
+        ///   <para>Compliance Levels:</para>
+        ///   <para>0x00 - Capability not supported.</para>
+        ///   <para>0x01 - Extended ID response is supported.</para>
+        ///   <para />
+        ///   <para>Number Of: Must be 0x00.</para>
+        /// </summary>
+        ExtendedIdResponse = 17
     }
 }

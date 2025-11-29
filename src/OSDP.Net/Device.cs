@@ -168,7 +168,7 @@ public class Device : IDisposable
         return new OutgoingReply(command, (CommandType)command.Type switch
         {
             CommandType.Poll => HandlePoll(),
-            CommandType.IdReport => HandleIdReport(),
+            CommandType.IdReport => DispatchIdReport(command.Payload),
             CommandType.DeviceCapabilities => HandleDeviceCapabilities(),
             CommandType.LocalStatus => HandleLocalStatusReport(),
             CommandType.InputStatus => HandleInputStatusReport(),
@@ -197,11 +197,35 @@ public class Device : IDisposable
         return _pendingPollReplies.TryDequeue(out var reply) ? reply : new Ack();
     }
 
+    private PayloadData DispatchIdReport(ReadOnlySpan<byte> payload)
+    {
+        // Check if the request is for extended ID (data byte = 0x01)
+        if (payload.Length > 0 && payload[0] == 0x01)
+        {
+            return HandleExtendedIdReport();
+        }
+
+        return HandleIdReport();
+    }
+
     /// <summary>
     /// Handles the ID Report Request command received from the OSDP device.
     /// </summary>
     /// <returns>A payload data response to the ID report request. Override this method to provide device identification information.</returns>
     protected virtual PayloadData HandleIdReport()
+    {
+        return HandleUnknownCommand(CommandType.IdReport);
+    }
+
+    /// <summary>
+    /// Handles the Extended ID Report Request command received from the OSDP device.
+    /// </summary>
+    /// <returns>A payload data response containing extended device identification. Override this method to provide extended identification information.</returns>
+    /// <remarks>
+    /// This method is called when an osdp_ID command is received with data byte 0x01.
+    /// The response should be an ExtendedDeviceIdentification containing TLV-encoded device information.
+    /// </remarks>
+    protected virtual PayloadData HandleExtendedIdReport()
     {
         return HandleUnknownCommand(CommandType.IdReport);
     }

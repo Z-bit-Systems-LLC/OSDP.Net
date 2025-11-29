@@ -113,6 +113,7 @@ namespace ACUConsole
                     new MenuItem("File Transfer", "", () => _ = SendFileTransferCommand()),
                     new MenuItem("Get PIV Data", "", () => _ = SendGetPIVDataCommand()),
                     new MenuItem("_ID Report", "", () => SendSimpleCommand("ID report", _presenter.SendIdReport)),
+                    new MenuItem("Extended ID Report", "", () => _ = SendExtendedIdReportCommand()),
                     new MenuItem("Input Status", "", () => SendSimpleCommand("Input status", _presenter.SendInputStatus)),
                     new MenuItem("_Local Status", "", () => SendSimpleCommand("Local Status", _presenter.SendLocalStatus)),
                     new MenuItem("Manufacturer Specific", "", () => _ = SendManufacturerSpecificCommand()),
@@ -808,6 +809,36 @@ namespace ACUConsole
                 try
                 {
                     await _presenter.SendGetPIVData(input.DeviceAddress, input.ObjectId, input.ElementId, input.DataOffset);
+                }
+                catch (Exception ex)
+                {
+                    ShowError("Error", ex.Message);
+                }
+            }
+        }
+
+        private async Task SendExtendedIdReportCommand()
+        {
+            if (!_presenter.CanSendCommand())
+            {
+                ShowCommandRequirementsError();
+                return;
+            }
+
+            var deviceList = _presenter.GetDeviceList();
+            var deviceSelection = DeviceSelectionDialog.Show("Extended ID Report", _presenter.Settings.Devices.ToArray(), deviceList);
+
+            if (!deviceSelection.WasCancelled)
+            {
+                try
+                {
+                    var result = await _presenter.SendExtendedIdReport(deviceSelection.SelectedDeviceAddress);
+                    if (result != null)
+                    {
+                        // Display the extended ID information
+                        var message = result.ToString(0);
+                        MessageBox.Query(70, 20, "Extended ID Report", message, "OK");
+                    }
                 }
                 catch (Exception ex)
                 {

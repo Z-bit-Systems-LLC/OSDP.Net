@@ -76,6 +76,11 @@ namespace OSDP.Net.Messages
         BiometricMatchResult = 0x58,
 
         /// <summary>
+        /// osdp_EXT_PDID - extended device identification report
+        /// </summary>
+        ExtendedPdIdReport = 0x59,
+
+        /// <summary>
         /// osdp_CCRYPT - client's ID and client's random number
         /// </summary>
         CrypticData = 0x76,

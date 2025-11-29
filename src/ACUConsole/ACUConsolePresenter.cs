@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using OSDP.Net;
 using OSDP.Net.Connections;
 using OSDP.Net.Model.CommandData;
+using OSDP.Net.Model.ReplyData;
 using OSDP.Net.PanelCommands.DeviceDiscover;
 using OSDP.Net.Tracing;
 using CommunicationConfiguration = OSDP.Net.Model.CommandData.CommunicationConfiguration;
@@ -449,8 +450,15 @@ namespace ACUConsole
 
         public async Task SendIdReport(byte address)
         {
-            await ExecuteCommand("ID report", address, 
+            await ExecuteCommand("ID report", address,
                 () => _controlPanel.IdReport(_connectionId, address));
+        }
+
+        public async Task<ExtendedDeviceIdentification> SendExtendedIdReport(byte address)
+        {
+            return await ExecuteCommand("Extended ID report", address,
+                () => _controlPanel.ExtendedIdReport(_connectionId, address,
+                    TimeSpan.FromSeconds(30), CancellationToken.None));
         }
 
         public async Task SendInputStatus(byte address)

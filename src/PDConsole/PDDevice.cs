@@ -39,7 +39,56 @@ namespace PDConsole
             LogCommand("Device Capabilities");
             return new DeviceCapabilities(settings.Capabilities.ToArray());
         }
-        
+
+        protected override PayloadData HandleExtendedIdReport()
+        {
+            LogCommand("Extended ID Report");
+
+            var extendedId = new ExtendedDeviceIdentification();
+
+            // Add manufacturer
+            extendedId.AddEntry(ExtendedIdTag.Manufacturer, settings.ExtendedId.Manufacturer);
+
+            // Add product name from model
+            extendedId.AddEntry(ExtendedIdTag.ProductName, settings.Model);
+
+            // Add serial number
+            extendedId.AddEntry(ExtendedIdTag.SerialNumber, settings.SerialNumber);
+
+            // Add firmware version
+            extendedId.AddEntry(ExtendedIdTag.FirmwareVersion,
+                $"{settings.FirmwareMajor}.{settings.FirmwareMinor}.{settings.FirmwareBuild}");
+
+            // Add additional firmware versions if configured
+            foreach (var additionalVersion in settings.ExtendedId.AdditionalFirmwareVersions)
+            {
+                if (!string.IsNullOrEmpty(additionalVersion))
+                {
+                    extendedId.AddEntry(ExtendedIdTag.FirmwareVersion, additionalVersion);
+                }
+            }
+
+            // Add hardware description
+            if (!string.IsNullOrEmpty(settings.ExtendedId.HardwareDescription))
+            {
+                extendedId.AddEntry(ExtendedIdTag.HardwareDescription, settings.ExtendedId.HardwareDescription);
+            }
+
+            // Add URL
+            if (!string.IsNullOrEmpty(settings.ExtendedId.Url))
+            {
+                extendedId.AddEntry(ExtendedIdTag.Url, settings.ExtendedId.Url);
+            }
+
+            // Add configuration reference
+            if (!string.IsNullOrEmpty(settings.ExtendedId.ConfigurationReference))
+            {
+                extendedId.AddEntry(ExtendedIdTag.ConfigurationReference, settings.ExtendedId.ConfigurationReference);
+            }
+
+            return extendedId;
+        }
+
         protected override PayloadData HandleCommunicationSet(CommunicationConfiguration commandPayload)
         {
             LogCommand("Communication Set", commandPayload.ToString());

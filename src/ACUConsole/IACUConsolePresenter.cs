@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ACUConsole.Configuration;
 using ACUConsole.Model;
 using OSDP.Net.Model.CommandData;
+using OSDP.Net.Model.ReplyData;
 
 namespace ACUConsole
 {
@@ -41,6 +42,7 @@ namespace ACUConsole
         Task SendACUReceiveSize(byte address, byte maximumReceiveSize);
         Task SendDeviceCapabilities(byte address);
         Task SendIdReport(byte address);
+        Task<ExtendedDeviceIdentification> SendExtendedIdReport(byte address);
         Task SendInputStatus(byte address);
         Task SendLocalStatus(byte address);
         Task SendOutputStatus(byte address);

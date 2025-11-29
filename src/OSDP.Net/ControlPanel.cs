@@ -215,8 +215,82 @@ namespace OSDP.Net
                 address,
                 new IdReport(),
                 cancellationToken).ConfigureAwait(false);
-            
+
             return DeviceIdentification.ParseData(message.Payload);
+        }
+
+        /// <summary>Request to get an Extended ID Report from the PD.</summary>
+        /// <param name="connectionId">Identify the connection for communicating to the device.</param>
+        /// <param name="address">Address assigned to the device.</param>
+        /// <param name="timeout">A TimeSpan that represents time to wait for the response.</param>
+        /// <param name="cancellationToken">The CancellationToken token to observe.</param>
+        /// <returns>Extended ID report reply data that was requested.</returns>
+        /// <remarks>The PD must support capability function code 17 (ExtendedIdResponse) to use this method.</remarks>
+        public async Task<ExtendedDeviceIdentification> ExtendedIdReport(Guid connectionId, byte address,
+            TimeSpan timeout, CancellationToken cancellationToken = default)
+        {
+            var requestLock = GetRequestLock(connectionId, address);
+
+            if (!await requestLock.WaitAsync(timeout, cancellationToken))
+            {
+                throw new TimeoutException("Timeout waiting for another request to complete.");
+            }
+
+            try
+            {
+                return await WaitForExtendedIdData(connectionId, address, timeout, cancellationToken);
+            }
+            finally
+            {
+                requestLock.Release();
+            }
+        }
+
+        private async Task<ExtendedDeviceIdentification> WaitForExtendedIdData(Guid connectionId, byte address,
+            TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            bool complete = false;
+            byte[] data = null;
+
+            void Handler(object sender, MultiPartMessageDataReplyEventArgs args)
+            {
+                // Only process matching replies
+                if (args.ConnectionId != connectionId || args.Address != address) return;
+
+                var extIdData = args.DataFragmentResponse;
+                data ??= new byte[extIdData.WholeMessageLength];
+
+                complete = Message.BuildMultiPartMessageData(extIdData.WholeMessageLength, extIdData.Offset,
+                    extIdData.LengthOfFragment, extIdData.Data, data);
+            }
+
+            ExtendedIdReplyReceived += Handler;
+            SetReceivingMultipartMessaging(connectionId, address, true);
+
+            try
+            {
+                await SendCommand(connectionId, address, new IdReport(requestExtended: true), cancellationToken, throwOnNak: false)
+                    .ConfigureAwait(false);
+
+                DateTime endTime = DateTime.UtcNow + timeout;
+
+                while (DateTime.UtcNow <= endTime)
+                {
+                    if (complete)
+                    {
+                        return ExtendedDeviceIdentification.ParseData(data);
+                    }
+
+                    await Task.Delay(_timeToWaitToCheckOnData, cancellationToken);
+                }
+
+                throw new TimeoutException("Timeout waiting to receive extended ID data.");
+            }
+            finally
+            {
+                ExtendedIdReplyReceived -= Handler;
+                SetReceivingMultipartMessaging(connectionId, address, false);
+            }
         }
 
         /// <summary>Request to get the capabilities of the PD.</summary>
@@ -1417,6 +1491,11 @@ namespace OSDP.Net
                         new MultiPartMessageDataReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
                             DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));
                     break;
+                case ReplyType.ExtendedPdIdReport:
+                    ExtendedIdReplyReceived?.Invoke(this,
+                        new MultiPartMessageDataReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
+                            DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));
+                    break;
                 case ReplyType.ResponseToChallenge:
                     AuthenticationChallengeResponseReceived?.Invoke(this,
                         new MultiPartMessageDataReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
@@ -1507,6 +1586,11 @@ namespace OSDP.Net
         /// Occurs when piv data reply is received.
         /// </summary>
         private event EventHandler<MultiPartMessageDataReplyEventArgs> PIVDataReplyReceived;
+
+        /// <summary>
+        /// Occurs when extended ID reply is received.
+        /// </summary>
+        private event EventHandler<MultiPartMessageDataReplyEventArgs> ExtendedIdReplyReceived;
 
         /// <summary>
         /// Occurs when authentication challenge response is received.

@@ -40,21 +40,21 @@ namespace PDConsole.Configuration
     public class DeviceSettings
     {
         public byte Address { get; set; } = 0;
-        
+
         public bool UseCrc { get; set; } = true;
-        
+
         public string VendorCode { get; set; } = "000000";
-        
+
         public string Model { get; set; } = "PDConsole";
-        
+
         public string SerialNumber { get; set; } = "123456789";
-        
+
         public byte FirmwareMajor { get; set; } = 1;
-        
+
         public byte FirmwareMinor { get; set; } = 0;
-        
+
         public byte FirmwareBuild { get; set; } = 0;
-        
+
         public List<DeviceCapability> Capabilities { get; set; } = new()
         {
             new DeviceCapability(CapabilityFunction.CardDataFormat, 1, 1),
@@ -63,8 +63,40 @@ namespace PDConsole.Configuration
             new DeviceCapability(CapabilityFunction.ReaderTextOutput, 1, 1),
             new DeviceCapability(CapabilityFunction.CheckCharacterSupport, 1, 0),
             new DeviceCapability(CapabilityFunction.CommunicationSecurity, 1, 1),
-            new DeviceCapability(CapabilityFunction.OSDPVersion, 2, 0)
+            new DeviceCapability(CapabilityFunction.OSDPVersion, 2, 0),
+            new DeviceCapability(CapabilityFunction.ExtendedIdResponse, 1, 0)
         };
+
+        // Extended ID settings
+        public ExtendedIdSettings ExtendedId { get; set; } = new();
+    }
+
+    public class ExtendedIdSettings
+    {
+        /// <summary>
+        /// Manufacturer name for extended ID response. Uses vendor code by default.
+        /// </summary>
+        public string Manufacturer { get; set; } = "PDConsole Simulator";
+
+        /// <summary>
+        /// Hardware description for extended ID response.
+        /// </summary>
+        public string HardwareDescription { get; set; } = "Virtual PD";
+
+        /// <summary>
+        /// URL for extended ID response.
+        /// </summary>
+        public string Url { get; set; } = "";
+
+        /// <summary>
+        /// Configuration reference for extended ID response.
+        /// </summary>
+        public string ConfigurationReference { get; set; } = "";
+
+        /// <summary>
+        /// Additional firmware version entries (e.g., for multiple microcontrollers).
+        /// </summary>
+        public List<string> AdditionalFirmwareVersions { get; set; } = new();
     }
     
     public class SecuritySettings

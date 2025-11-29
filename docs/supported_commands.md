@@ -4,7 +4,7 @@
 | Name              | Value | Support | Description                                     | Documentation                                                                                                                               |
 |:------------------|:------|:-------:|:------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------|
 | osdp_POLL         | 0x60  |   Yes   | Poll                                            | None                                                                                                                                        |
-| osdp_ID           | 0x61  |   Yes   | ID Report Request                               | [IdReport](https://z-bitco.com/downloads/OSDP.Net/docs/class_o_s_d_p_1_1_net_1_1_control_panel.html#a7865680fcbac04393f1a1a7c5c370afd)      |
+| osdp_ID           | 0x61  |   Yes   | ID Report Request (supports extended mode)      | [IdReport](https://z-bitco.com/downloads/OSDP.Net/docs/class_o_s_d_p_1_1_net_1_1_control_panel.html#a7865680fcbac04393f1a1a7c5c370afd)      |
 | osdp_CAP          | 0x62  |   Yes   | PD Capabilities Request                         | [DeviceCapabilities](https://z-bitco.com/downloads/OSDP.Net/docs/class_o_s_d_p_1_1_net_1_1_control_panel.html#a41e7c5b63296041c4e1d72f9f4baa254) |
 | osdp_LSTAT        | 0x64  |   Yes   | Local Status Report Request                     | [LocalStatus](https://z-bitco.com/downloads/OSDP.Net/docs/class_o_s_d_p_1_1_net_1_1_control_panel.html#a5b7cb91c77afe8a0cca9a1337339f31a)   |
 | osdp_ISTAT        | 0x65  |   Yes   | Input Status Report Request                     | [InputStatus](https://z-bitco.com/downloads/OSDP.Net/docs/class_o_s_d_p_1_1_net_1_1_control_panel.html#a4a73c880d9bfb1aa378bcffc3df7c32e)   |
@@ -47,6 +47,7 @@
 | osdp_COM       | 0x54  |   Yes   | PD Communications Configuration Report     |               |
 | osdp_BIOREADR  | 0x57  |   Yes   | Biometric Data                             |               |
 | osdp_BIOMATCHR | 0x58  |   Yes   | Biometric Match Result                     |               |
+| osdp_EXT_PDID  | 0x59  |   Yes   | Extended PD ID Report (TLV stream)         |               |
 | osdp_CCRYPT    | 0x76  |   Yes   | Client's ID, Random Number, and Cryptogram | None          |
 | osdp_RMAC_I    | 0x78  |   Yes   | Initial R-MAC                              | None          |
 | osdp_BUSY      | 0x79  |   Yes   | PD is Busy reply                           | None          |
