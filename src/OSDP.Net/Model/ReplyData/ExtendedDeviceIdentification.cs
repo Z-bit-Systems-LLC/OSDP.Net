@@ -16,14 +16,6 @@ namespace OSDP.Net.Model.ReplyData
         private readonly List<ExtendedIdEntry> _entries;
 
         /// <summary>
-        /// Creates a new instance of ExtendedDeviceIdentification.
-        /// </summary>
-        public ExtendedDeviceIdentification()
-        {
-            _entries = new List<ExtendedIdEntry>();
-        }
-
-        /// <summary>
         /// Creates a new instance of ExtendedDeviceIdentification with the specified entries.
         /// </summary>
         /// <param name="entries">The TLV entries for this identification.</param>
@@ -82,25 +74,6 @@ namespace OSDP.Net.Model.ReplyData
         }
 
         /// <summary>
-        /// Adds an entry to the identification.
-        /// </summary>
-        /// <param name="tag">The tag type.</param>
-        /// <param name="value">The value.</param>
-        public void AddEntry(ExtendedIdTag tag, string value)
-        {
-            _entries.Add(new ExtendedIdEntry(tag, value));
-        }
-
-        /// <summary>
-        /// Adds an entry to the identification.
-        /// </summary>
-        /// <param name="entry">The entry to add.</param>
-        public void AddEntry(ExtendedIdEntry entry)
-        {
-            _entries.Add(entry);
-        }
-
-        /// <summary>
         /// Parses the TLV stream from the given data.
         /// </summary>
         /// <param name="data">The complete TLV stream data (without multi-part message header).</param>
@@ -115,6 +88,10 @@ namespace OSDP.Net.Model.ReplyData
                 var entry = ExtendedIdEntry.ParseData(data.Slice(offset), out int bytesConsumed);
                 if (entry == null || bytesConsumed == 0)
                 {
+                    if (offset < data.Length)
+                    {
+                        throw new Exception($"Failed to parse TLV entry at offset {offset}, {data.Length - offset} bytes remaining");
+                    }
                     break;
                 }
 

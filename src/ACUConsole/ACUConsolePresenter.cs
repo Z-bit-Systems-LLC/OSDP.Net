@@ -977,6 +977,6 @@ namespace ACUConsole
         /// <summary>
         /// Final status returned from the device
         /// </summary>
-        public OSDP.Net.Model.ReplyData.FileTransferStatus.StatusDetail Status { get; set; }
+        public FileTransferStatus.StatusDetail Status { get; set; }
     }
 }

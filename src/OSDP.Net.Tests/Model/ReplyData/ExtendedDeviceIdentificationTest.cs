@@ -11,8 +11,10 @@ namespace OSDP.Net.Tests.Model.ReplyData
         [Test]
         public void BuildData_SingleEntry_BuildsCorrectTlvStream()
         {
-            var extId = new ExtendedDeviceIdentification();
-            extId.AddEntry(ExtendedIdTag.Manufacturer, "Test Corp");
+            var extId = new ExtendedDeviceIdentification(new[]
+            {
+                new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "Test Corp")
+            });
 
             var data = extId.BuildData();
 
@@ -25,10 +27,12 @@ namespace OSDP.Net.Tests.Model.ReplyData
         [Test]
         public void BuildData_MultipleEntries_BuildsCorrectTlvStream()
         {
-            var extId = new ExtendedDeviceIdentification();
-            extId.AddEntry(ExtendedIdTag.Manufacturer, "ACME Inc");
-            extId.AddEntry(ExtendedIdTag.ProductName, "Widget Pro");
-            extId.AddEntry(ExtendedIdTag.SerialNumber, "SN123456");
+            var extId = new ExtendedDeviceIdentification(new[]
+            {
+                new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "ACME Inc"),
+                new ExtendedIdEntry(ExtendedIdTag.ProductName, "Widget Pro"),
+                new ExtendedIdEntry(ExtendedIdTag.SerialNumber, "SN123456")
+            });
 
             var data = extId.BuildData();
             var parsed = ExtendedDeviceIdentification.ParseData(data);
@@ -42,10 +46,12 @@ namespace OSDP.Net.Tests.Model.ReplyData
         [Test]
         public void ParseData_MultipleFirmwareVersions_ReturnsAllVersions()
         {
-            var extId = new ExtendedDeviceIdentification();
-            extId.AddEntry(ExtendedIdTag.FirmwareVersion, "Core 1.0.0");
-            extId.AddEntry(ExtendedIdTag.FirmwareVersion, "Radio 2.1.3");
-            extId.AddEntry(ExtendedIdTag.FirmwareVersion, "Display 3.0.1");
+            var extId = new ExtendedDeviceIdentification(new[]
+            {
+                new ExtendedIdEntry(ExtendedIdTag.FirmwareVersion, "Core 1.0.0"),
+                new ExtendedIdEntry(ExtendedIdTag.FirmwareVersion, "Radio 2.1.3"),
+                new ExtendedIdEntry(ExtendedIdTag.FirmwareVersion, "Display 3.0.1")
+            });
 
             var data = extId.BuildData();
             var parsed = ExtendedDeviceIdentification.ParseData(data);
@@ -60,7 +66,7 @@ namespace OSDP.Net.Tests.Model.ReplyData
         [Test]
         public void Code_ReturnsExtendedPdIdReportCode()
         {
-            var extId = new ExtendedDeviceIdentification();
+            var extId = new ExtendedDeviceIdentification(new ExtendedIdEntry[0]);
 
             Assert.That(extId.Code, Is.EqualTo(0x59));
         }
@@ -77,14 +83,16 @@ namespace OSDP.Net.Tests.Model.ReplyData
         [Test]
         public void ParseData_AllTagTypes_ParsesCorrectly()
         {
-            var extId = new ExtendedDeviceIdentification();
-            extId.AddEntry(ExtendedIdTag.Manufacturer, "Manufacturer");
-            extId.AddEntry(ExtendedIdTag.ProductName, "Product");
-            extId.AddEntry(ExtendedIdTag.SerialNumber, "Serial");
-            extId.AddEntry(ExtendedIdTag.FirmwareVersion, "1.0.0");
-            extId.AddEntry(ExtendedIdTag.HardwareDescription, "Hardware");
-            extId.AddEntry(ExtendedIdTag.Url, "https://example.com");
-            extId.AddEntry(ExtendedIdTag.ConfigurationReference, "Config");
+            var extId = new ExtendedDeviceIdentification(new[]
+            {
+                new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "Manufacturer"),
+                new ExtendedIdEntry(ExtendedIdTag.ProductName, "Product"),
+                new ExtendedIdEntry(ExtendedIdTag.SerialNumber, "Serial"),
+                new ExtendedIdEntry(ExtendedIdTag.FirmwareVersion, "1.0.0"),
+                new ExtendedIdEntry(ExtendedIdTag.HardwareDescription, "Hardware"),
+                new ExtendedIdEntry(ExtendedIdTag.Url, "https://example.com"),
+                new ExtendedIdEntry(ExtendedIdTag.ConfigurationReference, "Config")
+            });
 
             var data = extId.BuildData();
             var parsed = ExtendedDeviceIdentification.ParseData(data);
@@ -115,23 +123,13 @@ namespace OSDP.Net.Tests.Model.ReplyData
         }
 
         [Test]
-        public void AddEntry_WithEntryObject_AddsToList()
-        {
-            var extId = new ExtendedDeviceIdentification();
-            var entry = new ExtendedIdEntry(ExtendedIdTag.Url, "https://test.com");
-
-            extId.AddEntry(entry);
-
-            Assert.That(extId.Entries.Count, Is.EqualTo(1));
-            Assert.That(extId.Url, Is.EqualTo("https://test.com"));
-        }
-
-        [Test]
         public void ToString_FormatsCorrectly()
         {
-            var extId = new ExtendedDeviceIdentification();
-            extId.AddEntry(ExtendedIdTag.Manufacturer, "ACME");
-            extId.AddEntry(ExtendedIdTag.SerialNumber, "12345");
+            var extId = new ExtendedDeviceIdentification(new[]
+            {
+                new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "ACME"),
+                new ExtendedIdEntry(ExtendedIdTag.SerialNumber, "12345")
+            });
 
             var str = extId.ToString(0);
 
@@ -142,15 +140,17 @@ namespace OSDP.Net.Tests.Model.ReplyData
         [Test]
         public void RoundTrip_PreservesAllData()
         {
-            var original = new ExtendedDeviceIdentification();
-            original.AddEntry(ExtendedIdTag.Manufacturer, "Test Manufacturer Ltd.");
-            original.AddEntry(ExtendedIdTag.ProductName, "RX Series");
-            original.AddEntry(ExtendedIdTag.SerialNumber, "EFF569CB89B600140000");
-            original.AddEntry(ExtendedIdTag.FirmwareVersion, "Core -> AVx90 5.00.47");
-            original.AddEntry(ExtendedIdTag.FirmwareVersion, "Keypad -> RGB4 Rev. 3");
-            original.AddEntry(ExtendedIdTag.HardwareDescription, "PRX60BLE");
-            original.AddEntry(ExtendedIdTag.Url, "https://www.example.com");
-            original.AddEntry(ExtendedIdTag.ConfigurationReference, "86FE via OSDP");
+            var original = new ExtendedDeviceIdentification(new[]
+            {
+                new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "Test Manufacturer Ltd."),
+                new ExtendedIdEntry(ExtendedIdTag.ProductName, "RX Series"),
+                new ExtendedIdEntry(ExtendedIdTag.SerialNumber, "EFF569CB89B600140000"),
+                new ExtendedIdEntry(ExtendedIdTag.FirmwareVersion, "Core -> AVx90 5.00.47"),
+                new ExtendedIdEntry(ExtendedIdTag.FirmwareVersion, "Keypad -> RGB4 Rev. 3"),
+                new ExtendedIdEntry(ExtendedIdTag.HardwareDescription, "PRX60BLE"),
+                new ExtendedIdEntry(ExtendedIdTag.Url, "https://www.example.com"),
+                new ExtendedIdEntry(ExtendedIdTag.ConfigurationReference, "86FE via OSDP")
+            });
 
             var data = original.BuildData();
             var parsed = ExtendedDeviceIdentification.ParseData(data);
