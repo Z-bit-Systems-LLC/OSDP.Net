@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Memory Storage
+
+The `/memory` directory contains local session memory for Claude Code:
+- **Purpose**: Store recommendations, notes, and context between Claude Code sessions
+- **Not committed**: This directory is git-ignored and exists only on your local machine
+- **Update as needed**: Remove completed items, add new discoveries, track ongoing improvements
+- **Files**: Markdown documents with implementation notes, future improvements, architectural decisions, etc.
+
 ## Build Commands
 - Build project: `dotnet build`
 - Build with specific configuration: `dotnet build --configuration Release`

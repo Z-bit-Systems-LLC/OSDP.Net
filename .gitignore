@@ -42,3 +42,6 @@ _UpgradeReport_Files/
 inspectcode-results.xml
 
 .claude
+
+# Local memory storage for Claude Code sessions (not committed)
+memory/
