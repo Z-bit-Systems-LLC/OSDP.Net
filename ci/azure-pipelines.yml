@@ -13,6 +13,8 @@ trigger:
 
 pool:
   vmImage: 'windows-latest'
+  demands:
+  - Agent.OSArchitecture -equals X64
 
 variables:
   solution: '**/*.sln'
@@ -23,6 +25,8 @@ jobs:
   - job: build
     pool:
       vmImage: 'windows-latest'
+      demands:
+      - Agent.OSArchitecture -equals X64
     steps:
       - checkout: self
       - template: build.yml
@@ -31,6 +35,8 @@ jobs:
     condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
     pool:
       vmImage: 'windows-latest'
+      demands:
+      - Agent.OSArchitecture -equals X64
     dependsOn:
       build
     steps:
