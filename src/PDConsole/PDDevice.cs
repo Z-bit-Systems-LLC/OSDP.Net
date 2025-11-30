@@ -46,6 +46,17 @@ namespace PDConsole
 
             var entries = new List<ExtendedIdEntry>();
 
+            // If ExtendedId settings are not configured, return a minimal response
+            if (settings.ExtendedId == null)
+            {
+                entries.Add(new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "Unknown"));
+                entries.Add(new ExtendedIdEntry(ExtendedIdTag.ProductName, settings.Model));
+                entries.Add(new ExtendedIdEntry(ExtendedIdTag.SerialNumber, settings.SerialNumber));
+                entries.Add(new ExtendedIdEntry(ExtendedIdTag.FirmwareVersion,
+                    $"{settings.FirmwareMajor}.{settings.FirmwareMinor}.{settings.FirmwareBuild}"));
+                return new ExtendedDeviceIdentification(entries);
+            }
+
             // Add manufacturer
             entries.Add(new ExtendedIdEntry(ExtendedIdTag.Manufacturer, settings.ExtendedId.Manufacturer));
 

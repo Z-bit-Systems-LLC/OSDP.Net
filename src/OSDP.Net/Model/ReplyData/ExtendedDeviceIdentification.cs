@@ -82,27 +82,45 @@ namespace OSDP.Net.Model.ReplyData
         /// <summary>
         /// Parses the TLV stream from the given data.
         /// </summary>
-        /// <param name="data">The complete TLV stream data (without multi-part message header).</param>
+        /// <param name="data">The complete message data which may include multi-part message header.</param>
         /// <returns>The parsed ExtendedDeviceIdentification.</returns>
         public static ExtendedDeviceIdentification ParseData(ReadOnlySpan<byte> data)
         {
-            var entries = new List<ExtendedIdEntry>();
-            int offset = 0;
+            // Check if data starts with multi-part message header (6 bytes minimum)
+            // If so, skip the header and parse only the TLV data
+            ReadOnlySpan<byte> tlvData = data;
 
-            while (offset < data.Length)
+            if (data.Length >= 6)
             {
-                var entry = ExtendedIdEntry.ParseData(data.Slice(offset), out int bytesConsumed);
+                // Check if this looks like a multi-part message header by validating structure
+                ushort wholeMessageLength = (ushort)(data[0] | (data[1] << 8));
+                ushort offset = (ushort)(data[2] | (data[3] << 8));
+                ushort lengthOfFragment = (ushort)(data[4] | (data[5] << 8));
+
+                // If the multi-part header is present and valid, skip it
+                if (data.Length == 6 + lengthOfFragment && offset == 0)
+                {
+                    tlvData = data.Slice(6);
+                }
+            }
+
+            var entries = new List<ExtendedIdEntry>();
+            int parseOffset = 0;
+
+            while (parseOffset < tlvData.Length)
+            {
+                var entry = ExtendedIdEntry.ParseData(tlvData.Slice(parseOffset), out int bytesConsumed);
                 if (entry == null || bytesConsumed == 0)
                 {
-                    if (offset < data.Length)
+                    if (parseOffset < tlvData.Length)
                     {
-                        throw new Exception($"Failed to parse TLV entry at offset {offset}, {data.Length - offset} bytes remaining");
+                        throw new Exception($"Failed to parse TLV entry at offset {parseOffset}, {tlvData.Length - parseOffset} bytes remaining");
                     }
                     break;
                 }
 
                 entries.Add(entry);
-                offset += bytesConsumed;
+                parseOffset += bytesConsumed;
             }
 
             return new ExtendedDeviceIdentification(entries);
@@ -111,12 +129,36 @@ namespace OSDP.Net.Model.ReplyData
         /// <inheritdoc/>
         public override byte[] BuildData()
         {
-            var result = new List<byte>();
-
+            // Build the TLV entries
+            var tlvData = new List<byte>();
             foreach (var entry in _entries)
             {
-                result.AddRange(entry.BuildData());
+                tlvData.AddRange(entry.BuildData());
             }
+
+            // Extended ID Report must be sent as a multi-part message format:
+            // 2 bytes: Whole Message Length (little-endian)
+            // 2 bytes: Offset (little-endian)
+            // 2 bytes: Length of Fragment (little-endian)
+            // N bytes: Data (the TLV stream)
+            var wholeMessageLength = (ushort)tlvData.Count;
+            var result = new List<byte>
+            {
+                // Whole Message Length (LSB, MSB)
+                (byte)(wholeMessageLength & 0xFF),
+                (byte)((wholeMessageLength >> 8) & 0xFF),
+
+                // Offset (LSB, MSB) - always 0 for single fragment
+                0x00,
+                0x00,
+
+                // Length of Fragment (LSB, MSB) - same as whole message for single fragment
+                (byte)(wholeMessageLength & 0xFF),
+                (byte)((wholeMessageLength >> 8) & 0xFF)
+            };
+
+            // Add the TLV data
+            result.AddRange(tlvData);
 
             return result.ToArray();
         }

@@ -832,13 +832,8 @@ namespace ACUConsole
             {
                 try
                 {
-                    var result = await _presenter.SendExtendedIdReport(deviceSelection.SelectedDeviceAddress);
-                    if (result != null)
-                    {
-                        // Display the extended ID information
-                        var message = result.ToString(0);
-                        MessageBox.Query(70, 20, "Extended ID Report", message, "OK");
-                    }
+                    await _presenter.SendExtendedIdReport(deviceSelection.SelectedDeviceAddress);
+                    // Extended ID information is logged in the event history
                 }
                 catch (Exception ex)
                 {
