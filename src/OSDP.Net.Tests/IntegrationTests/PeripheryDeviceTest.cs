@@ -245,7 +245,7 @@ public class TestDevice : Device
 
     protected override PayloadData HandleInputStatusReport()
     {
-        return new InputStatus([false]);
+        return new InputStatus([InputStatusValue.Inactive]);
     }
 
     protected override PayloadData HandleOutputStatusReport()
