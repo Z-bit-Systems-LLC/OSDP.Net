@@ -25,7 +25,7 @@ jobs:
       vmImage: 'windows-latest'
     steps:
       - checkout: self
-      - template: ci/build.yml
+      - template: build.yml
         
   - job: package
     condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
@@ -37,4 +37,4 @@ jobs:
       - checkout: self
         persistCredentials: true
         clean: true
-      - template: ci/package.yml  
+      - template: package.yml  
