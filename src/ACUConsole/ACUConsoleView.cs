@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using ACUConsole.Dialogs;
 using ACUConsole.Model;
 using OSDP.Net.Model.CommandData;
+using OSDP.Net.Model.ReplyData;
 using Terminal.Gui;
 
 namespace ACUConsole
@@ -832,6 +833,25 @@ namespace ACUConsole
             {
                 try
                 {
+                    // Check if device supports Extended ID Report (Capability 17)
+                    var caps = await _presenter.SendDeviceCapabilities(deviceSelection.SelectedDeviceAddress);
+                    if (caps.Get(CapabilityFunction.ExtendedIdResponse) == null)
+                    {
+                        // Show notice dialog allowing user to continue
+                        var shouldContinue = MessageBox.Query(
+                            70, 10,
+                            "Notice",
+                            "Device does not advertise support for Extended ID Report (Capability 17).\n\nDo you want to send the command anyway?",
+                            1,
+                            "Cancel",
+                            "Continue");
+
+                        if (shouldContinue == 0) // User clicked Cancel
+                        {
+                            return;
+                        }
+                    }
+
                     await _presenter.SendExtendedIdReport(deviceSelection.SelectedDeviceAddress);
                     // Extended ID information is logged in the event history
                 }

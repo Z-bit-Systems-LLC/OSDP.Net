@@ -40,7 +40,7 @@ namespace ACUConsole
 
         // Command Methods
         Task SendACUReceiveSize(byte address, byte maximumReceiveSize);
-        Task SendDeviceCapabilities(byte address);
+        Task<OSDP.Net.Model.ReplyData.DeviceCapabilities> SendDeviceCapabilities(byte address);
         Task SendIdReport(byte address);
         Task<ExtendedDeviceIdentification> SendExtendedIdReport(byte address);
         Task SendInputStatus(byte address);

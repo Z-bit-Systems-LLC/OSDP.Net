@@ -442,9 +442,9 @@ namespace ACUConsole
                 () => _controlPanel.ACUReceiveSize(_connectionId, address, maximumReceiveSize));
         }
 
-        public async Task SendDeviceCapabilities(byte address)
+        public async Task<OSDP.Net.Model.ReplyData.DeviceCapabilities> SendDeviceCapabilities(byte address)
         {
-            await ExecuteCommand("Device capabilities", address,
+            return await ExecuteCommand("Device capabilities", address,
                 () => _controlPanel.DeviceCapabilities(_connectionId, address));
         }
 
