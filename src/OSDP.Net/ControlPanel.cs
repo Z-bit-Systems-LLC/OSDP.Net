@@ -246,8 +246,15 @@ namespace OSDP.Net
             }
         }
 
-        private async Task<ExtendedDeviceIdentification> WaitForExtendedIdData(Guid connectionId, byte address,
-            TimeSpan timeout, CancellationToken cancellationToken)
+        private async Task<T> WaitForMultiPartData<T>(
+            Guid connectionId,
+            byte address,
+            TimeSpan timeout,
+            CommandData command,
+            Func<byte[], T> parser,
+            Action<EventHandler<MultiPartMessageDataReplyEventArgs>> subscribe,
+            Action<EventHandler<MultiPartMessageDataReplyEventArgs>> unsubscribe,
+            CancellationToken cancellationToken)
         {
             bool complete = false;
             byte[] data = null;
@@ -257,19 +264,19 @@ namespace OSDP.Net
                 // Only process matching replies
                 if (args.ConnectionId != connectionId || args.Address != address) return;
 
-                var extIdData = args.DataFragmentResponse;
-                data ??= new byte[extIdData.WholeMessageLength];
+                var fragment = args.DataFragmentResponse;
+                data ??= new byte[fragment.WholeMessageLength];
 
-                complete = Message.BuildMultiPartMessageData(extIdData.WholeMessageLength, extIdData.Offset,
-                    extIdData.LengthOfFragment, extIdData.Data, data);
+                complete = Message.BuildMultiPartMessageData(fragment.WholeMessageLength, fragment.Offset,
+                    fragment.LengthOfFragment, fragment.Data, data);
             }
 
-            ExtendedIdReplyReceived += Handler;
+            subscribe(Handler);
             SetReceivingMultipartMessaging(connectionId, address, true);
 
             try
             {
-                await SendCommand(connectionId, address, new IdReport(requestExtended: true), cancellationToken, throwOnNak: false)
+                await SendCommand(connectionId, address, command, cancellationToken, throwOnNak: false)
                     .ConfigureAwait(false);
 
                 DateTime endTime = DateTime.UtcNow + timeout;
@@ -278,19 +285,33 @@ namespace OSDP.Net
                 {
                     if (complete)
                     {
-                        return ExtendedDeviceIdentification.ParseData(data);
+                        return parser(data);
                     }
 
                     await Task.Delay(_timeToWaitToCheckOnData, cancellationToken);
                 }
 
-                throw new TimeoutException("Timeout waiting to receive extended ID data.");
+                throw new TimeoutException("Timeout waiting to receive multi-part data.");
             }
             finally
             {
-                ExtendedIdReplyReceived -= Handler;
+                unsubscribe(Handler);
                 SetReceivingMultipartMessaging(connectionId, address, false);
             }
+        }
+
+        private async Task<ExtendedDeviceIdentification> WaitForExtendedIdData(Guid connectionId, byte address,
+            TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            return await WaitForMultiPartData(
+                connectionId,
+                address,
+                timeout,
+                new IdReport(requestExtended: true),
+                data => ExtendedDeviceIdentification.ParseData(data),
+                handler => ExtendedIdReplyReceived += handler,
+                handler => ExtendedIdReplyReceived -= handler,
+                cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>Request to get the capabilities of the PD.</summary>
@@ -393,48 +414,15 @@ namespace OSDP.Net
         private async Task<byte[]> WaitForPIVData(Guid connectionId, byte address, GetPIVData getPIVData, TimeSpan timeout,
             CancellationToken cancellationToken)
         {
-            bool complete = false;
-            byte[] data = null;
-
-            void Handler(object sender, MultiPartMessageDataReplyEventArgs args)
-            {
-                // Only process matching replies
-                if (args.ConnectionId != connectionId || args.Address != address) return;
-
-                var pivData = args.DataFragmentResponse;
-                data ??= new byte[pivData.WholeMessageLength];
-
-                complete = Message.BuildMultiPartMessageData(pivData.WholeMessageLength, pivData.Offset,
-                    pivData.LengthOfFragment, pivData.Data, data);
-            }
-
-            PIVDataReplyReceived += Handler;
-            SetReceivingMultipartMessaging(connectionId, address, true);
-            
-            try
-            {
-                await SendCommand(connectionId, address, getPIVData, cancellationToken, throwOnNak: false)
-                    .ConfigureAwait(false);
-
-                DateTime endTime = DateTime.UtcNow + timeout;
-                
-                while (DateTime.UtcNow <= endTime)
-                {
-                    if (complete)
-                    {
-                        return data;
-                    }
-
-                    await Task.Delay(_timeToWaitToCheckOnData, cancellationToken);
-                }
-
-                throw new TimeoutException("Timeout waiting to receive PIV data.");
-            }
-            finally
-            {
-                PIVDataReplyReceived -= Handler;
-                SetReceivingMultipartMessaging(connectionId, address, false);
-            }
+            return await WaitForMultiPartData(
+                connectionId,
+                address,
+                timeout,
+                getPIVData,
+                data => data,
+                handler => PIVDataReplyReceived += handler,
+                handler => PIVDataReplyReceived -= handler,
+                cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
