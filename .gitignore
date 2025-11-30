@@ -45,3 +45,8 @@ inspectcode-results.xml
 
 # Local memory storage for Claude Code sessions (not committed)
 memory/
+
+# Doxygen generated documentation
+docs/html/
+docs/*.zip
+Doxyfile
