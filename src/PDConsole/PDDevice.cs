@@ -44,60 +44,49 @@ namespace PDConsole
         {
             LogCommand("Extended ID Report");
 
-            var entries = new List<ExtendedIdEntry>();
-
             // If ExtendedId settings are not configured, return a minimal response
             if (settings.ExtendedId == null)
             {
-                entries.Add(new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "Unknown"));
-                entries.Add(new ExtendedIdEntry(ExtendedIdTag.ProductName, settings.Model));
-                entries.Add(new ExtendedIdEntry(ExtendedIdTag.SerialNumber, settings.SerialNumber));
-                entries.Add(new ExtendedIdEntry(ExtendedIdTag.FirmwareVersion,
-                    $"{settings.FirmwareMajor}.{settings.FirmwareMinor}.{settings.FirmwareBuild}"));
-                return new ExtendedDeviceIdentification(entries);
+                return new ExtendedDeviceIdentificationBuilder()
+                    .WithManufacturer("Unknown")
+                    .WithProductName(settings.Model)
+                    .WithSerialNumber(settings.SerialNumber)
+                    .WithFirmwareVersion($"{settings.FirmwareMajor}.{settings.FirmwareMinor}.{settings.FirmwareBuild}")
+                    .Build();
             }
 
-            // Add manufacturer
-            entries.Add(new ExtendedIdEntry(ExtendedIdTag.Manufacturer, settings.ExtendedId.Manufacturer));
-
-            // Add product name from model
-            entries.Add(new ExtendedIdEntry(ExtendedIdTag.ProductName, settings.Model));
-
-            // Add serial number
-            entries.Add(new ExtendedIdEntry(ExtendedIdTag.SerialNumber, settings.SerialNumber));
-
-            // Add firmware version
-            entries.Add(new ExtendedIdEntry(ExtendedIdTag.FirmwareVersion,
-                $"{settings.FirmwareMajor}.{settings.FirmwareMinor}.{settings.FirmwareBuild}"));
+            var builder = new ExtendedDeviceIdentificationBuilder()
+                .WithManufacturer(settings.ExtendedId.Manufacturer)
+                .WithProductName(settings.Model)
+                .WithSerialNumber(settings.SerialNumber)
+                .WithFirmwareVersion($"{settings.FirmwareMajor}.{settings.FirmwareMinor}.{settings.FirmwareBuild}");
 
             // Add additional firmware versions if configured
             foreach (var additionalVersion in settings.ExtendedId.AdditionalFirmwareVersions)
             {
                 if (!string.IsNullOrEmpty(additionalVersion))
                 {
-                    entries.Add(new ExtendedIdEntry(ExtendedIdTag.FirmwareVersion, additionalVersion));
+                    builder.WithFirmwareVersion(additionalVersion);
                 }
             }
 
-            // Add hardware description
+            // Add optional fields if configured
             if (!string.IsNullOrEmpty(settings.ExtendedId.HardwareDescription))
             {
-                entries.Add(new ExtendedIdEntry(ExtendedIdTag.HardwareDescription, settings.ExtendedId.HardwareDescription));
+                builder.WithHardwareDescription(settings.ExtendedId.HardwareDescription);
             }
 
-            // Add URL
             if (!string.IsNullOrEmpty(settings.ExtendedId.Url))
             {
-                entries.Add(new ExtendedIdEntry(ExtendedIdTag.Url, settings.ExtendedId.Url));
+                builder.WithUrl(settings.ExtendedId.Url);
             }
 
-            // Add configuration reference
             if (!string.IsNullOrEmpty(settings.ExtendedId.ConfigurationReference))
             {
-                entries.Add(new ExtendedIdEntry(ExtendedIdTag.ConfigurationReference, settings.ExtendedId.ConfigurationReference));
+                builder.WithConfigurationReference(settings.ExtendedId.ConfigurationReference);
             }
 
-            return new ExtendedDeviceIdentification(entries);
+            return builder.Build();
         }
 
         protected override PayloadData HandleCommunicationSet(CommunicationConfiguration commandPayload)

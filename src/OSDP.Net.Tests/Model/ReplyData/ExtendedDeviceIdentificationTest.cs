@@ -295,5 +295,211 @@ namespace OSDP.Net.Tests.Model.ReplyData
 
             Assert.That(str, Is.EqualTo("Manufacturer: ACME"));
         }
+
+        [TestFixture]
+        public class BuilderTests
+        {
+            [Test]
+            public void Builder_BasicProperties_BuildsCorrectly()
+            {
+                var extId = new ExtendedDeviceIdentificationBuilder()
+                    .WithManufacturer("ACME Inc")
+                    .WithProductName("Widget Pro")
+                    .WithSerialNumber("SN123456")
+                    .Build();
+
+                Assert.That(extId.Manufacturer, Is.EqualTo("ACME Inc"));
+                Assert.That(extId.ProductName, Is.EqualTo("Widget Pro"));
+                Assert.That(extId.SerialNumber, Is.EqualTo("SN123456"));
+            }
+
+            [Test]
+            public void Builder_AllStandardProperties_BuildsCorrectly()
+            {
+                var extId = new ExtendedDeviceIdentificationBuilder()
+                    .WithManufacturer("Test Manufacturer")
+                    .WithProductName("Test Product")
+                    .WithSerialNumber("SN-001")
+                    .WithFirmwareVersion("1.0.0")
+                    .WithHardwareDescription("Hardware v2")
+                    .WithUrl("https://example.com")
+                    .WithConfigurationReference("Config-123")
+                    .Build();
+
+                Assert.That(extId.Manufacturer, Is.EqualTo("Test Manufacturer"));
+                Assert.That(extId.ProductName, Is.EqualTo("Test Product"));
+                Assert.That(extId.SerialNumber, Is.EqualTo("SN-001"));
+                Assert.That(extId.FirmwareVersions.First(), Is.EqualTo("1.0.0"));
+                Assert.That(extId.HardwareDescription, Is.EqualTo("Hardware v2"));
+                Assert.That(extId.Url, Is.EqualTo("https://example.com"));
+                Assert.That(extId.ConfigurationReference, Is.EqualTo("Config-123"));
+            }
+
+            [Test]
+            public void Builder_MultipleFirmwareVersions_BuildsCorrectly()
+            {
+                var extId = new ExtendedDeviceIdentificationBuilder()
+                    .WithManufacturer("ACME")
+                    .WithFirmwareVersion("Core 1.0.0")
+                    .WithFirmwareVersion("Radio 2.1.3")
+                    .WithFirmwareVersion("Display 3.0.1")
+                    .Build();
+
+                var versions = extId.FirmwareVersions.ToList();
+                Assert.That(versions.Count, Is.EqualTo(3));
+                Assert.That(versions[0], Is.EqualTo("Core 1.0.0"));
+                Assert.That(versions[1], Is.EqualTo("Radio 2.1.3"));
+                Assert.That(versions[2], Is.EqualTo("Display 3.0.1"));
+            }
+
+            [Test]
+            public void Builder_CustomEntry_BuildsCorrectly()
+            {
+                var extId = new ExtendedDeviceIdentificationBuilder()
+                    .WithManufacturer("ACME")
+                    .WithCustomEntry(0x0A, "Vendor Extension")
+                    .WithSerialNumber("12345")
+                    .Build();
+
+                Assert.That(extId.Entries.Count, Is.EqualTo(3));
+                Assert.That(extId.Manufacturer, Is.EqualTo("ACME"));
+                Assert.That(extId.SerialNumber, Is.EqualTo("12345"));
+
+                var unknown = extId.UnknownEntries.ToList();
+                Assert.That(unknown.Count, Is.EqualTo(1));
+                Assert.That(unknown[0].TagByte, Is.EqualTo(0x0A));
+                Assert.That(unknown[0].Value, Is.EqualTo("Vendor Extension"));
+            }
+
+            [Test]
+            public void Builder_MultipleCustomEntries_BuildsCorrectly()
+            {
+                var extId = new ExtendedDeviceIdentificationBuilder()
+                    .WithManufacturer("Test Corp")
+                    .WithCustomEntry(0x0A, "Custom Field 1")
+                    .WithCustomEntry(0x0B, "Custom Field 2")
+                    .WithCustomEntry(0xFF, "Vendor Specific")
+                    .Build();
+
+                var unknown = extId.UnknownEntries.ToList();
+                Assert.That(unknown.Count, Is.EqualTo(3));
+                Assert.That(unknown[0].TagByte, Is.EqualTo(0x0A));
+                Assert.That(unknown[0].Value, Is.EqualTo("Custom Field 1"));
+                Assert.That(unknown[1].TagByte, Is.EqualTo(0x0B));
+                Assert.That(unknown[1].Value, Is.EqualTo("Custom Field 2"));
+                Assert.That(unknown[2].TagByte, Is.EqualTo(0xFF));
+                Assert.That(unknown[2].Value, Is.EqualTo("Vendor Specific"));
+            }
+
+            [Test]
+            public void Builder_WithEntry_UsingTag_BuildsCorrectly()
+            {
+                var extId = new ExtendedDeviceIdentificationBuilder()
+                    .WithEntry(ExtendedIdTag.Manufacturer, "ACME")
+                    .WithEntry(ExtendedIdTag.ProductName, "Widget")
+                    .Build();
+
+                Assert.That(extId.Manufacturer, Is.EqualTo("ACME"));
+                Assert.That(extId.ProductName, Is.EqualTo("Widget"));
+            }
+
+            [Test]
+            public void Builder_WithEntry_UsingExtendedIdEntry_BuildsCorrectly()
+            {
+                var entry = new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "ACME");
+                var extId = new ExtendedDeviceIdentificationBuilder()
+                    .WithEntry(entry)
+                    .Build();
+
+                Assert.That(extId.Manufacturer, Is.EqualTo("ACME"));
+            }
+
+            [Test]
+            public void Builder_EmptyBuilder_BuildsEmptyIdentification()
+            {
+                var extId = new ExtendedDeviceIdentificationBuilder().Build();
+
+                Assert.That(extId.Entries.Count, Is.EqualTo(0));
+                Assert.That(extId.Manufacturer, Is.Null);
+            }
+
+            [Test]
+            public void Builder_RoundTrip_PreservesAllData()
+            {
+                var extId = new ExtendedDeviceIdentificationBuilder()
+                    .WithManufacturer("Test Manufacturer Ltd.")
+                    .WithProductName("RX Series")
+                    .WithSerialNumber("EFF569CB89B600140000")
+                    .WithFirmwareVersion("Core -> AVx90 5.00.47")
+                    .WithFirmwareVersion("Keypad -> RGB4 Rev. 3")
+                    .WithHardwareDescription("PRX60BLE")
+                    .WithUrl("https://www.example.com")
+                    .WithConfigurationReference("86FE via OSDP")
+                    .WithCustomEntry(0x0A, "Custom Data")
+                    .Build();
+
+                var data = extId.BuildData();
+                var parsed = ExtendedDeviceIdentification.ParseData(data);
+
+                Assert.That(parsed.Manufacturer, Is.EqualTo(extId.Manufacturer));
+                Assert.That(parsed.ProductName, Is.EqualTo(extId.ProductName));
+                Assert.That(parsed.SerialNumber, Is.EqualTo(extId.SerialNumber));
+                Assert.That(parsed.FirmwareVersions.ToList(), Is.EqualTo(extId.FirmwareVersions.ToList()));
+                Assert.That(parsed.HardwareDescription, Is.EqualTo(extId.HardwareDescription));
+                Assert.That(parsed.Url, Is.EqualTo(extId.Url));
+                Assert.That(parsed.ConfigurationReference, Is.EqualTo(extId.ConfigurationReference));
+
+                var unknownParsed = parsed.UnknownEntries.ToList();
+                var unknownOriginal = extId.UnknownEntries.ToList();
+                Assert.That(unknownParsed.Count, Is.EqualTo(1));
+                Assert.That(unknownParsed[0].TagByte, Is.EqualTo(unknownOriginal[0].TagByte));
+                Assert.That(unknownParsed[0].Value, Is.EqualTo(unknownOriginal[0].Value));
+            }
+
+            [Test]
+            public void Builder_MethodChaining_WorksCorrectly()
+            {
+                // Test that all builder methods return the builder instance for chaining
+                var builder = new ExtendedDeviceIdentificationBuilder();
+                var result = builder
+                    .WithManufacturer("Test")
+                    .WithProductName("Product")
+                    .WithSerialNumber("SN")
+                    .WithFirmwareVersion("1.0")
+                    .WithHardwareDescription("HW")
+                    .WithUrl("URL")
+                    .WithConfigurationReference("Config")
+                    .WithEntry(ExtendedIdTag.Manufacturer, "Override")
+                    .WithCustomEntry(0x0A, "Custom")
+                    .WithEntry(new ExtendedIdEntry(ExtendedIdTag.ProductName, "Entry"));
+
+                Assert.That(result, Is.SameAs(builder));
+            }
+
+            [Test]
+            public void Builder_ComparisonWithDirectConstruction_ProducesSameResult()
+            {
+                // Build using the builder
+                var fromBuilder = new ExtendedDeviceIdentificationBuilder()
+                    .WithManufacturer("ACME Inc")
+                    .WithProductName("Widget Pro")
+                    .WithSerialNumber("SN123456")
+                    .Build();
+
+                // Build using direct construction
+                var fromDirect = new ExtendedDeviceIdentification(new[]
+                {
+                    new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "ACME Inc"),
+                    new ExtendedIdEntry(ExtendedIdTag.ProductName, "Widget Pro"),
+                    new ExtendedIdEntry(ExtendedIdTag.SerialNumber, "SN123456")
+                });
+
+                // Verify they produce the same data
+                var builderData = fromBuilder.BuildData();
+                var directData = fromDirect.BuildData();
+
+                Assert.That(builderData, Is.EqualTo(directData));
+            }
+        }
     }
 }
