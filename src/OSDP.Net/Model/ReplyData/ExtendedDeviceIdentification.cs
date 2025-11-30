@@ -30,6 +30,12 @@ namespace OSDP.Net.Model.ReplyData
         public IReadOnlyList<ExtendedIdEntry> Entries => _entries;
 
         /// <summary>
+        /// Gets all entries with unknown/undefined tag types.
+        /// These may be vendor-specific extensions or future OSDP specification additions.
+        /// </summary>
+        public IEnumerable<ExtendedIdEntry> UnknownEntries => _entries.Where(e => !e.IsKnown);
+
+        /// <summary>
         /// Gets the manufacturer name, or null if not present.
         /// </summary>
         public string Manufacturer => GetFirstValue(ExtendedIdTag.Manufacturer);
@@ -156,6 +162,16 @@ namespace OSDP.Net.Model.ReplyData
             if (ConfigurationReference != null)
             {
                 build.AppendLine($"{padding}   Configuration: {ConfigurationReference}");
+            }
+
+            // Display any unknown/undefined tags
+            var unknownEntries = UnknownEntries.ToList();
+            if (unknownEntries.Any())
+            {
+                foreach (var entry in unknownEntries)
+                {
+                    build.AppendLine($"{padding}  Unknown Tag {entry.TagByte}: {entry.Value}");
+                }
             }
 
             return build.ToString();

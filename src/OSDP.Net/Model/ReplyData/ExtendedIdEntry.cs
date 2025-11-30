@@ -51,6 +51,11 @@ namespace OSDP.Net.Model.ReplyData
         public string Value { get; }
 
         /// <summary>
+        /// Gets whether this tag is a known/defined tag in the OSDP specification.
+        /// </summary>
+        public bool IsKnown => Enum.IsDefined(typeof(ExtendedIdTag), TagByte);
+
+        /// <summary>
         /// Builds the TLV byte array for this entry.
         /// </summary>
         /// <returns>The TLV byte array: 1-byte tag, 2-byte length (LSB/MSB), N-byte UTF-8 data.</returns>
@@ -100,7 +105,7 @@ namespace OSDP.Net.Model.ReplyData
         /// <inheritdoc/>
         public override string ToString()
         {
-            return $"{Tag}: {Value}";
+            return IsKnown ? $"{Tag}: {Value}" : $"Unknown Tag {TagByte}: {Value}";
         }
     }
 }

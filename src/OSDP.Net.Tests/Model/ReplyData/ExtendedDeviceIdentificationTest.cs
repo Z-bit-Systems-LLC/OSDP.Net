@@ -163,5 +163,137 @@ namespace OSDP.Net.Tests.Model.ReplyData
             Assert.That(parsed.Url, Is.EqualTo(original.Url));
             Assert.That(parsed.ConfigurationReference, Is.EqualTo(original.ConfigurationReference));
         }
+
+        [Test]
+        public void ParseData_UnknownTags_ParsesSuccessfully()
+        {
+            // Create data with unknown tag 0x0A (10)
+            var extId = new ExtendedDeviceIdentification(new[]
+            {
+                new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "ACME"),
+                new ExtendedIdEntry(0x0A, "Custom Data"),
+                new ExtendedIdEntry(ExtendedIdTag.SerialNumber, "12345")
+            });
+
+            var data = extId.BuildData();
+            var parsed = ExtendedDeviceIdentification.ParseData(data);
+
+            Assert.That(parsed.Entries.Count, Is.EqualTo(3));
+            Assert.That(parsed.Manufacturer, Is.EqualTo("ACME"));
+            Assert.That(parsed.SerialNumber, Is.EqualTo("12345"));
+        }
+
+        [Test]
+        public void IsKnown_KnownTags_ReturnsTrue()
+        {
+            var entry = new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "Test");
+            Assert.That(entry.IsKnown, Is.True);
+        }
+
+        [Test]
+        public void IsKnown_UnknownTags_ReturnsFalse()
+        {
+            var entry = new ExtendedIdEntry(0xFF, "Unknown");
+            Assert.That(entry.IsKnown, Is.False);
+        }
+
+        [Test]
+        public void UnknownEntries_MixedTags_ReturnsOnlyUnknownTags()
+        {
+            var extId = new ExtendedDeviceIdentification(new[]
+            {
+                new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "ACME"),
+                new ExtendedIdEntry(0x0A, "Custom 1"),
+                new ExtendedIdEntry(ExtendedIdTag.SerialNumber, "12345"),
+                new ExtendedIdEntry(0x0B, "Custom 2")
+            });
+
+            var unknown = extId.UnknownEntries.ToList();
+
+            Assert.That(unknown.Count, Is.EqualTo(2));
+            Assert.That(unknown[0].TagByte, Is.EqualTo(0x0A));
+            Assert.That(unknown[0].Value, Is.EqualTo("Custom 1"));
+            Assert.That(unknown[1].TagByte, Is.EqualTo(0x0B));
+            Assert.That(unknown[1].Value, Is.EqualTo("Custom 2"));
+        }
+
+        [Test]
+        public void UnknownEntries_NoUnknownTags_ReturnsEmpty()
+        {
+            var extId = new ExtendedDeviceIdentification(new[]
+            {
+                new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "ACME"),
+                new ExtendedIdEntry(ExtendedIdTag.SerialNumber, "12345")
+            });
+
+            var unknown = extId.UnknownEntries.ToList();
+
+            Assert.That(unknown.Count, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ToString_UnknownTags_DisplaysUnknownTags()
+        {
+            var extId = new ExtendedDeviceIdentification(new[]
+            {
+                new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "ACME"),
+                new ExtendedIdEntry(0x0A, "Vendor Extension"),
+                new ExtendedIdEntry(ExtendedIdTag.SerialNumber, "12345")
+            });
+
+            var str = extId.ToString(0);
+
+            Assert.That(str, Does.Contain("Manufacturer: ACME"));
+            Assert.That(str, Does.Contain("Serial Number: 12345"));
+            Assert.That(str, Does.Contain("Unknown Tag 10: Vendor Extension"));
+        }
+
+        [Test]
+        public void RoundTrip_UnknownTags_PreservesUnknownTags()
+        {
+            var original = new ExtendedDeviceIdentification(new[]
+            {
+                new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "Test Corp"),
+                new ExtendedIdEntry(0x0A, "Custom Field 1"),
+                new ExtendedIdEntry(ExtendedIdTag.SerialNumber, "SN-001"),
+                new ExtendedIdEntry(0xFF, "Vendor Specific")
+            });
+
+            var data = original.BuildData();
+            var parsed = ExtendedDeviceIdentification.ParseData(data);
+
+            Assert.That(parsed.Entries.Count, Is.EqualTo(4));
+            Assert.That(parsed.Manufacturer, Is.EqualTo("Test Corp"));
+            Assert.That(parsed.SerialNumber, Is.EqualTo("SN-001"));
+
+            var unknownParsed = parsed.UnknownEntries.ToList();
+            var unknownOriginal = original.UnknownEntries.ToList();
+
+            Assert.That(unknownParsed.Count, Is.EqualTo(2));
+            Assert.That(unknownParsed[0].TagByte, Is.EqualTo(unknownOriginal[0].TagByte));
+            Assert.That(unknownParsed[0].Value, Is.EqualTo(unknownOriginal[0].Value));
+            Assert.That(unknownParsed[1].TagByte, Is.EqualTo(unknownOriginal[1].TagByte));
+            Assert.That(unknownParsed[1].Value, Is.EqualTo(unknownOriginal[1].Value));
+        }
+
+        [Test]
+        public void ExtendedIdEntry_ToString_UnknownTag_FormatsCorrectly()
+        {
+            var entry = new ExtendedIdEntry(0xAB, "Test Value");
+
+            var str = entry.ToString();
+
+            Assert.That(str, Is.EqualTo("Unknown Tag 171: Test Value"));
+        }
+
+        [Test]
+        public void ExtendedIdEntry_ToString_KnownTag_FormatsCorrectly()
+        {
+            var entry = new ExtendedIdEntry(ExtendedIdTag.Manufacturer, "ACME");
+
+            var str = entry.ToString();
+
+            Assert.That(str, Is.EqualTo("Manufacturer: ACME"));
+        }
     }
 }
