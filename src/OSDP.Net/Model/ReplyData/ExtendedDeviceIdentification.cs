@@ -93,7 +93,6 @@ namespace OSDP.Net.Model.ReplyData
             if (data.Length >= 6)
             {
                 // Check if this looks like a multi-part message header by validating structure
-                ushort wholeMessageLength = (ushort)(data[0] | (data[1] << 8));
                 ushort offset = (ushort)(data[2] | (data[3] << 8));
                 ushort lengthOfFragment = (ushort)(data[4] | (data[5] << 8));
 

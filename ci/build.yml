@@ -23,7 +23,7 @@ steps:
   - task: CmdLine@2
     displayName: 'Install ReSharper Tools'
     inputs:
-      script: 'dotnet tool install -g JetBrains.ReSharper.GlobalTools --arch arm64'
+      script: 'dotnet tool install -g JetBrains.ReSharper.GlobalTools'
       
   - task: CmdLine@2
     displayName: 'Perform code inspection'
