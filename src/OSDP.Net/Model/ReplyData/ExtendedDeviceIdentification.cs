@@ -82,21 +82,21 @@ namespace OSDP.Net.Model.ReplyData
         /// <summary>
         /// Parses the TLV stream from the given data.
         /// </summary>
-        /// <param name="data">The complete message data which may include multi-part message header.</param>
+        /// <param name="data">The complete message data which may include multipart message header.</param>
         /// <returns>The parsed ExtendedDeviceIdentification.</returns>
         public static ExtendedDeviceIdentification ParseData(ReadOnlySpan<byte> data)
         {
-            // Check if data starts with multi-part message header (6 bytes minimum)
+            // Check if data starts with a multipart message header (6 bytes minimum)
             // If so, skip the header and parse only the TLV data
             ReadOnlySpan<byte> tlvData = data;
 
             if (data.Length >= 6)
             {
-                // Check if this looks like a multi-part message header by validating structure
+                // Check if this looks like a a multi-part message header by validating a structure
                 ushort offset = (ushort)(data[2] | (data[3] << 8));
                 ushort lengthOfFragment = (ushort)(data[4] | (data[5] << 8));
 
-                // If the multi-part header is present and valid, skip it
+                // If the multipart header is present and valid, skip it
                 if (data.Length == 6 + lengthOfFragment && offset == 0)
                 {
                     tlvData = data.Slice(6);
@@ -135,7 +135,7 @@ namespace OSDP.Net.Model.ReplyData
                 tlvData.AddRange(entry.BuildData());
             }
 
-            // Extended ID Report must be sent as a multi-part message format:
+            // Extended ID Report must be sent as a multipart message format:
             // 2 bytes: Whole Message Length (little-endian)
             // 2 bytes: Offset (little-endian)
             // 2 bytes: Length of Fragment (little-endian)
@@ -151,7 +151,7 @@ namespace OSDP.Net.Model.ReplyData
                 0x00,
                 0x00,
 
-                // Length of Fragment (LSB, MSB) - same as whole message for single fragment
+                // Length of Fragment (LSB, MSB) - same as a whole message for a single fragment
                 (byte)(wholeMessageLength & 0xFF),
                 (byte)((wholeMessageLength >> 8) & 0xFF)
             };

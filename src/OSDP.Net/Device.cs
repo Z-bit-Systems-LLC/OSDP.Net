@@ -58,7 +58,7 @@ public class Device : IDisposable
     /// Gets raised whenever osdp_ComSet command is successfully processed, and there is 
     /// a change in either device address or baud rate. Because baud rate is configured on
     /// the OSDP connection/server that is passed down into the Device class, it is up to
-    /// the consumer of the Device class (i.e. whatever code that creates that class in the
+    /// the consumer of the Device class (i.e., whatever code that creates that class in the
     /// first place) to properly handle this event and re-initialize the Device with the
     /// correct connection settings.
     /// 
@@ -123,7 +123,7 @@ public class Device : IDisposable
 
                 if (currentContextCount != _connectionContextCounter)
                 {
-                    _logger?.LogInformation("Interruping existing connection due to 'force disconnect' flag");
+                    _logger?.LogInformation("Interrupting existing connection due to 'force disconnect' flag");
                     break;
                 }
             }
@@ -343,7 +343,7 @@ public class Device : IDisposable
 
     /// <summary>
     /// If deriving PD class is intending to support secure connections, it MUST override
-    /// this method in order to provide its own means of persisting a newly set security key 
+    /// this method to provide its own means of persisting a newly set security key 
     /// which was sent by the ACU. The base `Device` class will automatically pick up the new key
     /// for future connections if this function returns a successful Ack response.
     /// NOTE: Any existing connections will continue to use the previous key. It is up to the
@@ -422,7 +422,7 @@ public class Device : IDisposable
 
     /// <summary>
     /// If deriving PD class is intending to support updating the communication settings, it MUST override
-    /// this method in order to provide its own means of persisting a new baud rate and address 
+    /// this method to provide its own means of persisting a new baud rate and address 
     /// which was sent by the ACU.
     /// 
     /// NOTE: The consumer will need to listen to the DeviceComSetUpdated event. It allows it to reinitialize the
@@ -512,7 +512,7 @@ public class Device : IDisposable
     }
     
     /// <summary>
-    /// Event arguments for DevicecomSetUpdated event which is raised whenever ACU
+    /// Event arguments for DeviceComSetUpdated event, which is raised whenever ACU
     /// requests the device to update its address and/or baud rate
     /// </summary>
     public class DeviceComSetUpdatedEventArgs : EventArgs
@@ -541,7 +541,7 @@ public class Device : IDisposable
 
 
 /// <summary>
-/// Represents a set of configuration options to be used when initializating 
+/// Represents a set of configuration options to be used when initializing 
 /// a new instance of the Device class
 /// </summary>
 public class DeviceConfiguration : ICloneable
@@ -552,10 +552,10 @@ public class DeviceConfiguration : ICloneable
     public byte Address { get; set; }
 
     /// <summary>
-    /// Indicates whether or not device will require establishment of a secure
+    /// Indicates whether the device will require an establishment of a secure
     /// channel. When this value is 'true', PD will be initialized with SCBK (non-default 
     /// SecurityKey) in full-security mode; or with SCBK_D in "installation
-    /// mode" if SecurityKey is not set to non-default installation value.
+    /// mode" if SecurityKey is not set to a non-default installation value.
     /// </summary>
     public bool RequireSecurity { get; set; } = true;
 
@@ -566,10 +566,10 @@ public class DeviceConfiguration : ICloneable
     public byte[] SecurityKey { get; set; } = SecurityContext.DefaultKey;
 
     /// <summary>
-    /// List of commands the PD will allow to be sent unsecured when device is operating
-    /// in "Full Security" mode as defined by the OSDP spec. NOTE: per OSDP committee's
-    /// decision by default this list will include IdReport, DeviceCapabilities and CommSet
-    /// commands, but PD manufacturer can use this property to override that default
+    /// List of commands the PD will allow to be sent unsecured when a device is operating
+    /// in "Full Security" mode as defined by the OSDP spec. NOTE: per the OSDP committee's
+    /// decision, by default, this list will include IdReport, DeviceCapabilities and CommSet
+    /// commands, but a PD manufacturer can use this property to override that default
     /// </summary>
     public CommandType[] AllowUnsecured { get; set; } = [
         CommandType.IdReport, CommandType.DeviceCapabilities, CommandType.CommunicationSet];
