@@ -41,8 +41,8 @@
 | osdp_ISTATR    | 0x49  |   Yes   | Input Status Report                        | [HandleInputStatusReport](https://z-bitco.com/downloads/OSDP.Net/docs/classOSDP_1_1Net_1_1Device.html#a34cce6e2e077bfce108f40f221b4c43f) |
 | osdp_OSTATR    | 0x4A  |   Yes   | Output Status Report                       | [HandleOutputStatusReport](https://z-bitco.com/downloads/OSDP.Net/docs/classOSDP_1_1Net_1_1Device.html#a2aed627603e5835c2c04ac2189a49a3e) |
 | osdp_RSTATR    | 0x4B  |   Yes   | Reader Status Report                       | [HandleReaderStatusReport](https://z-bitco.com/downloads/OSDP.Net/docs/classOSDP_1_1Net_1_1Device.html#a5354ee7b5444ff2fe95f5660fac09783) |
-| osdp_RAW       | 0x50  |   Yes   | Reader Data � Raw bit image of card data   |               |
-| osdp_FMT       | 0x51  |   No    | Reader Data � Formatted character stream   |               |
+| osdp_RAW       | 0x50  |   Yes   | Raw bit image of card data   |               |
+| osdp_FMT       | 0x51  |   No    | Formatted character stream   |               |
 | osdp_KEYPPAD   | 0x53  |   Yes   | Keypad Data                                |               |
 | osdp_COM       | 0x54  |   Yes   | PD Communications Configuration Report     | [HandleCommunicationSet](https://z-bitco.com/downloads/OSDP.Net/docs/classOSDP_1_1Net_1_1Device.html#a0628067d11dacaa5da83ad85d35e9e2d) |
 | osdp_BIOREADR  | 0x57  |   Yes   | Biometric Data                             | [HandleBiometricRead](https://z-bitco.com/downloads/OSDP.Net/docs/classOSDP_1_1Net_1_1Device.html#a2831a4eb215765a90035db81f46de0a7) |
