@@ -143,7 +143,7 @@ public class PeripheryDeviceTest : IntegrationTestFixtureBase
     [Test]
     public async Task DeviceResetsItselfWhenPanelChangesBaudRateWithComSetCommand()
     {
-        var mockComSetUpdate = new Mock<EventHandler<DeviceComSetUpdatedEventArgs>>();
+        var mockComSetUpdate = new Mock<EventHandler<Device.DeviceComSetUpdatedEventArgs>>();
 
         await InitTestTargets();
 
@@ -179,9 +179,9 @@ public class PeripheryDeviceTest : IntegrationTestFixtureBase
 
         mockComSetUpdate.Verify(e => e(
             It.IsAny<object>(),
-            It.IsAny<DeviceComSetUpdatedEventArgs>()), Times.Once);
+            It.IsAny<Device.DeviceComSetUpdatedEventArgs>()), Times.Once);
 
-        var eventArgs = (DeviceComSetUpdatedEventArgs)mockComSetUpdate.Invocations.First().Arguments[1];
+        var eventArgs = (Device.DeviceComSetUpdatedEventArgs)mockComSetUpdate.Invocations.First().Arguments[1];
         Assert.Multiple(() =>
         {
             Assert.That(eventArgs.OldAddress, Is.EqualTo(0));
