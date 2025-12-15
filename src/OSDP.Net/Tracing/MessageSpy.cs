@@ -4,12 +4,20 @@ using OSDP.Net.Messages.SecureChannel;
 
 namespace OSDP.Net.Tracing;
 
-internal class MessageSpy
+/// <summary>
+/// Provides functionality to parse and decode OSDP messages from raw byte data,
+/// tracking secure channel state for encrypted communications.
+/// </summary>
+public class MessageSpy
 {
     private readonly SecurityContext _context;
     private readonly MessageSecureChannel _commandSpyChannel;
     private readonly MessageSecureChannel _replySpyChannel;
 
+    /// <summary>
+    /// Initializes a new instance of the MessageSpy class with an optional security key.
+    /// </summary>
+    /// <param name="securityKey">Optional encryption key for decrypting secure channel packets. If null, only non-encrypted packets can be fully parsed.</param>
     public MessageSpy(byte[] securityKey = null)
     {
         _context = new SecurityContext(securityKey);
@@ -17,11 +25,21 @@ internal class MessageSpy
         _replySpyChannel = new ACUMessageSecureChannel(_context);
     }
 
+    /// <summary>
+    /// Retrieves the address byte from raw OSDP data without parsing the entire message.
+    /// </summary>
+    /// <param name="data">Raw OSDP message data starting with SOM byte.</param>
+    /// <returns>The address byte from the message.</returns>
     public byte PeekAddressByte(ReadOnlySpan<byte> data)
     {
         return data[1];
     }
 
+    /// <summary>
+    /// Parses raw OSDP command data into an IncomingMessage, handling secure channel establishment.
+    /// </summary>
+    /// <param name="data">Raw OSDP command data starting with SOM byte.</param>
+    /// <returns>Parsed IncomingMessage containing the command details.</returns>
     public IncomingMessage ParseCommand(byte[] data)
     {
         var command = new IncomingMessage(data, _commandSpyChannel);
@@ -34,6 +52,11 @@ internal class MessageSpy
         };
     }
 
+    /// <summary>
+    /// Parses raw OSDP reply data into an IncomingMessage, handling secure channel establishment.
+    /// </summary>
+    /// <param name="data">Raw OSDP reply data starting with SOM byte.</param>
+    /// <returns>Parsed IncomingMessage containing the reply details.</returns>
     public IncomingMessage ParseReply(byte[] data)
     {
         var reply = new IncomingMessage(data, _replySpyChannel);

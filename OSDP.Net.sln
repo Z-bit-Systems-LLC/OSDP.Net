@@ -47,6 +47,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{9C49
 		scripts\validate-api.ps1 = scripts\validate-api.ps1
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PassiveOsdpMonitor", "src\samples\PassiveOsdpMonitor\PassiveOsdpMonitor.csproj", "{ACA98FD0-A447-43A3-B43A-A10BC75E6870}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -141,6 +143,18 @@ Global
 		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}.Release|x64.Build.0 = Release|Any CPU
 		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}.Release|x86.ActiveCfg = Release|Any CPU
 		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9}.Release|x86.Build.0 = Release|Any CPU
+		{ACA98FD0-A447-43A3-B43A-A10BC75E6870}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ACA98FD0-A447-43A3-B43A-A10BC75E6870}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ACA98FD0-A447-43A3-B43A-A10BC75E6870}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{ACA98FD0-A447-43A3-B43A-A10BC75E6870}.Debug|x64.Build.0 = Debug|Any CPU
+		{ACA98FD0-A447-43A3-B43A-A10BC75E6870}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{ACA98FD0-A447-43A3-B43A-A10BC75E6870}.Debug|x86.Build.0 = Debug|Any CPU
+		{ACA98FD0-A447-43A3-B43A-A10BC75E6870}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ACA98FD0-A447-43A3-B43A-A10BC75E6870}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ACA98FD0-A447-43A3-B43A-A10BC75E6870}.Release|x64.ActiveCfg = Release|Any CPU
+		{ACA98FD0-A447-43A3-B43A-A10BC75E6870}.Release|x64.Build.0 = Release|Any CPU
+		{ACA98FD0-A447-43A3-B43A-A10BC75E6870}.Release|x86.ActiveCfg = Release|Any CPU
+		{ACA98FD0-A447-43A3-B43A-A10BC75E6870}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -149,6 +163,7 @@ Global
 		{AC0ADC7D-3A78-4937-80B0-F8AA3B7B17BD} = {A57B307A-A240-4F4F-A3A8-A078093B2809}
 		{B6E1FC35-3DEC-495F-8FD2-A0CB9C3B4C6A} = {A57B307A-A240-4F4F-A3A8-A078093B2809}
 		{6A18B8B0-C7E2-49E0-A739-E181BCABFAC9} = {A57B307A-A240-4F4F-A3A8-A078093B2809}
+		{ACA98FD0-A447-43A3-B43A-A10BC75E6870} = {A57B307A-A240-4F4F-A3A8-A078093B2809}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {07D0756C-2DA8-4FA1-8A4A-1FA6BCFBEB46}

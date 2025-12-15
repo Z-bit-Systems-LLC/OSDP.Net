@@ -16,10 +16,14 @@ public class Packet
     private readonly byte[] _rawData;
     private readonly bool _isUsingDefaultKey;
 
-    internal Packet(IncomingMessage message)
+    /// <summary>
+    /// Initializes a new instance of the Packet class from an incoming message.
+    /// </summary>
+    /// <param name="message">The incoming message to parse.</param>
+    public Packet(IncomingMessage message)
     {
         IncomingMessage = message;
-            
+
         Address = message.Address;
         Sequence = message.Sequence;
         if (message.MessageType == MessageType.Command)
@@ -36,8 +40,11 @@ public class Packet
         _rawData = message.OriginalMessageData.ToArray();
         _isUsingDefaultKey = message.IsUsingDefaultKey;
     }
-    
-    internal IncomingMessage IncomingMessage { get; }
+
+    /// <summary>
+    /// The underlying incoming message.
+    /// </summary>
+    public IncomingMessage IncomingMessage { get; }
 
     /// <summary>
     /// Address of the message
