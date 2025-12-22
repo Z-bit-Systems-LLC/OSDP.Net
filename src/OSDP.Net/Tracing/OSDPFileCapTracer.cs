@@ -1,24 +1,42 @@
 ﻿using System;
-using System.IO;
-using System.Text.Json;
+using System.Collections.Concurrent;
 
 namespace OSDP.Net.Tracing;
 
 internal static class OSDPFileCapTracer
 {
+    private static readonly ConcurrentDictionary<Guid, OsdpCapFileWriter> Writers = new();
+
     public static void Trace(TraceEntry trace)
     {
-        var unixTime = DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1));
-        long timeNano = (unixTime.Ticks - (long)Math.Floor(unixTime.TotalSeconds) * TimeSpan.TicksPerSecond) * 100L;
-        var line = JsonSerializer.Serialize(new 
+        var writer = Writers.GetOrAdd(trace.ConnectionId, connectionId =>
+            new OsdpCapFileWriter($"{connectionId:D}.osdpcap", "OSDP.Net", append: true));
+
+        writer.WriteTrace(trace);
+    }
+
+    /// <summary>
+    /// Closes and disposes the writer for a specific connection.
+    /// Should be called when a connection is closed to properly release resources.
+    /// </summary>
+    internal static void CloseWriter(Guid connectionId)
+    {
+        if (Writers.TryRemove(connectionId, out var writer))
         {
-            timeSec = Math.Floor(unixTime.TotalSeconds).ToString("F0"),
-            timeNano = timeNano.ToString("000000000"),
-            io = trace.Direction == TraceDirection.Input ? "input" : "output",
-            data = BitConverter.ToString(trace.Data),
-            osdpTraceVersion = "1",
-            osdpSource = "OSDP.Net"
-        });
-        File.AppendAllText($"{trace.ConnectionId:D}.osdpcap", line + "\n");
+            writer.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Closes and disposes all writers.
+    /// Should be called during application shutdown.
+    /// </summary>
+    internal static void CloseAllWriters()
+    {
+        foreach (var writer in Writers.Values)
+        {
+            writer.Dispose();
+        }
+        Writers.Clear();
     }
 }

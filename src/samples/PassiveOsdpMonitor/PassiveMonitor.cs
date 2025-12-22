@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using OSDP.Net.Connections;
+using OSDP.Net.Tracing;
 using PassiveOsdpMonitor.Configuration;
 using PassiveOsdpMonitor.PacketCapture;
 
@@ -9,7 +10,7 @@ public class PassiveMonitor
 {
     private readonly IOsdpConnection _connection;
     private readonly PacketBuffer _buffer;
-    private readonly OsdpCapWriter _osdpCapWriter;
+    private readonly OsdpCapFileWriter _osdpCapWriter;
     private readonly ParsedTextWriter _parsedTextWriter;
     private readonly ILogger _logger;
 
@@ -17,7 +18,7 @@ public class PassiveMonitor
     {
         _connection = new ReadOnlySerialPortOsdpConnection(config.SerialPort, config.BaudRate);
         _buffer = new PacketBuffer();
-        _osdpCapWriter = new OsdpCapWriter(config.OsdpCapFilePath);
+        _osdpCapWriter = new OsdpCapFileWriter(config.OsdpCapFilePath, "PassiveOsdpMonitor", append: true);
         _parsedTextWriter = new ParsedTextWriter(config.ParsedTextFilePath, config.SecurityKey);
         _logger = logger;
     }
@@ -52,7 +53,7 @@ public class PassiveMonitor
                             DateTime timestamp = DateTime.Now;
 
                             // Write to both outputs
-                            _osdpCapWriter.WritePacket(packet);
+                            _osdpCapWriter.WritePacket(packet, TraceDirection.Trace);
                             _parsedTextWriter.WritePacket(packet, timestamp);
 
                             packetCount++;
