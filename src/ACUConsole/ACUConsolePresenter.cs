@@ -839,43 +839,18 @@ namespace ACUConsole
 
         private StringBuilder BuildTextFromEntries(IEnumerable<OSDPCaptureEntry> entries)
         {
+            var formatter = new OSDPPacketTextFormatter();
             var textBuilder = new StringBuilder();
             DateTime lastEntryTimeStamp = DateTime.MinValue;
-            
+
             foreach (var entry in entries)
             {
-                TimeSpan difference = lastEntryTimeStamp > DateTime.MinValue
+                TimeSpan? delta = lastEntryTimeStamp > DateTime.MinValue
                     ? entry.TimeStamp - lastEntryTimeStamp
-                    : TimeSpan.Zero;
+                    : null;
                 lastEntryTimeStamp = entry.TimeStamp;
-                
-                string direction = "Unknown";
-                string type = "Unknown";
-                
-                if (entry.Packet.CommandType != null)
-                {
-                    direction = "ACU -> PD";
-                    type = entry.Packet.CommandType.ToString();
-                }
-                else if (entry.Packet.ReplyType != null)
-                {
-                    direction = "PD -> ACU";
-                    type = entry.Packet.ReplyType.ToString();
-                }
 
-                var payloadData = entry.Packet.ParsePayloadData();
-                
-                var payloadDataString = payloadData switch
-                {
-                    null => string.Empty,
-                    byte[] data => $"    {BitConverter.ToString(data)}\n",
-                    string data => $"    {data}\n",
-                    _ => payloadData.ToString()
-                };
-
-                textBuilder.AppendLine($"{entry.TimeStamp:yy-MM-dd HH:mm:ss.fff} [ {difference:g} ] {direction}: {type}");
-                textBuilder.AppendLine($"    Address: {entry.Packet.Address} Sequence: {entry.Packet.Sequence}");
-                textBuilder.AppendLine(payloadDataString);
+                textBuilder.Append(formatter.FormatPacket(entry.Packet, entry.TimeStamp, delta));
             }
 
             return textBuilder;

@@ -4,7 +4,7 @@ using Terminal.Gui;
 namespace ACUConsole
 {
     /// <summary>
-    /// Main program class for ACU Console using MVP pattern
+    /// Main program class for ACU Console using the MVP pattern
     /// </summary>
     internal static class Program
     {
@@ -25,7 +25,7 @@ namespace ACUConsole
                 // Create view (handles UI)
                 _view = new ACUConsoleView(_presenter);
 
-                // Create and add main window (like PDConsole)
+                // Create and add the main window (like PDConsole)
                 var mainWindow = _view.CreateMainWindow();
 
                 Application.Top.Add(mainWindow);
