@@ -1,5 +1,5 @@
-using System.IO.Ports;
 using Microsoft.Extensions.Logging;
+using OSDP.Net.Connections;
 using PassiveOsdpMonitor.Configuration;
 using PassiveOsdpMonitor.PacketCapture;
 
@@ -7,7 +7,7 @@ namespace PassiveOsdpMonitor;
 
 public class PassiveMonitor
 {
-    private readonly SerialPort _serialPort;
+    private readonly IOsdpConnection _connection;
     private readonly PacketBuffer _buffer;
     private readonly OsdpCapWriter _osdpCapWriter;
     private readonly ParsedTextWriter _parsedTextWriter;
@@ -15,17 +15,7 @@ public class PassiveMonitor
 
     public PassiveMonitor(MonitorConfiguration config, ILogger logger)
     {
-        _serialPort = new SerialPort
-        {
-            PortName = config.SerialPort,
-            BaudRate = config.BaudRate,
-            DataBits = 8,                    // Standard for OSDP
-            Parity = Parity.None,            // Standard for OSDP
-            StopBits = StopBits.One,         // Standard for OSDP
-            ReadTimeout = 1000,
-            Handshake = Handshake.None       // No flow control
-        };
-
+        _connection = new ReadOnlySerialPortOsdpConnection(config.SerialPort, config.BaudRate);
         _buffer = new PacketBuffer();
         _osdpCapWriter = new OsdpCapWriter(config.OsdpCapFilePath);
         _parsedTextWriter = new ParsedTextWriter(config.ParsedTextFilePath, config.SecurityKey);
@@ -34,9 +24,9 @@ public class PassiveMonitor
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        _serialPort.Open();
-        _logger.LogInformation("Serial port {Port} opened at {BaudRate} baud",
-            _serialPort.PortName, _serialPort.BaudRate);
+        await _connection.Open();
+        _logger.LogInformation("Connection {Connection} opened at {BaudRate} baud",
+            _connection, _connection.BaudRate);
 
         byte[] readBuffer = new byte[1024];
         int packetCount = 0;
@@ -49,8 +39,7 @@ public class PassiveMonitor
                 try
                 {
                     // Read available bytes
-                    int bytesRead = await _serialPort.BaseStream.ReadAsync(
-                        readBuffer, 0, readBuffer.Length, cancellationToken);
+                    int bytesRead = await _connection.ReadAsync(readBuffer, cancellationToken);
 
                     if (bytesRead > 0)
                     {
@@ -87,7 +76,7 @@ public class PassiveMonitor
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error reading from serial port");
+                    _logger.LogError(ex, "Error reading from connection");
                     await Task.Delay(1000, cancellationToken);
                 }
             }
@@ -98,7 +87,8 @@ public class PassiveMonitor
             _logger.LogInformation("Total packets captured: {Count}", packetCount);
             _logger.LogInformation("Total bytes read: {Bytes:N0}", totalBytes);
 
-            _serialPort.Close();
+            await _connection.Close();
+            _connection.Dispose();
             _osdpCapWriter.Dispose();
             _parsedTextWriter.Dispose();
         }
