@@ -67,7 +67,7 @@ namespace OSDP.Net
     }
 
     /// <summary>
-    /// Exception that gets thrown if the attempted operation expects channel security 
+    /// Exception that gets thrown if the attempted operation expects channel security
     /// to be established
     /// </summary>
     public class SecureChannelRequired : OSDPNetException
@@ -76,6 +76,15 @@ namespace OSDP.Net
         /// Initializes a new instance of OSDP.Net.SecureChannelRequired
         /// </summary>
         public SecureChannelRequired()
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of OSDP.Net.SecureChannelRequired with a specified
+        /// error message
+        /// </summary>
+        /// <param name="message">Message that describes the error</param>
+        public SecureChannelRequired(string message) : base(message)
         {
         }
     }
