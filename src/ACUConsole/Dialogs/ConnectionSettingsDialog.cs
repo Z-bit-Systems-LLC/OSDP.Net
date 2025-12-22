@@ -34,7 +34,7 @@ namespace ACUConsole.Dialogs
                 result.PollingInterval = pollingInterval;
                 result.IsTracing = tracingCheckBox.Checked;
                 result.WasCancelled = false;
-                
+
                 Application.RequestStop();
             }
 
@@ -49,14 +49,15 @@ namespace ACUConsole.Dialogs
             var cancelButton = new Button("Cancel");
             cancelButton.Clicked += CancelButtonClicked;
 
-            var dialog = new Dialog("Update Connection Settings", 60, 12, cancelButton, updateButton);
-            dialog.Add(new Label(new Rect(1, 1, 55, 2), "Connection will need to be restarted for setting to take effect."),
+            var dialog = new Dialog("Update Connection Settings", 80, 11, cancelButton, updateButton);
+            dialog.Add(new Label(new Rect(1, 1, 75, 2), "Connection will need to be restarted for setting to take effect."),
                       new Label(1, 4, "Polling Interval(ms):"), pollingIntervalTextField,
                       tracingCheckBox);
+
             pollingIntervalTextField.SetFocus();
 
             Application.Run(dialog);
-            
+
             return result;
         }
     }

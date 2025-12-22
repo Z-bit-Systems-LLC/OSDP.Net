@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ACUConsole.Configuration;
 using ACUConsole.Model;
+using ACUConsole.Tracing;
 using log4net;
 using log4net.Config;
 using Microsoft.Extensions.Logging;
@@ -41,6 +42,7 @@ namespace ACUConsole
         private string _lastConfigFilePath;
         private string _lastOsdpConfigFilePath;
         private string _currentConfigFilePath;
+        private ACUPacketCaptureTracer _packetCaptureTracer;
 
         // Events
         public event EventHandler<ACUEvent> MessageReceived;
@@ -331,6 +333,13 @@ namespace ACUConsole
         {
             _connectionId = Guid.Empty;
             await _controlPanel.Shutdown();
+
+            if (_packetCaptureTracer != null)
+            {
+                _packetCaptureTracer.Dispose();
+                _packetCaptureTracer = null;
+            }
+
             AddLogMessage("Connection stopped");
         }
 
@@ -341,18 +350,27 @@ namespace ACUConsole
             if (_connectionId != Guid.Empty)
             {
                 await _controlPanel.Shutdown();
+                _packetCaptureTracer?.Dispose();
+                _packetCaptureTracer = null;
             }
 
-            _connectionId = _controlPanel.StartConnection(osdpConnection, 
-                TimeSpan.FromMilliseconds(_settings.PollingInterval), 
-                _settings.IsTracing);
+            Action<TraceEntry> tracer = _ => { };
+            if (_settings.IsTracing)
+            {
+                _packetCaptureTracer = new ACUPacketCaptureTracer();
+                tracer = _packetCaptureTracer.Trace;
+            }
+
+            _connectionId = _controlPanel.StartConnection(osdpConnection,
+                TimeSpan.FromMilliseconds(_settings.PollingInterval),
+                tracer);
 
             foreach (var device in _settings.Devices)
             {
-                _controlPanel.AddDevice(_connectionId, device.Address, device.UseCrc, 
+                _controlPanel.AddDevice(_connectionId, device.Address, device.UseCrc,
                     device.UseSecureChannel, device.SecureChannelKey);
             }
-            
+
             AddLogMessage($"Connection started with ID: {_connectionId}");
         }
 
@@ -929,6 +947,7 @@ namespace ACUConsole
                     var shutdownTask = _controlPanel.Shutdown();
                     shutdownTask.Wait();
                 }
+                _packetCaptureTracer?.Dispose();
                 _loggerFactory?.Dispose();
             }
             catch (Exception ex)

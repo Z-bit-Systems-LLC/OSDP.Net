@@ -319,8 +319,10 @@ namespace ACUConsole
 
         private void UpdateConnectionSettings()
         {
-            var input = ConnectionSettingsDialog.Show(_presenter.Settings.PollingInterval, _presenter.Settings.IsTracing);
-            
+            var input = ConnectionSettingsDialog.Show(
+                _presenter.Settings.PollingInterval,
+                _presenter.Settings.IsTracing);
+
             if (!input.WasCancelled)
             {
                 _presenter.UpdateConnectionSettings(input.PollingInterval, input.IsTracing);
