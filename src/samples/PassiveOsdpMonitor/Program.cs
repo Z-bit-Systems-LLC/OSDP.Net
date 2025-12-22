@@ -37,9 +37,9 @@ logger.LogInformation("Monitoring... Press Ctrl+C to stop");
 logger.LogInformation("");
 
 var cts = new CancellationTokenSource();
-Console.CancelKeyPress += (s, e) =>
+Console.CancelKeyPress += (_, eventArgs) =>
 {
-    e.Cancel = true;
+    eventArgs.Cancel = true;
     logger.LogInformation("");
     logger.LogInformation("Stopping monitor...");
     cts.Cancel();
@@ -55,4 +55,4 @@ catch (Exception ex)
     logger.LogError(ex, "Fatal error");
 }
 
-logger.LogInformation("Monitor stopped.");
+logger.LogInformation("Monitor stopped");
