@@ -151,13 +151,13 @@ namespace OSDP.Net.PanelCommands
             /// file in the current working directory of the calling process. Call this method to
             /// set <see cref="Tracer"/> property to this default instance.
             /// </summary>
-            /// <param name="setDefault">Flag that indicates whether or not default tracer is to
-            /// be used. From API perspective, this seems a bit silly to have, but its here
+            /// <param name="setDefault">Flag that indicates whether or not a default tracer is to
+            /// be used. From an API perspective, this seems a bit silly to have, but it's here
             /// because it made calling code slightly more conscise</param>
             /// <returns></returns>
             public DiscoveryOptions WithDefaultTracer(bool setDefault=true)
             {
-                if (setDefault) Tracer = OSDPFileCapTracer.Trace;
+                if (setDefault) Tracer = OSDPFileCaptureTracer.Trace;
                 return this;
             }
         }

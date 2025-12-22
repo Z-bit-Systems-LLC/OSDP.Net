@@ -1,5 +1,4 @@
 using OSDP.Net.Messages;
-using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model;
 using OSDP.Net.Tracing;
 
@@ -88,6 +87,6 @@ public class ParsedTextWriter : IDisposable
 
     public void Dispose()
     {
-        _writer?.Dispose();
+        _writer.Dispose();
     }
 }

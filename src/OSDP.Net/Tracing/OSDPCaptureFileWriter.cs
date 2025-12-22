@@ -8,20 +8,20 @@ namespace OSDP.Net.Tracing;
 /// Writes OSDP packet captures to .osdpcap file format.
 /// This format is compatible with OSDP trace analyzers and can be used for debugging and analysis.
 /// </summary>
-public class OsdpCapFileWriter : IDisposable
+public class OSDPCaptureFileWriter : IDisposable
 {
     private readonly StreamWriter _writer;
     private readonly string _source;
     private bool _disposed;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="OsdpCapFileWriter"/> class.
+    /// Initializes a new instance of the <see cref="OSDPCaptureFileWriter"/> class.
     /// </summary>
     /// <param name="filePath">The path to the output .osdpcap file.</param>
     /// <param name="source">The source identifier for the capture (e.g., "OSDP.Net", "PassiveMonitor").</param>
-    /// <param name="append">If true, appends to existing file; otherwise creates new file.</param>
+    /// <param name="append">If true, appends to the existing file; otherwise creates a new file.</param>
     /// <exception cref="ArgumentNullException">Thrown when filePath or source is null.</exception>
-    public OsdpCapFileWriter(string filePath, string source, bool append = true)
+    public OSDPCaptureFileWriter(string filePath, string source, bool append = true)
     {
         if (string.IsNullOrEmpty(filePath))
             throw new ArgumentNullException(nameof(filePath));
@@ -45,10 +45,8 @@ public class OsdpCapFileWriter : IDisposable
     /// <exception cref="ObjectDisposedException">Thrown when the writer has been disposed.</exception>
     public void WritePacket(byte[] data, TraceDirection direction)
     {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(OsdpCapFileWriter));
-        if (data == null)
-            throw new ArgumentNullException(nameof(data));
+        if (_disposed) throw new ObjectDisposedException(nameof(OSDPCaptureFileWriter));
+        if (data == null) throw new ArgumentNullException(nameof(data));
 
         WritePacketInternal(data, direction, DateTime.UtcNow);
     }
@@ -63,10 +61,8 @@ public class OsdpCapFileWriter : IDisposable
     /// <exception cref="ObjectDisposedException">Thrown when the writer has been disposed.</exception>
     public void WritePacket(byte[] data, TraceDirection direction, DateTime timestamp)
     {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(OsdpCapFileWriter));
-        if (data == null)
-            throw new ArgumentNullException(nameof(data));
+        if (_disposed) throw new ObjectDisposedException(nameof(OSDPCaptureFileWriter));
+        if (data == null) throw new ArgumentNullException(nameof(data));
 
         WritePacketInternal(data, direction, timestamp);
     }
@@ -79,8 +75,7 @@ public class OsdpCapFileWriter : IDisposable
     /// <exception cref="ObjectDisposedException">Thrown when the writer has been disposed.</exception>
     public void WriteTrace(TraceEntry trace)
     {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(OsdpCapFileWriter));
+        if (_disposed) throw new ObjectDisposedException(nameof(OSDPCaptureFileWriter));
 
         WritePacketInternal(trace.Data, trace.Direction, DateTime.UtcNow);
     }
@@ -115,7 +110,7 @@ public class OsdpCapFileWriter : IDisposable
     }
 
     /// <summary>
-    /// Releases all resources used by the <see cref="OsdpCapFileWriter"/>.
+    /// Releases all resources used by the <see cref="OSDPCaptureFileWriter"/>.
     /// </summary>
     public void Dispose()
     {
@@ -124,7 +119,7 @@ public class OsdpCapFileWriter : IDisposable
     }
 
     /// <summary>
-    /// Releases resources used by the <see cref="OsdpCapFileWriter"/>.
+    /// Releases resources used by the <see cref="OSDPCaptureFileWriter"/>.
     /// </summary>
     /// <param name="disposing">True if disposing managed resources.</param>
     protected virtual void Dispose(bool disposing)

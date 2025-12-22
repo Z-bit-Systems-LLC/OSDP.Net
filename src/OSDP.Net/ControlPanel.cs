@@ -90,7 +90,7 @@ namespace OSDP.Net
         /// <param name="isTracing">Write packet data to {Bus ID}.osdpcap file</param>
         /// <returns>An identifier that represents the connection</returns>
         public Guid StartConnection(IOsdpConnection connection, TimeSpan pollInterval, bool isTracing) =>
-            StartConnection(connection, pollInterval, isTracing ? OSDPFileCapTracer.Trace : _ => { });
+            StartConnection(connection, pollInterval, isTracing ? OSDPFileCaptureTracer.Trace : _ => { });
 
         /// <summary>
         /// Start polling on the defined connection.

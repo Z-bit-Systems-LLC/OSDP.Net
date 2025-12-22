@@ -824,12 +824,12 @@ namespace ACUConsole
             AddLogMessage($"Device Discovery Progress: {current.Status}{additionalInfo}");
         }
 
-        private bool FilterAddress(OSDPCapEntry entry, byte? address)
+        private bool FilterAddress(OSDPCaptureEntry entry, byte? address)
         {
             return !address.HasValue || entry.Packet.Address == address.Value;
         }
 
-        private bool FilterPollsAndAcks(OSDPCapEntry entry, bool ignorePollsAndAcks)
+        private bool FilterPollsAndAcks(OSDPCaptureEntry entry, bool ignorePollsAndAcks)
         {
             if (!ignorePollsAndAcks) return true;
             
@@ -837,7 +837,7 @@ namespace ACUConsole
                    (entry.Packet.ReplyType != null && entry.Packet.ReplyType != OSDP.Net.Messages.ReplyType.Ack);
         }
 
-        private StringBuilder BuildTextFromEntries(IEnumerable<OSDPCapEntry> entries)
+        private StringBuilder BuildTextFromEntries(IEnumerable<OSDPCaptureEntry> entries)
         {
             var textBuilder = new StringBuilder();
             DateTime lastEntryTimeStamp = DateTime.MinValue;

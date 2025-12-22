@@ -34,7 +34,7 @@ public static class PacketDecoding
     /// <param name="json"></param>
     /// <param name="key"></param>
     /// <returns></returns>
-    public static IEnumerable<OSDPCapEntry> OSDPCapParser(string json, byte[] key = null)
+    public static IEnumerable<OSDPCaptureEntry> OSDPCapParser(string json, byte[] key = null)
     {
         const byte replyAddress = 0x80;
         var messageSpy = new MessageSpy(key);
@@ -56,7 +56,7 @@ public static class PacketDecoding
                 ? new Packet(messageSpy.ParseCommand(rawData))
                 : new Packet(messageSpy.ParseReply(rawData));
 
-            yield return new OSDPCapEntry(
+            yield return new OSDPCaptureEntry(
                 dateTime,
                 io,
                 packet,

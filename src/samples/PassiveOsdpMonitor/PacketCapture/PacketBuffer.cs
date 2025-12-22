@@ -20,7 +20,6 @@ public class PacketBuffer
             int remaining = _position - somIndex;
             Array.Copy(_buffer, somIndex, _buffer, 0, remaining);
             _position = remaining;
-            somIndex = 0;
         }
 
         // Need at least 6 bytes: SOM + Addr + Len(2) + Ctrl + Type

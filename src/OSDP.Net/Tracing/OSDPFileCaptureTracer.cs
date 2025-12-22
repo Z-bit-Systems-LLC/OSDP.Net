@@ -3,14 +3,14 @@ using System.Collections.Concurrent;
 
 namespace OSDP.Net.Tracing;
 
-internal static class OSDPFileCapTracer
+internal static class OSDPFileCaptureTracer
 {
-    private static readonly ConcurrentDictionary<Guid, OsdpCapFileWriter> Writers = new();
+    private static readonly ConcurrentDictionary<Guid, OSDPCaptureFileWriter> Writers = new();
 
     public static void Trace(TraceEntry trace)
     {
         var writer = Writers.GetOrAdd(trace.ConnectionId, connectionId =>
-            new OsdpCapFileWriter($"{connectionId:D}.osdpcap", "OSDP.Net", append: true));
+            new OSDPCaptureFileWriter($"{connectionId:D}.osdpcap", "OSDP.Net", append: true));
 
         writer.WriteTrace(trace);
     }

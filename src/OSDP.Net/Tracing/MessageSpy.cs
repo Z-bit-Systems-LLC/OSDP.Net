@@ -36,7 +36,7 @@ public class MessageSpy
     }
 
     /// <summary>
-    /// Parses raw OSDP command data into an IncomingMessage, handling secure channel establishment.
+    /// Parses raw OSDP command data into an IncomingMessage, handling the secure channel establishment.
     /// </summary>
     /// <param name="data">Raw OSDP command data starting with SOM byte.</param>
     /// <returns>Parsed IncomingMessage containing the command details.</returns>
@@ -53,7 +53,7 @@ public class MessageSpy
     }
 
     /// <summary>
-    /// Parses raw OSDP reply data into an IncomingMessage, handling secure channel establishment.
+    /// Parses raw OSDP reply data into an IncomingMessage, handling the secure channel establishment.
     /// </summary>
     /// <param name="data">Raw OSDP reply data starting with SOM byte.</param>
     /// <returns>Parsed IncomingMessage containing the reply details.</returns>
@@ -73,11 +73,11 @@ public class MessageSpy
         byte[] rndA = command.Payload;
         var crypto = _context.CreateCypher(true);
         _context.Enc = SecurityContext.GenerateKey(crypto,
-            new byte[] { 0x01, 0x82, rndA[0], rndA[1], rndA[2], rndA[3], rndA[4], rndA[5] });
+            [0x01, 0x82, rndA[0], rndA[1], rndA[2], rndA[3], rndA[4], rndA[5]]);
         _context.SMac1 = SecurityContext.GenerateKey(crypto,
-            new byte[] { 0x01, 0x01, rndA[0], rndA[1], rndA[2], rndA[3], rndA[4], rndA[5] });
+            [0x01, 0x01, rndA[0], rndA[1], rndA[2], rndA[3], rndA[4], rndA[5]]);
         _context.SMac2 = SecurityContext.GenerateKey(crypto,
-            new byte[] { 0x01, 0x02, rndA[0], rndA[1], rndA[2], rndA[3], rndA[4], rndA[5] });
+            [0x01, 0x02, rndA[0], rndA[1], rndA[2], rndA[3], rndA[4], rndA[5]]);
         return command;
     }
 
