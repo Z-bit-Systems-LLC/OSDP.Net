@@ -70,16 +70,26 @@ public class Packet
     /// Is CRC being used
     /// </summary>
     public bool IsUsingCrc { get; }
-    
+
+    /// <summary>
+    /// Indicates whether the payload was successfully decrypted.
+    /// </summary>
+    /// <remarks>
+    /// When <c>true</c>, the payload contains decrypted data that can be parsed.
+    /// When <c>false</c>, the payload is still encrypted because the secure channel was not established
+    /// or the required key was not available.
+    /// </remarks>
+    public bool IsPayloadDecrypted => IncomingMessage.IsPayloadDecrypted;
+
     /// <summary>
     /// Parse the payload data into an object
     /// </summary>
     /// <returns>A message data object representation of the payload data</returns>
     public object ParsePayloadData()
     {
-        if (IncomingMessage.HasSecureData && !IncomingMessage.IsValidMac)
+        if (!IsPayloadDecrypted)
         {
-            return "*** Unable to parse secure payload data ***";
+            return null;
         }
         
         switch (CommandType)

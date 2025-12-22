@@ -1,4 +1,3 @@
-using OSDP.Net;
 using OSDP.Net.Model;
 using OSDP.Net.Tracing;
 
@@ -39,11 +38,6 @@ public class ParsedTextWriter : IDisposable
         {
             var packet = ParsePacket(packetData);
             _writer.Write(_formatter.FormatPacket(packet, timestamp, delta));
-            _writer.Flush();
-        }
-        catch (SecureChannelRequired)
-        {
-            _writer.Write(_formatter.FormatEncryptedPacket(packetData, timestamp, delta));
             _writer.Flush();
         }
         catch (Exception ex)

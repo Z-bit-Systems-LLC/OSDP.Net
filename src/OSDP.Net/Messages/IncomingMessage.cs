@@ -50,15 +50,22 @@ namespace OSDP.Net.Messages
                 (IsSecureMessage ? MacSize : 0)).ToArray();
             if (Payload.Length > 0 && HasSecureData)
             {
-                var paddedPayload = channel.DecodePayload(Payload);
-                var lastByteIdx = Payload.Length;
-                while (lastByteIdx > 0 && paddedPayload[--lastByteIdx] != FirstPaddingByte)
+                if (channel.IsSecurityEstablished)
                 {
-                }
-                
-                if (lastByteIdx == 0) throw new Exception("The encrypted payload is missing a padding byte");
+                    var paddedPayload = channel.DecodePayload(Payload);
+                    var lastByteIdx = Payload.Length;
+                    while (lastByteIdx > 0 && paddedPayload[--lastByteIdx] != FirstPaddingByte)
+                    {
+                    }
 
-                Payload = paddedPayload.AsSpan().Slice(0, lastByteIdx).ToArray();
+                    if (lastByteIdx == 0) throw new Exception("The encrypted payload is missing a padding byte");
+
+                    Payload = paddedPayload.AsSpan().Slice(0, lastByteIdx).ToArray();
+                }
+                else
+                {
+                    IsPayloadDecrypted = false;
+                }
             }
 
             IsDataCorrect = IsUsingCrc
@@ -134,6 +141,16 @@ namespace OSDP.Net.Messages
         public bool HasSecureData =>
             SecurityBlockType == (byte)SecureChannel.SecurityBlockType.CommandMessageWithDataSecurity ||
             SecurityBlockType == (byte)SecureChannel.SecurityBlockType.ReplyMessageWithDataSecurity;
+
+        /// <summary>
+        /// Indicates whether the payload was successfully decrypted.
+        /// </summary>
+        /// <remarks>
+        /// When <c>true</c>, the <see cref="Payload"/> contains decrypted data that can be parsed.
+        /// When <c>false</c>, the payload is still encrypted because the secure channel was not established
+        /// or the required key was not available.
+        /// </remarks>
+        public bool IsPayloadDecrypted { get; private set; } = true;
 
         /// <summary>
         /// Returns the raw message payload

@@ -29,16 +29,22 @@ public class OSDPPacketTextFormatter : IPacketTextFormatter
         sb.AppendLine($"{timestamp:yy-MM-dd HH:mm:ss.fff}{deltaString} {direction}: {type}");
         sb.AppendLine($"    Address: {packet.Address} Sequence: {packet.Sequence}");
 
-        var payloadData = packet.ParsePayloadData();
-        if (payloadData != null)
+        if (!packet.IsPayloadDecrypted)
         {
-            string payloadString = payloadData switch
+            sb.AppendLine("    *** Payload is encrypted - SCBK (Secure Channel Base Key) required to decrypt ***");
+        }
+        else
+        {
+            var payloadData = packet.ParsePayloadData();
+            if (payloadData != null)
             {
-                byte[] data => $"    {BitConverter.ToString(data)}",
-                string data => $"    {data}",
-                _ => $"    {payloadData}"
-            };
-            sb.AppendLine(payloadString);
+                string payloadString = payloadData switch
+                {
+                    byte[] data => $"    {BitConverter.ToString(data)}",
+                    _ => $"    {payloadData}"
+                };
+                sb.AppendLine(payloadString);
+            }
         }
 
         sb.AppendLine();

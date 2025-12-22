@@ -51,20 +51,10 @@ public static class PacketDecoding
             Enum.TryParse(entry.io.ToString(), true, out TraceDirection io);
             string data = entry.data.ToString();
 
-            Packet packet;
-            try
-            {
-                var rawData = BinaryUtils.HexToBytes(data).ToArray();
-                packet = messageSpy.PeekAddressByte(rawData) < replyAddress
-                    ? new Packet(messageSpy.ParseCommand(rawData))
-                    : new Packet(messageSpy.ParseReply(rawData));
-            }
-            catch (SecureChannelRequired)
-            {
-                throw new SecureChannelRequired(
-                    "Unable to parse encrypted OSDP packet. The packet data is encrypted and requires the SCBK (Secure Channel Base Key) to decrypt. " +
-                    "Provide the security key when calling OSDPCapParser or ensure the SCBK has been properly negotiated during the secure channel establishment.");
-            }
+            var rawData = BinaryUtils.HexToBytes(data).ToArray();
+            var packet = messageSpy.PeekAddressByte(rawData) < replyAddress
+                ? new Packet(messageSpy.ParseCommand(rawData))
+                : new Packet(messageSpy.ParseReply(rawData));
 
             yield return new OSDPCaptureEntry(
                 dateTime,
