@@ -82,6 +82,16 @@ public class Packet
     public bool IsPayloadDecrypted => IncomingMessage.IsPayloadDecrypted;
 
     /// <summary>
+    /// Indicates if the message was sent via an established secure channel.
+    /// </summary>
+    public bool IsSecureMessage => IncomingMessage.IsSecureMessage;
+
+    /// <summary>
+    /// Indicates if the secure channel is using the default key.
+    /// </summary>
+    public bool IsUsingDefaultKey => _isUsingDefaultKey;
+
+    /// <summary>
     /// Parse the payload data into an object
     /// </summary>
     /// <returns>A message data object representation of the payload data</returns>

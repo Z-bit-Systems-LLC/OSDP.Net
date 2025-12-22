@@ -23,7 +23,16 @@ public class OSDPPacketTextFormatter : IPacketTextFormatter
         string type = (packet.CommandType?.ToString() ?? packet.ReplyType?.ToString()) ?? "Unknown";
 
         sb.AppendLine($"{timestamp:yy-MM-dd HH:mm:ss.fff}{deltaString} {direction}: {type}");
-        sb.AppendLine($"    Address: {packet.Address} Sequence: {packet.Sequence}");
+        sb.Append($"    Address: {packet.Address} Sequence: {packet.Sequence}");
+        if (packet.IsSecureMessage)
+        {
+            sb.Append(packet.IsUsingDefaultKey ? " [Secure - Default Key]" : " [Secure]");
+        }
+        else
+        {
+            sb.Append(" [Clear Text]");
+        }
+        sb.AppendLine();
 
         if (!packet.IsPayloadDecrypted)
         {
