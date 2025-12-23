@@ -1,8 +1,12 @@
+using System;
+using System.IO;
 using OSDP.Net.Model;
-using OSDP.Net.Tracing;
 
-namespace PassiveOsdpMonitor.PacketCapture;
+namespace OSDP.Net.Tracing;
 
+/// <summary>
+/// Writes parsed OSDP packets to a human-readable text file.
+/// </summary>
 public class ParsedTextWriter : IDisposable
 {
     private readonly StreamWriter _writer;
@@ -11,12 +15,23 @@ public class ParsedTextWriter : IDisposable
     private DateTime _lastPacketTime = DateTime.MinValue;
     private const byte ReplyAddressMask = 0x80;
 
-    public ParsedTextWriter(string outputPath, byte[]? securityKey = null)
+    /// <summary>
+    /// Creates a new ParsedTextWriter with the default formatter.
+    /// </summary>
+    /// <param name="outputPath">Path to the output text file.</param>
+    /// <param name="securityKey">Optional security key for decrypting secure channel messages.</param>
+    public ParsedTextWriter(string outputPath, byte[] securityKey = null)
         : this(outputPath, securityKey, new OSDPPacketTextFormatter())
     {
     }
 
-    public ParsedTextWriter(string outputPath, byte[]? securityKey, IPacketTextFormatter formatter)
+    /// <summary>
+    /// Creates a new ParsedTextWriter with a custom formatter.
+    /// </summary>
+    /// <param name="outputPath">Path to the output text file.</param>
+    /// <param name="securityKey">Optional security key for decrypting secure channel messages.</param>
+    /// <param name="formatter">The formatter to use for packet output.</param>
+    public ParsedTextWriter(string outputPath, byte[] securityKey, IPacketTextFormatter formatter)
     {
         var directory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrEmpty(directory))
@@ -27,6 +42,11 @@ public class ParsedTextWriter : IDisposable
         _formatter = formatter;
     }
 
+    /// <summary>
+    /// Writes a packet to the output file.
+    /// </summary>
+    /// <param name="packetData">The raw packet bytes.</param>
+    /// <param name="timestamp">The timestamp when the packet was captured.</param>
     public void WritePacket(byte[] packetData, DateTime timestamp)
     {
         TimeSpan? delta = _lastPacketTime > DateTime.MinValue
@@ -59,6 +79,7 @@ public class ParsedTextWriter : IDisposable
         return new Packet(message);
     }
 
+    /// <inheritdoc />
     public void Dispose()
     {
         _writer.Dispose();
