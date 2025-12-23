@@ -3,7 +3,6 @@ using System.Linq;
 using NUnit.Framework;
 using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
-using OSDP.Net.Model;
 using OSDP.Net.Tracing;
 using OSDP.Net.Utilities;
 

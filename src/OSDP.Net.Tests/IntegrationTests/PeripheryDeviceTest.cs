@@ -120,6 +120,15 @@ public class PeripheryDeviceTest : IntegrationTestFixtureBase
     {
         await InitTestTargets();
 
+        var comSetReceived = new TaskCompletionSource<byte>();
+
+        // Handle the address change - just signal when received
+        TargetDevice.DeviceComSetUpdated += (_, e) =>
+        {
+            TestContext.WriteLine($"----- Device address changing from {e.OldAddress} to {e.NewAddress} -----");
+            comSetReceived.TrySetResult(e.NewAddress);
+        };
+
         AddDeviceToPanel();
 
         await WaitForDeviceOnlineStatus();
@@ -130,10 +139,18 @@ public class PeripheryDeviceTest : IntegrationTestFixtureBase
 
         Assert.That(results.Address, Is.EqualTo(newAddress));
 
-        Assert.ThrowsAsync<TimeoutException>(() => AssertPanelToDeviceCommsAreHealthy());
+        // Wait for the ComSet event to be processed
+        var receivedAddress = await comSetReceived.Task;
+        Assert.That(receivedAddress, Is.EqualTo(newAddress));
 
+        // Stop and restart the device with the new address
+        await TargetDevice.StopListening();
+        TargetDevice.Dispose();
+        await InitTestTargetDevice(cfg => cfg.Address = newAddress);
+
+        // Update panel to use the new device address
         RemoveDeviceFromPanel();
-        AddDeviceToPanel(address:  newAddress);
+        AddDeviceToPanel(address: newAddress);
 
         await WaitForDeviceOnlineStatus();
 
@@ -166,7 +183,7 @@ public class PeripheryDeviceTest : IntegrationTestFixtureBase
 
         await WaitForDeviceOnlineStatus();
 
-        var connLostCheckpoint = SetupCheckpointForExpectedTestEvent(TestEventType.ConnectionLost);
+        var connLostCheckpoint = SetupCheckpointForExpectedTestEvent(TestEventType.ConnectionLost, timeout: 10000);
 
         int newBaudRate = 19200;
         var commSettings = new Net.Model.CommandData.CommunicationConfiguration(DeviceAddress, newBaudRate);

@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using Moq;
 using NUnit.Framework;
 using OSDP.Net.Tracing;
 
@@ -349,7 +347,7 @@ public class OSDPFileCaptureTracerTest
         public void Trace(TraceEntry trace)
         {
             var writer = _writers.GetOrAdd(trace.ConnectionId, connectionId =>
-                new MockCaptureFileWriter($"{connectionId:D}.osdpcap", "OSDP.Net"));
+                new MockCaptureFileWriter($"{connectionId:D}.osdpcap"));
 
             writer.WriteTrace(trace);
         }
@@ -397,14 +395,12 @@ public class OSDPFileCaptureTracerTest
         private readonly object _lock = new();
 
         public string FilePath { get; }
-        public string Source { get; }
         public List<TraceEntry> WrittenTraces { get; } = new();
         public bool IsDisposed { get; private set; }
 
-        public MockCaptureFileWriter(string filePath, string source)
+        public MockCaptureFileWriter(string filePath)
         {
             FilePath = filePath;
-            Source = source;
         }
 
         public void WriteTrace(TraceEntry trace)

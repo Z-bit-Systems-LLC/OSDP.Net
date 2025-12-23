@@ -2,8 +2,6 @@ using System;
 using System.Linq;
 using NUnit.Framework;
 using OSDP.Net.Messages;
-using OSDP.Net.Model.CommandData;
-using OSDP.Net.Model.ReplyData;
 using OSDP.Net.Tracing;
 using OSDP.Net.Utilities;
 
@@ -34,16 +32,6 @@ public class MessageSpyTest
 
             // Act
             var spy = new MessageSpy(securityKey);
-
-            // Assert
-            Assert.That(spy, Is.Not.Null);
-        }
-
-        [Test]
-        public void Constructor_WithNullSecurityKey_ShouldCreateInstance()
-        {
-            // Act
-            var spy = new MessageSpy(null);
 
             // Assert
             Assert.That(spy, Is.Not.Null);

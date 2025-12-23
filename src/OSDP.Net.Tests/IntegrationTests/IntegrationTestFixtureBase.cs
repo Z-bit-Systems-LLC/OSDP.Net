@@ -1,14 +1,14 @@
-﻿using System;
+using System;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using NUnit.Framework;
-using OSDP.Net.Connections;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
 using DeviceCapabilities = OSDP.Net.Model.ReplyData.DeviceCapabilities;
 using System.Collections.Concurrent;
 using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
+using OSDP.Net.Tests.Utilities;
 
 namespace OSDP.Net.Tests.IntegrationTests;
 
@@ -30,6 +30,10 @@ public class IntegrationTestFixtureBase
     private TaskCompletionSource<bool> _deviceOnlineCompletionSource;
     private readonly ConcurrentQueue<EventCheckpoint> _eventCheckpoints = new();
     private readonly object _syncLock = new();
+
+    private LoopbackOsdpConnection _acuConnection;
+    private LoopbackOsdpConnection _deviceConnection;
+    private SingleConnectionListener _connectionListener;
 
     protected ControlPanel TargetPanel { get; private set; }
     protected TestDevice TargetDevice { get; private set; }
@@ -56,6 +60,9 @@ public class IntegrationTestFixtureBase
         await (TargetDevice?.StopListening() ?? Task.CompletedTask);
 
         TargetDevice?.Dispose();
+        _connectionListener?.Dispose();
+        _acuConnection?.Dispose();
+        _deviceConnection?.Dispose();
         LoggerFactory?.Dispose();
     }
 
@@ -63,8 +70,11 @@ public class IntegrationTestFixtureBase
         Action<DeviceConfiguration> configureDevice = null,
         Action<PanelConfiguration> configurePanel = null)
     {
-        await InitTestTargetDevice(configureDevice, baudRate: IntegrationConsts.DefaultTestBaud);
-        await InitTestTargetPanel(configurePanel, baudRate: IntegrationConsts.DefaultTestBaud);
+        // Create loopback connection pair for in-memory communication
+        (_acuConnection, _deviceConnection) = LoopbackOsdpConnection.CreatePair();
+
+        await InitTestTargetDevice(configureDevice);
+        await InitTestTargetPanel(configurePanel);
     }
 
     protected async Task InitTestTargetPanel(Action<PanelConfiguration> configurePanel = null, int baudRate = IntegrationConsts.DefaultTestBaud)
@@ -120,20 +130,50 @@ public class IntegrationTestFixtureBase
             await TargetPanel.StopConnection(ConnectionId);
         }
 
+        // For baud rate changes, create new loopback connections
+        if (_acuConnection == null || _acuConnection.BaudRate != baudRate)
+        {
+            _acuConnection?.Dispose();
+            _deviceConnection?.Dispose();
+            _connectionListener?.Dispose();
 
-        ConnectionId = TargetPanel.StartConnection(new TcpClientOsdpConnection("localhost", 6000, baudRate));
+            (_acuConnection, _deviceConnection) = LoopbackOsdpConnection.CreatePair(baudRate);
+
+            // Restart device with new connection if it exists
+            if (TargetDevice != null)
+            {
+                await TargetDevice.StopListening();
+                _connectionListener = new SingleConnectionListener(_deviceConnection);
+                await TargetDevice.StartListening(_connectionListener);
+            }
+        }
+
+        ConnectionId = TargetPanel.StartConnection(_acuConnection);
     }
 
     protected async Task InitTestTargetDevice(
         Action<DeviceConfiguration> configureDevice = null, int baudRate = IntegrationConsts.DefaultTestBaud)
     {
-        var deviceConfig = new DeviceConfiguration() { Address = IntegrationConsts.DefaultTestDeviceAddr };
+        var deviceConfig = new DeviceConfiguration { Address = IntegrationConsts.DefaultTestDeviceAddr };
         configureDevice?.Invoke(deviceConfig);
 
         DeviceAddress = deviceConfig.Address;
 
+        // Create loopback connections if not already created
+        if (_deviceConnection == null)
+        {
+            (_acuConnection, _deviceConnection) = LoopbackOsdpConnection.CreatePair(baudRate);
+        }
+        else if (!_deviceConnection.IsOpen)
+        {
+            // Reopen the connection if it was closed (e.g., after StopListening)
+            await _deviceConnection.Open();
+        }
+
+        _connectionListener = new SingleConnectionListener(_deviceConnection);
+
         TargetDevice = new TestDevice(deviceConfig, LoggerFactory);
-        await TargetDevice.StartListening(new TcpConnectionListener(6000, baudRate, LoggerFactory));
+        await TargetDevice.StartListening(_connectionListener);
     }
 
     protected void AddDeviceToPanel(
@@ -153,7 +193,7 @@ public class IntegrationTestFixtureBase
         TargetPanel.RemoveDevice(ConnectionId, DeviceAddress);
     }
 
-    protected async Task WaitForDeviceOnlineStatus(int timeout = 10000)
+    protected async Task WaitForDeviceOnlineStatus(int timeout = 3000)
     {
         var onlineTask = _deviceOnlineCompletionSource.Task;
         if (await Task.WhenAny(onlineTask, Task.Delay(timeout)) != onlineTask)
@@ -162,7 +202,7 @@ public class IntegrationTestFixtureBase
         }
     }
 
-    protected async Task AssertPanelRemainsDisconnected(int timeout = 10000)
+    protected async Task AssertPanelRemainsDisconnected(int timeout = 2000)
     {
         var onlineTask = _deviceOnlineCompletionSource.Task;
         if (await Task.WhenAny(onlineTask, Task.Delay(timeout)) == onlineTask)
@@ -177,7 +217,7 @@ public class IntegrationTestFixtureBase
         Assert.That(capabilities, Is.Not.Null);
     }
 
-    protected async Task SetupCheckpointForExpectedTestEvent(TestEventType eventType, int timeout = 10000)
+    protected async Task SetupCheckpointForExpectedTestEvent(TestEventType eventType, int timeout = 3000)
     {
         TaskCompletionSource<bool> tcs = new();
 

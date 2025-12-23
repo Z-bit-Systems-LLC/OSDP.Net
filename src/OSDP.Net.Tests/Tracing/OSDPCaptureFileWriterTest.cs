@@ -56,28 +56,28 @@ public class OSDPCaptureFileWriterTest
         public void Constructor_NullFilePath_ShouldThrowArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new OSDPCaptureFileWriter(null, TestSource, _mockFileSystem.Object));
+            Assert.Throws<ArgumentNullException>(() => _ = new OSDPCaptureFileWriter(null, TestSource, _mockFileSystem.Object));
         }
 
         [Test]
         public void Constructor_EmptyFilePath_ShouldThrowArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new OSDPCaptureFileWriter(string.Empty, TestSource, _mockFileSystem.Object));
+            Assert.Throws<ArgumentNullException>(() => _ = new OSDPCaptureFileWriter(string.Empty, TestSource, _mockFileSystem.Object));
         }
 
         [Test]
         public void Constructor_NullSource_ShouldThrowArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new OSDPCaptureFileWriter(TestFilePath, null, _mockFileSystem.Object));
+            Assert.Throws<ArgumentNullException>(() => _ = new OSDPCaptureFileWriter(TestFilePath, null, _mockFileSystem.Object));
         }
 
         [Test]
         public void Constructor_EmptySource_ShouldThrowArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new OSDPCaptureFileWriter(TestFilePath, string.Empty, _mockFileSystem.Object));
+            Assert.Throws<ArgumentNullException>(() => _ = new OSDPCaptureFileWriter(TestFilePath, string.Empty, _mockFileSystem.Object));
         }
 
         [Test]

@@ -142,10 +142,9 @@ public class TraceEntryTest
             // Arrange
             var direction = TraceDirection.Input;
             var connectionId = Guid.NewGuid();
-            byte[] data = null;
 
             // Act
-            var entry = new TraceEntry(direction, connectionId, data);
+            var entry = new TraceEntry(direction, connectionId, null);
 
             // Assert
             Assert.That(entry.Direction, Is.EqualTo(direction));

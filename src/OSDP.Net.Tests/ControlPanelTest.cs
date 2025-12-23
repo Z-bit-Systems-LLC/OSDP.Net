@@ -17,7 +17,7 @@ using OSDP.Net.Tests.Utilities;
 namespace OSDP.Net.Tests
 {
     [TestFixture]
-    [Category("ComponentTest")]
+    [Category("Unit")]
     public class ControlPanelTest
     {
         [Test]
