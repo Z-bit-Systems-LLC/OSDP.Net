@@ -35,7 +35,13 @@ public struct TraceEntry
     /// </summary>
     public byte[] Data { get; }
 
-    internal TraceEntry(TraceDirection direction, Guid connectionId, byte[] data)
+    /// <summary>
+    /// Initializes a new instance of the TraceEntry struct.
+    /// </summary>
+    /// <param name="direction">The direction in which the data is sent.</param>
+    /// <param name="connectionId">The connection sending/receiving the data.</param>
+    /// <param name="data">The data that is sent/received.</param>
+    public TraceEntry(TraceDirection direction, Guid connectionId, byte[] data)
     {
         Direction = direction;
         ConnectionId = connectionId;

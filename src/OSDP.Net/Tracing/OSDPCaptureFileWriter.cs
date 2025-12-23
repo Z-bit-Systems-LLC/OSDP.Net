@@ -22,18 +22,31 @@ public class OSDPCaptureFileWriter : IDisposable
     /// <param name="append">If true, appends to the existing file; otherwise creates a new file.</param>
     /// <exception cref="ArgumentNullException">Thrown when filePath or source is null.</exception>
     public OSDPCaptureFileWriter(string filePath, string source, bool append = true)
+        : this(filePath, source, new FileSystemAdapter(), append)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OSDPCaptureFileWriter"/> class with a custom file system.
+    /// </summary>
+    /// <param name="filePath">The path to the output .osdpcap file.</param>
+    /// <param name="source">The source identifier for the capture (e.g., "OSDP.Net", "PassiveMonitor").</param>
+    /// <param name="fileSystem">The file system abstraction to use.</param>
+    /// <param name="append">If true, appends to the existing file; otherwise creates a new file.</param>
+    /// <exception cref="ArgumentNullException">Thrown when filePath or source is null.</exception>
+    internal OSDPCaptureFileWriter(string filePath, string source, IFileSystem fileSystem, bool append = true)
     {
         if (string.IsNullOrEmpty(filePath))
             throw new ArgumentNullException(nameof(filePath));
         if (string.IsNullOrEmpty(source))
             throw new ArgumentNullException(nameof(source));
 
-        var directory = Path.GetDirectoryName(filePath);
+        var directory = fileSystem.GetDirectoryName(filePath);
         if (!string.IsNullOrEmpty(directory))
-            Directory.CreateDirectory(directory);
+            fileSystem.CreateDirectory(directory);
 
         _source = source;
-        _writer = new StreamWriter(filePath, append);
+        _writer = fileSystem.CreateStreamWriter(filePath, append);
     }
 
     /// <summary>

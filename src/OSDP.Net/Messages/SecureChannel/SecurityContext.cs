@@ -144,27 +144,36 @@ public class SecurityContext
     }
 
     /// <summary>
-    /// Slightly specialized version of simple AES encryption that is 
-    /// intended specifically for generating keys used in OSDP secure channel
-    /// comms. 
+    /// Generates a cryptographic key by encrypting the input data using AES.
+    /// Specialized for OSDP secure channel key derivation.
     /// </summary>
-    /// <param name="aes">AES crypto instance</param>
-    /// <param name="input">Set of bytes to be used as input to generate the 
-    /// resulting key. For convenience the caller might pass in more than one
-    /// byte array, but the total sum of all bytes MUST be less than or equal
-    /// to 16</param>
-    /// <returns></returns>
-    internal static byte[] GenerateKey(Aes aes, params byte[][] input)
+    /// <param name="aes">AES crypto instance configured for key generation</param>
+    /// <param name="input">Input bytes to be used for key generation. Length must be 16 bytes or less.</param>
+    /// <returns>16-byte encrypted key</returns>
+    internal static byte[] GenerateKey(Aes aes, byte[] input)
     {
         var buffer = new byte[16];
-        int currentSize = 0;
-        
-        foreach (byte[] x in input)
-        {
-            x.CopyTo(buffer, currentSize);
-            currentSize += x.Length;
-        }
-        
+        input.CopyTo(buffer, 0);
+
+        using var encryptor = aes.CreateEncryptor();
+        return encryptor.TransformFinalBlock(buffer, 0, buffer.Length);
+    }
+
+    /// <summary>
+    /// Generates a cryptographic key by concatenating two byte arrays and encrypting with AES.
+    /// Specialized for OSDP secure channel key derivation.
+    /// </summary>
+    /// <param name="aes">AES crypto instance configured for key generation</param>
+    /// <param name="input1">First input byte array</param>
+    /// <param name="input2">Second input byte array</param>
+    /// <returns>16-byte encrypted key</returns>
+    /// <remarks>The total length of input1 + input2 must be 16 bytes or less.</remarks>
+    internal static byte[] GenerateKey(Aes aes, byte[] input1, byte[] input2)
+    {
+        var buffer = new byte[16];
+        input1.CopyTo(buffer, 0);
+        input2.CopyTo(buffer, input1.Length);
+
         using var encryptor = aes.CreateEncryptor();
         return encryptor.TransformFinalBlock(buffer, 0, buffer.Length);
     }
