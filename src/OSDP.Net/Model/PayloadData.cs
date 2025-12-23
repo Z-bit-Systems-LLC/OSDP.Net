@@ -50,27 +50,5 @@ namespace OSDP.Net.Model
         {
         }
 
-        /// <inheritdoc />
-        public override string ToString()
-        {
-            try
-            {
-                return ToString(0);
-            }
-            catch (NotImplementedException)
-            {
-                return base.ToString();
-            }
-        }
-
-        /// <summary>
-        /// Returns a string representation of the current object
-        /// </summary>
-        /// <param name="indent">Number of ' ' chars to add to beginning of every line</param>
-        /// <returns>String representation of the current object</returns>
-        public virtual string ToString(int indent)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

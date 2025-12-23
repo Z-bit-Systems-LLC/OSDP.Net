@@ -90,7 +90,7 @@ namespace OSDP.Net.Model.CommandData
         public override string ToString()
         {
             var sb = new StringBuilder();
-            sb.AppendLine($"Reader Number: {ReaderNumber}");
+            sb.AppendLine($" Reader Number: {ReaderNumber}");
             sb.AppendLine($"  Text Command: {TextCommand}");
             sb.AppendLine($"Temp Text Time: {TemporaryTextTime}");
             sb.AppendLine($"   Row, Column: {Row}, {Column}");

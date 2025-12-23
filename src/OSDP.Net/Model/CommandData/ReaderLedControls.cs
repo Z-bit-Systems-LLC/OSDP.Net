@@ -70,10 +70,8 @@ namespace OSDP.Net.Model.CommandData
         {
             var sb = new StringBuilder();
             sb.AppendLine($"LED Count: {Controls.Count()}");
-            var index = 1;
             foreach (var control in Controls)
             {
-                sb.AppendLine($"LED #{index}:");
                 sb.AppendLine($" Reader #: {control.ReaderNumber}");
                 sb.AppendLine($"    LED #: {control.LedNumber}");
                 sb.AppendLine($"Temp Mode: {control.TemporaryMode}");
@@ -82,7 +80,6 @@ namespace OSDP.Net.Model.CommandData
                 sb.AppendLine($" On Color: {control.TemporaryOnColor}");
                 sb.AppendLine($"Off Color: {control.TemporaryOffColor}");
                 sb.AppendLine($"    Timer: {control.TemporaryTimer} (100ms)");
-                index++;
             }
             return sb.ToString();
         }

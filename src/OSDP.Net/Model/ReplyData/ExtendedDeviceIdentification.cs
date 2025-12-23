@@ -163,46 +163,45 @@ namespace OSDP.Net.Model.ReplyData
         }
 
         /// <inheritdoc/>
-        public override string ToString(int indent)
+        public override string ToString()
         {
-            var padding = new string(' ', indent);
             var build = new StringBuilder();
 
             if (Manufacturer != null)
             {
-                build.AppendLine($"{padding}    Manufacturer: {Manufacturer}");
+                build.AppendLine($"    Manufacturer: {Manufacturer}");
             }
 
             if (ProductName != null)
             {
-                build.AppendLine($"{padding}    Product Name: {ProductName}");
+                build.AppendLine($"    Product Name: {ProductName}");
             }
 
             if (SerialNumber != null)
             {
-                build.AppendLine($"{padding}   Serial Number: {SerialNumber}");
+                build.AppendLine($"   Serial Number: {SerialNumber}");
             }
 
             var firmwareVersions = FirmwareVersions.ToList();
             for (int i = 0; i < firmwareVersions.Count; i++)
             {
                 var label = i == 0 ? "Firmware Version" : $"Firmware Version {i + 1}";
-                build.AppendLine($"{padding}{label,16}: {firmwareVersions[i]}");
+                build.AppendLine($"{label,16}: {firmwareVersions[i]}");
             }
 
             if (HardwareDescription != null)
             {
-                build.AppendLine($"{padding}        Hardware: {HardwareDescription}");
+                build.AppendLine($"        Hardware: {HardwareDescription}");
             }
 
             if (Url != null)
             {
-                build.AppendLine($"{padding}             URL: {Url}");
+                build.AppendLine($"             URL: {Url}");
             }
 
             if (ConfigurationReference != null)
             {
-                build.AppendLine($"{padding}   Configuration: {ConfigurationReference}");
+                build.AppendLine($"   Configuration: {ConfigurationReference}");
             }
 
             // Display any unknown/undefined tags
@@ -211,7 +210,7 @@ namespace OSDP.Net.Model.ReplyData
             {
                 foreach (var entry in unknownEntries)
                 {
-                    build.AppendLine($"{padding}  Unknown Tag {entry.TagByte}: {entry.Value}");
+                    build.AppendLine($"  Unknown Tag {entry.TagByte}: {entry.Value}");
                 }
             }
 

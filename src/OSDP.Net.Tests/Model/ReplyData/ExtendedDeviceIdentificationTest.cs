@@ -131,7 +131,7 @@ namespace OSDP.Net.Tests.Model.ReplyData
                 new ExtendedIdEntry(ExtendedIdTag.SerialNumber, "12345")
             });
 
-            var str = extId.ToString(0);
+            var str = extId.ToString();
 
             Assert.That(str, Does.Contain("Manufacturer: ACME"));
             Assert.That(str, Does.Contain("Serial Number: 12345"));
@@ -241,7 +241,7 @@ namespace OSDP.Net.Tests.Model.ReplyData
                 new ExtendedIdEntry(ExtendedIdTag.SerialNumber, "12345")
             });
 
-            var str = extId.ToString(0);
+            var str = extId.ToString();
 
             Assert.That(str, Does.Contain("Manufacturer: ACME"));
             Assert.That(str, Does.Contain("Serial Number: 12345"));

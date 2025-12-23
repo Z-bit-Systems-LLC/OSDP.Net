@@ -83,7 +83,7 @@ namespace OSDP.Net.Model.CommandData
         public override string ToString()
         {
             var sb = new StringBuilder();
-            sb.AppendLine($" Reader #: {ReaderNumber}");
+            sb.AppendLine($"Reader #: {ReaderNumber}");
             sb.AppendLine($"Bio Type: {BiometricType}");
             sb.AppendLine($"  Format: {BiometricFormatType}");
             sb.AppendLine($" Quality: {Quality}");

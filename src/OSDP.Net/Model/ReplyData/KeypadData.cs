@@ -118,20 +118,12 @@ namespace OSDP.Net.Model.ReplyData
         }
 
         /// <inheritdoc/>
-        public override string ToString() => ToString(0);
-
-        /// <summary>
-        /// Returns a string representation of the current object
-        /// </summary>
-        /// <param name="indent">Number of ' ' chars to add to beginning of every line</param>
-        /// <returns>String representation of the current object</returns>
-        public override string ToString(int indent)
+        public override string ToString()
         {
-            var padding = new string(' ', indent);
             var build = new StringBuilder();
-            build.AppendLine($"{padding}Reader Number: {ReaderNumber}");
-            build.AppendLine($"{padding}  Digit Count: {DigitCount}");
-            build.AppendLine($"{padding}         Data: {ConvertBytesToKeypadString(Data)}");
+            build.AppendLine($"Reader Number: {ReaderNumber}");
+            build.AppendLine($"  Digit Count: {DigitCount}");
+            build.AppendLine($"         Data: {ConvertBytesToKeypadString(Data)}");
             return build.ToString();
         }
 

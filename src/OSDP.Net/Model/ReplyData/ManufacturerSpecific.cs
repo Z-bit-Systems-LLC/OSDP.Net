@@ -48,19 +48,11 @@ namespace OSDP.Net.Model.ReplyData
         }
 
         /// <inheritdoc/>
-        public override string ToString() => ToString(0);
-
-        /// <summary>
-        /// Returns a string representation of the current object
-        /// </summary>
-        /// <param name="indent">Number of ' ' chars to add to beginning of every line</param>
-        /// <returns>String representation of the current object</returns>
-        public string ToString(int indent)
+        public override string ToString()
         {
-            var padding = new string(' ', indent);
             var build = new StringBuilder();
-            build.AppendLine($"{padding}Vendor Code: {BitConverter.ToString(VendorCode.ToArray())}");
-            build.AppendLine($"{padding}       Data: {BitConverter.ToString(Data.ToArray())}");
+            build.AppendLine($"Vendor Code: {BitConverter.ToString(VendorCode.ToArray())}");
+            build.AppendLine($"       Data: {BitConverter.ToString(Data.ToArray())}");
             return build.ToString();
         }
     }

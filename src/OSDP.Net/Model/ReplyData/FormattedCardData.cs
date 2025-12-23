@@ -83,14 +83,13 @@ public class FormattedCardData : PayloadData
     }
 
     /// <inheritdoc/>
-    public override string ToString(int indent)
+    public override string ToString()
     {
-        var padding = new string(' ', indent);
         var build = new StringBuilder();
-        build.AppendLine($"{padding} Reader Number: {ReaderNumber}");
-        build.AppendLine($"{padding}Read Direction: {ReadDirection}");
-        build.AppendLine($"{padding}   Data Lenght: {Lenght}");
-        build.AppendLine($"{padding}          Data: {Data}");
+        build.AppendLine($" Reader Number: {ReaderNumber}");
+        build.AppendLine($"Read Direction: {ReadDirection}");
+        build.AppendLine($"   Data Length: {Lenght}");
+        build.AppendLine($"          Data: {Data}");
         return build.ToString();
     }
 

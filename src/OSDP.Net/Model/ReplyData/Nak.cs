@@ -28,6 +28,7 @@ namespace OSDP.Net.Model.ReplyData
             // TODO: make this guy accept extra data, if/when we need to return that
 
             ErrorCode = errorCode;
+            ExtraData = Array.Empty<byte>();
         }
 
         /// <summary>
@@ -85,7 +86,8 @@ namespace OSDP.Net.Model.ReplyData
         {
             var build = new StringBuilder();
             build.AppendLine($"Error: {Helpers.SplitCamelCase(ErrorCode.ToString())}");
-            build.AppendLine($" Data: {BitConverter.ToString(ExtraData.ToArray())}");
+            var extraDataArray = ExtraData.ToArray();
+            build.AppendLine($" Data: {(extraDataArray.Length > 0 ? BitConverter.ToString(extraDataArray) : "(none)")}");
             return build.ToString();
         }
     }

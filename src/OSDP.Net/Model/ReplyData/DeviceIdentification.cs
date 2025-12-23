@@ -98,16 +98,14 @@ namespace OSDP.Net.Model.ReplyData
         }
 
         /// <inheritdoc/>
-        public override string ToString(int indent)
+        public override string ToString()
         {
-            string padding = new (' ', indent);
-
             var build = new StringBuilder();
-            build.AppendLine($"{padding}     Vendor Code: {BitConverter.ToString(VendorCode.ToArray())}");
-            build.AppendLine($"{padding}    Model Number: {ModelNumber}");
-            build.AppendLine($"{padding}         Version: {Version}");
-            build.AppendLine($"{padding}   Serial Number: {BitConverter.ToString(Message.ConvertIntToBytes(SerialNumber).ToArray())}");
-            build.AppendLine($"{padding}Firmware Version: {FirmwareMajor}.{FirmwareMinor}.{FirmwareBuild}");
+            build.AppendLine($"     Vendor Code: {BitConverter.ToString(VendorCode.ToArray())}");
+            build.AppendLine($"    Model Number: {ModelNumber}");
+            build.AppendLine($"         Version: {Version}");
+            build.AppendLine($"   Serial Number: {BitConverter.ToString(Message.ConvertIntToBytes(SerialNumber).ToArray())}");
+            build.AppendLine($"Firmware Version: {FirmwareMajor}.{FirmwareMinor}.{FirmwareBuild}");
 
             return build.ToString();
         }

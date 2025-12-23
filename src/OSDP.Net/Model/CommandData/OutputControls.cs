@@ -67,14 +67,11 @@ namespace OSDP.Net.Model.CommandData
         {
             var sb = new StringBuilder();
             sb.AppendLine($"Output Count: {Controls.Count()}");
-            var index = 1;
             foreach (var control in Controls)
             {
-                sb.AppendLine($"Output #{index}:");
                 sb.AppendLine($" Output #: {control.OutputNumber}");
                 sb.AppendLine($"     Code: {control.OutputControlCode}");
                 sb.AppendLine($"     Time: {control.Timer} (100ms units)");
-                index++;
             }
             return sb.ToString();
         }

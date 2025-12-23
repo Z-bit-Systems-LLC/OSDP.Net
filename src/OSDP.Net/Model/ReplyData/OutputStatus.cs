@@ -41,19 +41,14 @@ namespace OSDP.Net.Model.ReplyData
         /// <inheritdoc />
         public override byte[] BuildData() => OutputStatuses.Select(x => x ? (byte)0x00 : (byte)0x01).ToArray();
 
-        /// <summary>
-        /// Returns a string representation of the current object
-        /// </summary>
-        /// <param name="indent">Number of ' ' chars to add to beginning of every line</param>
-        /// <returns>String representation of the current object</returns>
-        public override string ToString(int indent)
+        /// <inheritdoc />
+        public override string ToString()
         {
-            var padding = new string(' ', indent);
             byte outputNumber = 0;
             var build = new StringBuilder();
             foreach (bool outputStatus in OutputStatuses)
             {
-                build.AppendLine($"{padding}Output Number {outputNumber++:00}: {outputStatus}");
+                build.AppendLine($"Output Number {outputNumber++:00}: {outputStatus}");
             }
             return build.ToString();
         }

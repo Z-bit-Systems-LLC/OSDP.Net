@@ -79,14 +79,13 @@ public class RawCardData : PayloadData
     }
 
     /// <inheritdoc/>
-    public override string ToString(int indent)
+    public override string ToString()
     {
-        var padding = new string(' ', indent);
         var build = new StringBuilder();
-        build.AppendLine($"{padding}Reader Number: {ReaderNumber}");
-        build.AppendLine($"{padding}  Format Code: {Helpers.SplitCamelCase(FormatCode.ToString())}");
-        build.AppendLine($"{padding}    Bit Count: {BitCount}");
-        build.AppendLine($"{padding}         Data: {FormatData(Data)}");
+        build.AppendLine($"Reader Number: {ReaderNumber}");
+        build.AppendLine($"  Format Code: {Helpers.SplitCamelCase(FormatCode.ToString())}");
+        build.AppendLine($"    Bit Count: {BitCount}");
+        build.AppendLine($"         Data: {FormatData(Data)}");
         return build.ToString();
     }
 
