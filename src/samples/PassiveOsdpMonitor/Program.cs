@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Logging;
 using PassiveOsdpMonitor;
 using PassiveOsdpMonitor.Configuration;
-using System.Reflection;
 
 // Get the directory where the executable is located (not the extraction folder)
 var exeDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? AppContext.BaseDirectory;
