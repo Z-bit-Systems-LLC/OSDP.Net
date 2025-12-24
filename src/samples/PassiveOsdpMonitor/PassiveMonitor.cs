@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 using OSDP.Net.Connections;
 using OSDP.Net.Tracing;
 using PassiveOsdpMonitor.Configuration;
-using PassiveOsdpMonitor.PacketCapture;
 
 namespace PassiveOsdpMonitor;
 

@@ -337,7 +337,7 @@ namespace ACUConsole
             {
                 try
                 {
-                    _presenter.ParseOSDPCapFile(input.FilePath, input.FilterAddress, input.IgnorePollsAndAcks, input.SecureKey);
+                    _presenter.ParseOSDPCaptureFile(input.FilePath, input.FilterAddress, input.IgnorePollsAndAcks, input.SecureKey);
                 }
                 catch (Exception ex)
                 {

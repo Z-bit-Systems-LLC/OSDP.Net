@@ -111,8 +111,9 @@
 [CLASS] OSDP.Net.Utilities.Pollyfill
 
 # Tracing Classes
+[CLASS] OSDP.Net.Tracing.MessageSpy
 [CLASS] OSDP.Net.Tracing.OSDPCapEntry
-[CLASS] OSDP.Net.Tracing.PacketDecoding
+[CLASS] OSDP.Net.Tracing.PacketBuffer
 
 # Enums
 [ENUM] OSDP.Net.Messages.CommandType

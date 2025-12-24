@@ -69,7 +69,7 @@ namespace ACUConsole
         void SaveConfiguration(string filePath);
         void LoadConfiguration();
         void LoadConfiguration(string filePath);
-        void ParseOSDPCapFile(string filePath, byte? filterAddress, bool ignorePollsAndAcks, byte[] key);
+        void ParseOSDPCaptureFile(string filePath, byte? filterAddress, bool ignorePollsAndAcks, byte[] key);
 
         // Utility Methods
         void ClearHistory();

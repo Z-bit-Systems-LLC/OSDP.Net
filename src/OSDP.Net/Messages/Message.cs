@@ -16,7 +16,7 @@ namespace OSDP.Net.Messages
         public const byte AddressMask = 0x7F;
 
         /// <summary>
-        /// OSDP message SOM (start of message) byte
+        /// OSDP message SOM (start of the message) byte
         /// </summary>
         public const byte StartOfMessage = 0x53;
 
@@ -27,7 +27,7 @@ namespace OSDP.Net.Messages
 
         /// <summary>
         /// Size in bytes of MAC signature in message suffix when
-        /// secure channel has been established
+        /// the secure channel has been established
         /// </summary>
         public const ushort MacSize = 4;
 
@@ -39,7 +39,7 @@ namespace OSDP.Net.Messages
         public const byte FirstPaddingByte = 0x80;
 
         private static readonly ushort[] CrcTable =
-        {
+        [
             0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50A5, 0x60C6, 0x70E7, 0x8108, 0x9129, 0xA14A, 0xB16B, 0xC18C,
             0xD1AD, 0xE1CE, 0xF1EF, 0x1231, 0x0210, 0x3273, 0x2252, 0x52B5, 0x4294, 0x72F7, 0x62D6, 0x9339, 0x8318,
             0xB37B, 0xA35A, 0xD3BD, 0xC39C, 0xF3FF, 0xE3DE, 0x2462, 0x3443, 0x0420, 0x1401, 0x64E6, 0x74C7, 0x44A4,
@@ -60,7 +60,7 @@ namespace OSDP.Net.Messages
             0x1AD0, 0x2AB3, 0x3A92, 0xFD2E, 0xED0F, 0xDD6C, 0xCD4D, 0xBDAA, 0xAD8B, 0x9DE8, 0x8DC9, 0x7C26, 0x6C07,
             0x5C64, 0x4C45, 0x3CA2, 0x2C83, 0x1CE0, 0x0CC1, 0xEF1F, 0xFF3E, 0xCF5D, 0xDF7C, 0xAF9B, 0xBFBA, 0x8FD9,
             0x9FF8, 0x6E17, 0x7E36, 0x4E55, 0x5E74, 0x2E93, 0x3EB2, 0x0ED1, 0x1EF0
-        };
+        ];
 
         /// <summary>
         /// Address assigned to the device.

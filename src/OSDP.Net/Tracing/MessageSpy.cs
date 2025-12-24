@@ -1,6 +1,14 @@
-﻿using System;
+#nullable enable
+
+using System;
+using System.Collections.Generic;
+using System.Dynamic;
+using System.Linq;
+using System.Text.Json;
 using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
+using OSDP.Net.Model;
+using OSDP.Net.Utilities;
 
 namespace OSDP.Net.Tracing;
 
@@ -18,7 +26,7 @@ public class MessageSpy
     /// Initializes a new instance of the MessageSpy class with an optional security key.
     /// </summary>
     /// <param name="securityKey">Optional encryption key for decrypting secure channel packets. If null, only non-encrypted packets can be fully parsed.</param>
-    public MessageSpy(byte[] securityKey = null)
+    public MessageSpy(byte[]? securityKey = null)
     {
         _context = new SecurityContext(securityKey);
         _commandSpyChannel = new PdMessageSecureChannelBase(_context);
@@ -95,5 +103,71 @@ public class MessageSpy
     {
         _context.IsSecurityEstablished = true;
         return reply;
+    }
+
+    /// <summary>
+    /// Parses raw OSDP data into a Packet, automatically detecting command vs reply.
+    /// </summary>
+    /// <param name="data">Raw OSDP message data starting with SOM byte.</param>
+    /// <returns>Parsed Packet containing the message details.</returns>
+    public Packet ParsePacket(byte[] data)
+    {
+        const byte replyAddress = 0x80;
+        var message = PeekAddressByte(data) < replyAddress
+            ? ParseCommand(data)
+            : ParseReply(data);
+        return new Packet(message);
+    }
+
+    /// <summary>
+    /// Attempts to parse raw OSDP data into a Packet without throwing exceptions.
+    /// </summary>
+    /// <param name="data">Raw OSDP message data starting with SOM byte.</param>
+    /// <param name="packet">When successful, contains the parsed Packet.</param>
+    /// <returns>True if parsing succeeded, false otherwise.</returns>
+    public bool TryParsePacket(byte[] data, out Packet? packet)
+    {
+        try
+        {
+            packet = ParsePacket(data);
+            return true;
+        }
+        catch
+        {
+            packet = null;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Parses an OSDP capture file in JSON format.
+    /// </summary>
+    /// <param name="json">The JSON content of the capture file.</param>
+    /// <returns>An enumerable of parsed capture entries.</returns>
+    public IEnumerable<OSDPCaptureEntry> ParseCaptureFile(string json)
+    {
+        var lines = json.Split('\n');
+        foreach (var line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+
+            dynamic? entry = JsonSerializer.Deserialize<ExpandoObject>(line);
+            if (entry == null) continue;
+
+            DateTime dateTime = new DateTime(1970, 1, 1).AddSeconds(double.Parse(entry.timeSec.ToString()))
+                .AddTicks(long.Parse(entry.timeNano.ToString()) / 100L);
+            Enum.TryParse(entry.io.ToString(), true, out TraceDirection io);
+            string data = entry.data.ToString();
+
+            var rawData = BinaryUtils.HexToBytes(data).ToArray();
+            var packet = ParsePacket(rawData);
+
+            yield return new OSDPCaptureEntry(
+                dateTime,
+                io,
+                packet,
+                entry.osdpTraceVersion.ToString(),
+                entry.osdpSource.ToString());
+        }
     }
 }

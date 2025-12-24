@@ -18,14 +18,14 @@ This guide covers the tracing and packet capture capabilities in OSDP.Net for de
 
 OSDP.Net provides comprehensive tracing capabilities through the `OSDP.Net.Tracing` namespace:
 
-| Class | Purpose |
-|-------|---------|
-| `TraceEntry` | Raw packet data with direction and device address |
-| `PacketDecoding` | Parse raw bytes into structured `Packet` objects |
-| `OSDPCaptureFileWriter` | Write traces to `.osdpcap` files |
-| `ParsedTextWriter` | Write human-readable packet descriptions |
-| `OSDPPacketTextFormatter` | Format packets as readable text |
-| `MessageSpy` | Track secure channel state during parsing |
+| Class                     | Purpose                                                                         |
+|---------------------------|---------------------------------------------------------------------------------|
+| `TraceEntry`              | Raw packet data with direction and device address                               |
+| `MessageSpy`              | Parse raw bytes into structured `Packet` objects, tracking secure channel state |
+| `PacketBuffer`            | Buffer streaming data and extract complete OSDP packets                         |
+| `OSDPCaptureFileWriter`   | Write traces to `.osdpcap` files                                                |
+| `ParsedTextWriter`        | Write human-readable packet descriptions                                        |
+| `OSDPPacketTextFormatter` | Format packets as readable text                                                 |
 
 ```csharp
 using OSDP.Net.Tracing;
@@ -83,12 +83,12 @@ var connectionId = controlPanel.StartConnection(connection,
 
 ### Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `Direction` | `TraceDirection` | `Input`, `Output`, or `Trace` |
-| `ConnectionId` | `Guid` | Identifies the connection/bus |
-| `Data` | `byte[]` | Raw packet bytes (without SOM byte) |
-| `Address` | `byte?` | Device address extracted from packet (0-127) |
+| Property       | Type             | Description                                  |
+|----------------|------------------|----------------------------------------------|
+| `Direction`    | `TraceDirection` | `Input`, `Output`, or `Trace`                |
+| `ConnectionId` | `Guid`           | Identifies the connection/bus                |
+| `Data`         | `byte[]`         | Raw packet bytes (without SOM byte)          |
+| `Address`      | `byte?`          | Device address extracted from packet (0-127) |
 
 ### Using the Address Property
 
@@ -138,27 +138,31 @@ void AnalyzeTrace(TraceEntry trace)
 
 ## Parsing Packets
 
-### Using ParseMessage
+### Using MessageSpy
+
+`MessageSpy` parses raw OSDP packets and tracks secure channel state for encrypted communications:
 
 ```csharp
-using OSDP.Net.Messages.SecureChannel;
+// Create a MessageSpy (optionally with security key for encrypted packets)
+var messageSpy = new MessageSpy();  // or: new MessageSpy(securityKey)
 
-// Parse with a secure channel (for encrypted packets)
-var secureChannel = new ACUMessageSecureChannel();
-var packet = PacketDecoding.ParseMessage(traceEntry.Data, secureChannel);
+// Parse a packet
+var packet = messageSpy.ParsePacket(traceEntry.Data);
 
 Console.WriteLine($"Address: {packet.Address}");
 Console.WriteLine($"Sequence: {packet.Sequence}");
 Console.WriteLine($"Type: {packet.CommandType ?? packet.ReplyType}");
 ```
 
-### Using TryParseMessage (Recommended)
+### Using TryParsePacket (Recommended)
 
-The `TryParseMessage` methods provide exception-free parsing:
+The `TryParsePacket` method provides exception-free parsing:
 
 ```csharp
-// Simple parsing without secure channel
-if (PacketDecoding.TryParseMessage(traceEntry.Data, out var packet))
+var messageSpy = new MessageSpy();
+
+// Simple parsing
+if (messageSpy.TryParsePacket(traceEntry.Data, out var packet))
 {
     Console.WriteLine($"Parsed: {packet.CommandType?.GetDisplayName()}");
 }
@@ -167,20 +171,15 @@ else
     Console.WriteLine("Failed to parse packet");
 }
 
-// Parsing with secure channel
-var secureChannel = new ACUMessageSecureChannel();
-if (PacketDecoding.TryParseMessage(traceEntry.Data, secureChannel, out var packet))
-{
-    ProcessPacket(packet);
-}
-
-// Parsing with encryption key for secure channel decryption
+// With encryption key for secure channel decryption
 byte[] securityKey = new byte[] { 0x30, 0x31, 0x32, /* ... */ };
-if (PacketDecoding.TryParseMessage(traceEntry.Data, out var packet, securityKey))
+var secureMessageSpy = new MessageSpy(securityKey);
+
+if (secureMessageSpy.TryParsePacket(traceEntry.Data, out var securePacket))
 {
-    if (packet.IsPayloadDecrypted)
+    if (securePacket.IsPayloadDecrypted)
     {
-        var payload = packet.ParsePayloadData();
+        var payload = securePacket.ParsePayloadData();
         Console.WriteLine($"Payload: {payload}");
     }
 }
@@ -189,7 +188,8 @@ if (PacketDecoding.TryParseMessage(traceEntry.Data, out var packet, securityKey)
 ### Accessing Packet Properties
 
 ```csharp
-if (PacketDecoding.TryParseMessage(data, out var packet))
+var messageSpy = new MessageSpy();
+if (messageSpy.TryParsePacket(data, out var packet))
 {
     // Basic properties
     Console.WriteLine($"Address: {packet.Address}");
@@ -288,7 +288,8 @@ writer.WritePacket(packetBytes, TraceDirection.Output, DateTime.UtcNow);
 string json = File.ReadAllText("trace.osdpcap");
 byte[] securityKey = null; // Optional: provide key for encrypted packets
 
-foreach (var entry in PacketDecoding.OSDPCapParser(json, securityKey))
+var messageSpy = new MessageSpy(securityKey);
+foreach (var entry in messageSpy.ParseCaptureFile(json))
 {
     Console.WriteLine($"{entry.TimeStamp:HH:mm:ss.fff} [{entry.Direction}]");
     Console.WriteLine($"  Type: {entry.Packet.CommandType?.GetDisplayName() ?? entry.Packet.ReplyType?.GetDisplayName()}");
@@ -305,6 +306,8 @@ The `.osdpcap` format is JSON lines with the following structure:
 {"timeSec":"1689599213","timeNano":"141793300","io":"output","data":"53-00-08-00-04-60-3D-57","osdpTraceVersion":"1","osdpSource":"OSDP.Net"}
 {"timeSec":"1689599213","timeNano":"245123400","io":"input","data":"53-80-07-00-05-40-FE-9C","osdpTraceVersion":"1","osdpSource":"OSDP.Net"}
 ```
+
+Details about the '.osdpcap' can be found at [osdpcap format document](https://github.com/Security-Industry-Association/libosdp-conformance/blob/master/doc/doc-src/osdpcap-format.md).
 
 ## Human-Readable Output
 
@@ -380,19 +383,19 @@ public void ProcessPacket_WithPollCommand_LogsCorrectly()
 
 ### IPacket Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `Address` | `byte` | Device address |
-| `Sequence` | `byte` | Message sequence number |
-| `CommandType` | `CommandType?` | Command type (null for replies) |
-| `ReplyType` | `ReplyType?` | Reply type (null for commands) |
-| `IsUsingCrc` | `bool` | True if CRC is used |
-| `IsPayloadDecrypted` | `bool` | True if payload was decrypted |
-| `IsSecureMessage` | `bool` | True if sent via secure channel |
-| `IsUsingDefaultKey` | `bool` | True if using default SCBK |
-| `RawPayloadData` | `ReadOnlyMemory<byte>` | Raw payload bytes |
-| `RawData` | `ReadOnlyMemory<byte>` | Complete raw message |
-| `ParsePayloadData()` | `object?` | Parsed payload object |
+| Property             | Type                   | Description                     |
+|----------------------|------------------------|---------------------------------|
+| `Address`            | `byte`                 | Device address                  |
+| `Sequence`           | `byte`                 | Message sequence number         |
+| `CommandType`        | `CommandType?`         | Command type (null for replies) |
+| `ReplyType`          | `ReplyType?`           | Reply type (null for commands)  |
+| `IsUsingCrc`         | `bool`                 | True if CRC is used             |
+| `IsPayloadDecrypted` | `bool`                 | True if payload was decrypted   |
+| `IsSecureMessage`    | `bool`                 | True if sent via secure channel |
+| `IsUsingDefaultKey`  | `bool`                 | True if using default SCBK      |
+| `RawPayloadData`     | `ReadOnlyMemory<byte>` | Raw payload bytes               |
+| `RawData`            | `ReadOnlyMemory<byte>` | Complete raw message            |
+| `ParsePayloadData()` | `object?`              | Parsed payload object           |
 
 ## Passive Monitoring
 
@@ -402,31 +405,61 @@ For monitoring OSDP traffic without participating in communication:
 // See the PassiveOsdpMonitor sample for a complete example
 var serialPort = new ReadOnlySerialPortOsdpConnection("COM3", 9600);
 var captureWriter = new OSDPCaptureFileWriter("monitor.osdpcap", "PassiveMonitor");
-var textWriter = new ParsedTextWriter("monitor.txt", new OSDPPacketTextFormatter());
+var textWriter = new ParsedTextWriter("monitor.txt");
 
-// Buffer for accumulating packet data
+// PacketBuffer handles buffering and extracting complete packets from streaming data
 var buffer = new PacketBuffer();
+byte[] readBuffer = new byte[1024];
 
 while (true)
 {
-    var data = await serialPort.ReadAsync();
-
-    foreach (var packet in buffer.AddData(data))
+    int bytesRead = await serialPort.ReadAsync(readBuffer, CancellationToken.None);
+    if (bytesRead > 0)
     {
-        captureWriter.WritePacket(packet, TraceDirection.Trace, DateTime.UtcNow);
-        textWriter.WritePacket(packet, DateTime.UtcNow);
+        buffer.Append(readBuffer, bytesRead);
+
+        // Extract all complete packets from buffer
+        while (buffer.TryExtractPacket(out byte[]? packet) && packet != null)
+        {
+            var timestamp = DateTime.Now;
+            captureWriter.WritePacket(packet, TraceDirection.Trace);
+            textWriter.WritePacket(packet, timestamp);
+        }
     }
 }
 ```
 
+### PacketBuffer
+
+`PacketBuffer` handles the challenge of extracting complete OSDP packets from a stream of bytes:
+
+```csharp
+var buffer = new PacketBuffer();
+
+// Append data as it arrives (may be fragments of packets)
+buffer.Append(data, bytesRead);
+
+// Extract complete packets
+while (buffer.TryExtractPacket(out byte[]? packet))
+{
+    // packet contains a complete OSDP message
+    ProcessPacket(packet);
+}
+
+// Properties
+int bytesInBuffer = buffer.Length;  // Current buffer size
+buffer.Clear();                      // Clear all buffered data
+```
+
 ## Best Practices
 
-1. **Use TryParseMessage** - Avoid exceptions in high-throughput tracing scenarios
+1. **Use TryParsePacket** - Avoid exceptions in high-throughput tracing scenarios
 2. **Filter by Address** - Use `TraceEntry.Address` to filter packets for specific devices
-3. **Provide Security Keys** - Pass the SCBK when parsing encrypted packets
-4. **Dispose Writers** - Always dispose `OSDPCaptureFileWriter` and `ParsedTextWriter`
-5. **Use GetDisplayName** - Display protocol names for better readability
-6. **Mock with IPacket** - Use the interface for unit testing packet processors
+3. **Provide Security Keys** - Pass the SCBK to `MessageSpy` when parsing encrypted packets
+4. **Use PacketBuffer for streams** - When reading from serial/TCP, use `PacketBuffer` to handle fragmented data
+5. **Dispose Writers** - Always dispose `OSDPCaptureFileWriter` and `ParsedTextWriter`
+6. **Use GetDisplayName** - Display protocol names for better readability
+7. **Mock with IPacket** - Use the interface for unit testing packet processors
 
 ## Related Resources
 

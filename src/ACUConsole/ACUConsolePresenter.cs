@@ -722,12 +722,13 @@ namespace ACUConsole
             }
         }
 
-        public void ParseOSDPCapFile(string filePath, byte? filterAddress, bool ignorePollsAndAcks, byte[] key)
+        public void ParseOSDPCaptureFile(string filePath, byte? filterAddress, bool ignorePollsAndAcks, byte[] key)
         {
             try
             {
                 var json = File.ReadAllText(filePath);
-                var entries = PacketDecoding.OSDPCapParser(json, key)
+                var messageSpy = new MessageSpy(key);
+                var entries = messageSpy.ParseCaptureFile(json)
                     .Where(entry => FilterAddress(entry, filterAddress) && FilterPollsAndAcks(entry, ignorePollsAndAcks));
                 
                 var textBuilder = BuildTextFromEntries(entries);
