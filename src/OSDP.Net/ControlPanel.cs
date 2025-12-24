@@ -39,31 +39,21 @@ namespace OSDP.Net
         /// <summary>Initializes a new instance of the <see cref="T:OSDP.Net.ControlPanel" /> class.</summary>
         /// <param name="logger">The logger definition used for logging.</param>
         [Obsolete("Sending a ILogger is deprecated, please send ILoggerFactory instead.")]
-        public ControlPanel(ILogger<ControlPanel> logger = null) : this(null, logger) { }
+        public ControlPanel(ILogger<ControlPanel> logger) : this(null, null, logger) { }
 
         /// <summary>Initializes a new instance of the <see cref="T:OSDP.Net.ControlPanel" /> class.</summary>
         /// <param name="loggerFactory">The logger factory used to create logging facilities.</param>
-        public ControlPanel(ILoggerFactory loggerFactory = null) : this(null, loggerFactory) { }
-
-        internal ControlPanel(IDeviceProxyFactory deviceProxyFactory, ILogger<ControlPanel> logger = null)
-        {
-            _logger = logger ?? NullLoggerFactory.Instance.CreateLogger<ControlPanel>();
-            _deviceProxyFactory = deviceProxyFactory ?? new DeviceProxyFactory();
-
-            Task.Factory.StartNew(() =>
-            {
-                foreach (var reply in _replies.GetConsumingEnumerable())
-                {
-                    OnReplyReceived(reply);
-                }
-            }, TaskCreationOptions.LongRunning);
-        }
+        public ControlPanel(ILoggerFactory loggerFactory = null) : this(null, loggerFactory, null) { }
 
         internal ControlPanel(IDeviceProxyFactory deviceProxyFactory, ILoggerFactory loggerFactory = null)
+            : this(deviceProxyFactory, loggerFactory, null) { }
+
+        private ControlPanel(IDeviceProxyFactory deviceProxyFactory, ILoggerFactory loggerFactory,
+            ILogger<ControlPanel> logger)
         {
-            _logger = loggerFactory != null
-                ? loggerFactory.CreateLogger<ControlPanel>()
-                : NullLoggerFactory.Instance.CreateLogger<ControlPanel>();
+            _logger = logger
+                      ?? loggerFactory?.CreateLogger<ControlPanel>()
+                      ?? NullLoggerFactory.Instance.CreateLogger<ControlPanel>();
             _deviceProxyFactory = deviceProxyFactory ?? new DeviceProxyFactory();
 
             Task.Factory.StartNew(() =>
@@ -86,8 +76,8 @@ namespace OSDP.Net
         /// Start polling on the defined connection.
         /// </summary>
         /// <param name="connection">This represents the type of connection used for communicating to PDs.</param>
-        /// <param name="pollInterval">The interval at which the devices will be polled, zero or less indicates no polling</param>
-        /// <param name="isTracing">Write packet data to {Bus ID}.osdpcap file</param>
+        /// <param name="pollInterval">The interval at which the devices will be polled, zero indicates no polling</param>
+        /// <param name="isTracing">Write packet data to the {Bus ID}.osdpcap file</param>
         /// <returns>An identifier that represents the connection</returns>
         public Guid StartConnection(IOsdpConnection connection, TimeSpan pollInterval, bool isTracing) =>
             StartConnection(connection, pollInterval, isTracing ? OSDPFileCaptureTracer.Trace : _ => { });
@@ -96,7 +86,7 @@ namespace OSDP.Net
         /// Start polling on the defined connection.
         /// </summary>
         /// <param name="connection">This represents the type of connection used for communicating to PDs.</param>
-        /// <param name="pollInterval">The interval at which the devices will be polled, zero or less indicates no polling</param>
+        /// <param name="pollInterval">The interval at which the devices will be polled, zero indicates no polling</param>
         /// <returns>An identifier that represents the connection</returns>
         public Guid StartConnection(IOsdpConnection connection, TimeSpan pollInterval) =>
             StartConnection(connection, pollInterval, _ => { });
@@ -108,7 +98,7 @@ namespace OSDP.Net
         /// This represents the type of connection used for communicating to PDs.
         /// The connection instance may only be started once, otherwise an InvalidOperationException is thrown.
         /// </param>
-        /// <param name="pollInterval">The interval at which the devices will be polled, zero or less indicates no polling</param>
+        /// <param name="pollInterval">The interval at which the devices will be polled, zero indicates no polling</param>
         /// <param name="tracer">Delegate that will receive detailed trace information</param>
         /// <returns>An identifier that represents the connection</returns>
         /// <exception cref="InvalidOperationException">If the connection is already started.</exception>
@@ -128,7 +118,7 @@ namespace OSDP.Net
         /// </remarks>
         private Bus CreateBus(IOsdpConnection connection, TimeSpan pollInterval, Action<TraceEntry> tracer)
         {
-            // Lock while we check/create the bus. This is a very quick operation so the lock is not a performance problem.
+            // Lock while we check/create the bus. This is a very quick operation, so the lock is not a performance problem.
             lock (_lockBusCreation)
             {
                 var existingBusWithThisConnection = _buses.Values
@@ -201,7 +191,7 @@ namespace OSDP.Net
         /// <param name="address">Address assigned to the device.</param>
         /// <returns>ID report reply data that was requested.</returns>
         public async Task<DeviceIdentification> IdReport(Guid connectionId, byte address) => 
-            await IdReport(connectionId, address, default).ConfigureAwait(false);
+            await IdReport(connectionId, address, CancellationToken.None).ConfigureAwait(false);
 
         /// <summary>Request to get an ID Report from the PD.</summary>
         /// <param name="connectionId">Identify the connection for communicating to the device.</param>
@@ -317,7 +307,7 @@ namespace OSDP.Net
         /// <summary>Request to get the capabilities of the PD.</summary>
         /// <param name="connectionId">Identify the connection for communicating to the device.</param>
         /// <param name="address">Address assigned to the device.</param>
-        /// <returns>Device capabilities reply data that was requested.</returns>
+        /// <returns>Device capabilities reply to the data that was requested.</returns>
         public async Task<DeviceCapabilities> DeviceCapabilities(Guid connectionId, byte address)
         {
             return Model.ReplyData.DeviceCapabilities.ParseData((await SendCommand(
@@ -341,7 +331,7 @@ namespace OSDP.Net
         }
 
         /// <summary>
-        /// Request to get the status all of the inputs of a PD.
+        /// Request to get the status of all the inputs of a PD.
         /// </summary>
         /// <param name="connectionId">Identify the connection for communicating to the device.</param>
         /// <param name="address">Address assigned to the device.</param>
@@ -355,7 +345,7 @@ namespace OSDP.Net
         }
 
         /// <summary>
-        /// Request to get the status all of the outputs of a PD.
+        /// Request to get the status of all the outputs of a PD.
         /// </summary>
         /// <param name="connectionId">Identify the connection for communicating to the device.</param>
         /// <param name="address">Address assigned to the device.</param>
@@ -374,7 +364,7 @@ namespace OSDP.Net
         /// <param name="connectionId">Identify the connection for communicating to the device.</param>
         /// <param name="address">Address assigned to the device.</param>
         /// <param name="getPIVData">Describe the PIV data to retrieve.</param>
-        /// <param name="timeout">A TimeSpan that represents time to wait until waiting for the other requests to complete and it's own request, a TimeSpan that represents -1 milliseconds to wait indefinitely, or a TimeSpan that represents 0 milliseconds to return immediately when there is a request being processed.</param>
+        /// <param name="timeout">A TimeSpan that represents time to wait until waiting for the other requests to complete and, its own request, a TimeSpan that represents -1 millisecond to wait indefinitely, or a TimeSpan that represents 0 milliseconds to return immediately when there is a request being processed.</param>
         /// <param name="cancellationToken">The CancellationToken token to observe.</param>
         /// <returns>A response with the PIV data requested.</returns>
         public async Task<byte[]> GetPIVData(Guid connectionId, byte address, GetPIVData getPIVData, TimeSpan timeout,
@@ -426,7 +416,7 @@ namespace OSDP.Net
         }
 
         /// <summary>
-        /// Request to get the status all of the readers of a PD.
+        /// Request to get the status of all the readers of a PD.
         /// </summary>
         /// <param name="connectionId">Identify the connection for communicating to the device.</param>
         /// <param name="address">Address assigned to the device.</param>
@@ -466,7 +456,7 @@ namespace OSDP.Net
         /// <param name="address">Address assigned to the device.</param>
         /// <param name="manufacturerSpecific">Manufacturer specific command data with a command code as the first byte.</param>
         /// <param name="maximumFragmentSize">The maximum size of the packet fragment.</param>
-        /// <param name="timeout">A TimeSpan that represents time to wait until waiting for the other requests to complete and it's own request, a TimeSpan that represents -1 milliseconds to wait indefinitely, or a TimeSpan that represents 0 milliseconds to return immediately when there is a request being processed.</param>
+        /// <param name="timeout">A TimeSpan that represents time to wait until waiting for the other requests to complete and, its own request, a TimeSpan that represents -1 milliseconds to wait indefinitely, or a TimeSpan that represents 0 milliseconds to return immediately when there is a request being processed.</param>
         /// <param name="cancellationToken">The CancellationToken token to observe.</param>
         /// <returns>The last reply data that is returned after sending all the command fragments. There is the possibility of different replies can be returned from PD.</returns>
         public async Task<ReturnReplyData<ManufacturerSpecific>> ManufacturerSpecificCommand(Guid connectionId, byte address,
@@ -719,7 +709,7 @@ namespace OSDP.Net
                 // Check reply to see if PD has requested some change in com procedures.
                 if (fileTransferStatusReply != null)
                 {
-                    // Leave secure channel if needed
+                    // Leave the secure channel if needed
                     if ((fileTransferStatusReply.Action &
                          Model.ReplyData.FileTransferStatus.ControlFlags.LeaveSecureChannel) ==
                         Model.ReplyData.FileTransferStatus.ControlFlags.LeaveSecureChannel)
@@ -1276,7 +1266,7 @@ namespace OSDP.Net
                     // we'll end up timing out and not finding it :(
                     // Polling on "other" devices should be doing this, but there's something
                     // funky in there. If the device we are looking for happens to be at addr
-                    // 0, everything will work but anything else doesn't unless we disable
+                    // 0, everything will work, but anything else doesn't unless we disable
                     // polling
                     connectionId = StartConnection(connection, TimeSpan.Zero, options.Tracer ?? (_ => {}));
 
@@ -1629,7 +1619,7 @@ namespace OSDP.Net
             /// </summary>
             /// <param name="connectionId">Identify the connection for communicating to the device.</param>
             /// <param name="address">Address assigned to the device.</param>
-            /// <param name="isConnected">Is the device currently connected.</param>
+            /// <param name="isConnected">Is the device currently connected?</param>
             /// <param name="isSecureChannelEstablished">Is the secure channel currently established.</param>
             public ConnectionStatusEventArgs(Guid connectionId, byte address, bool isConnected,
                 bool isSecureChannelEstablished)
@@ -1651,7 +1641,7 @@ namespace OSDP.Net
             public byte Address { get; }
 
             /// <summary>
-            /// Is the device currently connected.
+            /// Is the device currently connected?
             /// </summary>
             public bool IsConnected { get; }
 
@@ -1709,7 +1699,7 @@ namespace OSDP.Net
             /// </summary>
             /// <param name="connectionId">Identify the connection for communicating to the device.</param>
             /// <param name="address">Address assigned to the device.</param>
-            /// <param name="inputStatus">A input status report reply.</param>
+            /// <param name="inputStatus">An input status report reply.</param>
             public InputStatusReportReplyEventArgs(Guid connectionId, byte address, InputStatus inputStatus)
             {
                 ConnectionId = connectionId;
@@ -1728,7 +1718,7 @@ namespace OSDP.Net
             public byte Address { get; }
 
             /// <summary>
-            /// A input status report reply.
+            /// An input status report reply.
             /// </summary>
             public InputStatus InputStatus { get; }
         }
@@ -1743,7 +1733,7 @@ namespace OSDP.Net
             /// </summary>
             /// <param name="connectionId">Identify the connection for communicating to the device.</param>
             /// <param name="address">Address assigned to the device.</param>
-            /// <param name="outputStatus">A output status report reply.</param>
+            /// <param name="outputStatus">An output status report reply.</param>
             public OutputStatusReportReplyEventArgs(Guid connectionId, byte address, OutputStatus outputStatus)
             {
                 ConnectionId = connectionId;
@@ -1762,7 +1752,7 @@ namespace OSDP.Net
             public byte Address { get; }
 
             /// <summary>
-            /// A output status report reply.
+            /// An output status report reply.
             /// </summary>
             public OutputStatus OutputStatus { get; }
         }

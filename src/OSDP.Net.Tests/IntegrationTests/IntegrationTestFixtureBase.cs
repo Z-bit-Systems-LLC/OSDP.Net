@@ -86,7 +86,7 @@ public class IntegrationTestFixtureBase
 
         TargetPanel = new ControlPanel(
             panelConfiguration.TestDeviceProxyNeeded ? new TestDeviceProxyFactory(panelConfiguration) : null,
-            LoggerFactory.CreateLogger<ControlPanel>());
+            LoggerFactory);
 
         TargetPanel.ConnectionStatusChanged += (_, e) =>
         {
