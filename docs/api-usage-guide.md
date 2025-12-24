@@ -28,6 +28,8 @@ using OSDP.Net;
 using OSDP.Net.Connections;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
+using OSDP.Net.Tracing;
+using OSDP.Net.PanelCommands.DeviceDiscover;
 using Microsoft.Extensions.Logging;
 ```
 
@@ -42,7 +44,7 @@ An ACU manages and communicates with multiple peripheral devices.
 var controlPanel = new ControlPanel();
 
 // Set up TCP connection to a device
-var connection = new TcpClientOsdpConnection(IPAddress.Parse("192.168.1.100"), 4000);
+var connection = new TcpClientOsdpConnection(IPAddress.Parse("192.168.1.100"), 3001);
 var connectionId = controlPanel.StartConnection(connection);
 
 // Add a device to the connection
@@ -157,7 +159,7 @@ public class MyDevice : Device
 // Start the device
 var device = new MyDevice();
 var listener = new TcpConnectionListener(IPAddress.Any, 4000);
-device.StartListening(listener);
+await device.StartListening(listener);
 ```
 
 ### Handling Commands
@@ -264,15 +266,26 @@ await Task.WhenAll(tasks);
 ### Handling Events
 
 ```csharp
-// Subscribe to device events
+// Subscribe to connection status changes
 controlPanel.ConnectionStatusChanged += (sender, args) =>
 {
-    Console.WriteLine($"Connection {args.ConnectionId} status: {args.IsConnected}");
+    Console.WriteLine($"Connection {args.ConnectionId} address {args.Address}: Connected={args.IsConnected}, Secure={args.IsSecureChannelEstablished}");
 };
 
-controlPanel.ReplyReceived += (sender, args) =>
+// Subscribe to specific reply types
+controlPanel.RawCardDataReplyReceived += (sender, args) =>
 {
-    Console.WriteLine($"Reply from device {args.Address}: {args.Reply.GetType().Name}");
+    Console.WriteLine($"Card read from device {args.Address}: {BitConverter.ToString(args.RawCardData.Data)}");
+};
+
+controlPanel.KeypadReplyReceived += (sender, args) =>
+{
+    Console.WriteLine($"Keypad data from device {args.Address}: {args.KeypadData}");
+};
+
+controlPanel.NakReplyReceived += (sender, args) =>
+{
+    Console.WriteLine($"NAK from device {args.Address}: {args.Nak.ErrorCode}");
 };
 ```
 
@@ -316,22 +329,30 @@ if (!controlPanel.IsOnline(connectionId, deviceAddress))
 ```csharp
 using Microsoft.Extensions.Logging;
 
+// Use ILoggerFactory for logging (recommended)
 var loggerFactory = LoggerFactory.Create(builder =>
     builder.AddConsole().SetMinimumLevel(LogLevel.Debug));
 
 var controlPanel = new ControlPanel(loggerFactory);
+
+// For Device (PD) implementations
+var device = new MyDevice(deviceConfig, loggerFactory);
 ```
+
+> **Note:** The `ControlPanel(ILogger<ControlPanel>)` constructor is deprecated. Always use `ILoggerFactory` instead.
 
 ### Enabling Packet Tracing
 
 ```csharp
 // Enable tracing to .osdpcap file
-var connectionId = controlPanel.StartConnection(connection, TimeSpan.FromSeconds(5), true);
+var connectionId = controlPanel.StartConnection(connection, TimeSpan.FromSeconds(5), isTracing: true);
 
-// Custom tracing
-controlPanel.StartConnection(connection, TimeSpan.FromSeconds(5), 
-    packet => Console.WriteLine($"Packet: {BitConverter.ToString(packet.Data)}"));
+// Custom tracing with TraceEntry callback
+controlPanel.StartConnection(connection, TimeSpan.FromSeconds(5),
+    traceEntry => Console.WriteLine($"[{traceEntry.Direction}] Address: {traceEntry.Address} Data: {BitConverter.ToString(traceEntry.Data)}"));
 ```
+
+For more details on tracing capabilities, see the [Tracing Guide](tracing-guide.md).
 
 ## Best Practices
 
@@ -348,11 +369,24 @@ controlPanel.StartConnection(connection, TimeSpan.FromSeconds(5),
 ### Device Discovery
 
 ```csharp
-// Discover devices on a connection
-var discovery = await controlPanel.DiscoverDevice(connection);
-foreach (var result in discovery.DevicesFound)
+// Discover device on one or more connections (e.g., different baud rates)
+var connections = new IOsdpConnection[]
 {
-    Console.WriteLine($"Found device at address {result.Address}");
+    new SerialPortOsdpConnection("COM1", 9600),
+    new SerialPortOsdpConnection("COM1", 115200)
+};
+
+var options = new DiscoveryOptions
+{
+    ProgressCallback = result => Console.WriteLine($"Status: {result.Status}")
+};
+
+var discovery = await controlPanel.DiscoverDevice(connections, options);
+if (discovery != null)
+{
+    Console.WriteLine($"Found device at address {discovery.Address}");
+    Console.WriteLine($"Vendor: {BitConverter.ToString(discovery.Id.VendorCode)}");
+    Console.WriteLine($"Uses default key: {discovery.UsesDefaultSecurityKey}");
 }
 ```
 

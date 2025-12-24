@@ -61,6 +61,11 @@ foreach ($issue in $issues) {
 - Console application in `/src/Console`
 - Sample applications in `/src/samples`
 
+## Documentation
+- **API Usage Guide**: See `/docs/api-usage-guide.md` for examples of ACU and PD usage
+- **Tracing Guide**: See `/docs/tracing-guide.md` for packet capture and debugging
+- **Supported Commands**: See `/docs/supported_commands.md` for OSDP v2.2 implementation status
+
 ## Terminal GUI Development
 - **Style Guide**: See `/docs/terminal-gui-style-guide.md` for comprehensive guidelines on creating dialogs and UI components
 - **Console Applications**: PDConsole and ACUConsole use Terminal.Gui for interactive terminal interfaces
@@ -72,10 +77,23 @@ foreach ($issue in $issues) {
 - **Command Implementation Status**: See `/docs/supported_commands.md` for current implementation status of OSDP v2.2 commands and replies
 - **Device (PD) Implementation**: The `Device` class in `/src/OSDP.Net/Device.cs` provides the base implementation for OSDP Peripheral Devices
 - **Command Handlers**: All command handlers are virtual methods in the Device class that can be overridden by specific device implementations
-- **Connection Architecture**: 
+- **Connection Architecture**:
+  - Use `TcpClientOsdpConnection` for ACUs connecting to remote PDs
   - Use `TcpConnectionListener` + `TcpOsdpConnection` for PDs accepting ACU connections
   - Use `TcpServerOsdpConnection` for ACUs accepting device connections
   - Use `SerialPortConnectionListener` for serial-based PD implementations
+
+## API Notes
+- Use `ILoggerFactory` for logging (the `ILogger<ControlPanel>` constructor is deprecated)
+- `Device.StartListening()` is async - always use `await`
+- For device discovery, use `DiscoverDevice(IEnumerable<IOsdpConnection>, DiscoveryOptions)`
+- Subscribe to specific reply events (e.g., `RawCardDataReplyReceived`, `KeypadReplyReceived`) rather than a generic reply handler
+
+## Tracing and Debugging
+- Use `OSDP.Net.Tracing` namespace for packet capture
+- `TraceEntry` provides raw packet data with direction and address
+- Support for `.osdpcap` file format for Wireshark-compatible captures
+- Enable tracing via `StartConnection(connection, pollInterval, isTracing: true)`
 
 ## Domain-Specific Terms
 - Maintain consistent terminology for domain-specific terms like APDU, INCITS, OSDP, osdpcap, rmac, Wiegand
