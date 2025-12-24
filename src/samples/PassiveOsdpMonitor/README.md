@@ -8,7 +8,7 @@ A passive monitoring tool that captures OSDP packets from an existing ACU-PD ser
 - Dual output format:
   - **OSDPCap JSON** (`.osdpcap`) - Machine-readable format for programmatic use
   - **Parsed Text** (`.txt`) - Human-readable format matching ACUConsole output
-- Support for secure channel packets (with encryption key)
+- Support for secure channel packets (with the encryption key)
 - Real-time packet parsing and logging
 - Minimal hardware requirements
 
@@ -80,7 +80,7 @@ The monitor supports decrypting secure channel communications:
 - **Default Behavior** (`SecurityKey: null`): Uses the OSDP default key (SCBK-D: `30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F`)
 - **Custom Key**: Provide a 16-byte array for custom secure channel keys
 
-Example with custom key:
+Example with the custom key:
 
 ```json
 {
@@ -183,20 +183,6 @@ Human-readable format matching ACUConsole output:
     Address: 1 Sequence: 1
     ReaderLedControl { ... }
 ```
-
-## Performance Characteristics
-
-| Baud Rate | Throughput | Packet Rate | CPU Usage | Memory | Disk I/O |
-|-----------|------------|-------------|-----------|--------|----------|
-| 9600      | ~960 B/s   | 30 pkt/s    | <3%       | <40 MB | Low      |
-| 19200     | ~1,920 B/s | 60 pkt/s    | <4%       | <40 MB | Low      |
-| 115200    | ~11,520 B/s| 350 pkt/s   | <7%       | <50 MB | Medium   |
-
-**Disk Usage:**
-- OSDPCap JSON: ~150-200 bytes per packet
-- Parsed text: ~100-300 bytes per packet
-- Total: ~250-500 bytes per packet
-
 ## Troubleshooting
 
 ### Serial Port Access Denied
@@ -209,7 +195,7 @@ sudo usermod -a -G dialout $USER
 
 ### No Packets Captured
 
-- Verify serial port name is correct
+- Verify the serial port name is correct
 - Check baud rate matches the ACU-PD communication
 - Ensure serial tap is connected correctly
 - Verify data is flowing on the line (use oscilloscope or logic analyzer)
@@ -247,7 +233,7 @@ sudo usermod -a -G dialout $USER
 
 The `MessageSpy` class (from OSDP.Net.Tracing) handles:
 - Parsing raw bytes into structured packets
-- Decrypting secure channel packets (if key provided)
+- Decrypting secure channel packets (if a key is provided)
 - Extracting command/reply types and payload data
 - Tracking secure channel state across packets
 
@@ -259,7 +245,7 @@ Both files use the **same timestamp** for each packet to enable correlation betw
 
 If packet parsing fails (corrupted data, sync loss, etc.):
 - OSDPCap file still gets the raw packet
-- Parsed text file shows error with raw hex data
+- Parsed text file shows the error with raw hex data
 - Monitor continues capturing
 
 ## License
