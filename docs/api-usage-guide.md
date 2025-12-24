@@ -43,8 +43,8 @@ An ACU manages and communicates with multiple peripheral devices.
 // Create a control panel (ACU)
 var controlPanel = new ControlPanel();
 
-// Set up TCP connection to a device
-var connection = new TcpClientOsdpConnection(IPAddress.Parse("192.168.1.100"), 3001);
+// Set up serial connection to a device
+var connection = new SerialPortOsdpConnection("COM1", 9600);
 var connectionId = controlPanel.StartConnection(connection);
 
 // Add a device to the connection
@@ -158,7 +158,7 @@ public class MyDevice : Device
 
 // Start the device
 var device = new MyDevice();
-var listener = new TcpConnectionListener(IPAddress.Any, 4000);
+var listener = new SerialPortConnectionListener("COM1", 9600);
 await device.StartListening(listener);
 ```
 
@@ -191,27 +191,27 @@ public class MyDevice : Device
 
 ## Connection Types
 
+### Serial Connections
+
+```csharp
+// Serial connection (ACU connecting to PD)
+var serialConnection = new SerialPortOsdpConnection("COM1", 9600);
+
+// Serial listener (PD accepting connections from ACU)
+var serialListener = new SerialPortConnectionListener("COM1", 9600);
+```
+
 ### TCP Connections
 
 ```csharp
 // TCP Client (ACU connecting to PD)
-var tcpClient = new TcpClientOsdpConnection(IPAddress.Parse("192.168.1.100"), 4000);
+var tcpClient = new TcpClientOsdpConnection(IPAddress.Parse("192.168.1.100"), 3001);
 
-// TCP Server (ACU accepting connections from PDs)  
-var tcpServer = new TcpServerOsdpConnection(IPAddress.Any, 4000);
+// TCP Server (ACU accepting connections from PDs)
+var tcpServer = new TcpServerOsdpConnection(IPAddress.Any, 3001);
 
 // TCP Listener (PD accepting connections from ACU)
-var tcpListener = new TcpConnectionListener(IPAddress.Any, 4000);
-```
-
-### Serial Connections
-
-```csharp
-// Serial connection
-var serialConnection = new SerialPortOsdpConnection("COM1", 9600);
-
-// Serial listener
-var serialListener = new SerialPortConnectionListener("COM1", 9600);
+var tcpListener = new TcpConnectionListener(IPAddress.Any, 3001);
 ```
 
 ## Security Configuration
@@ -224,8 +224,8 @@ var deviceConfig = new DeviceConfiguration
 {
     Address = 0,
     RequireSecurity = true,
-    SecurityKey = new byte[] { 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 
-                              0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F }
+    SecurityKey = new byte[] { 0x4A, 0x7D, 0x2F, 0x91, 0xC3, 0x5E, 0x88, 0x12,
+                              0xB6, 0x3C, 0xF4, 0x69, 0xA8, 0x1D, 0xE7, 0x52 }
 };
 
 // Allow certain commands without security (if needed)
@@ -359,52 +359,8 @@ For more details on tracing capabilities, see the [Tracing Guide](tracing-guide.
 1. **Always use secure channels in production** - Set `RequireSecurity = true`
 2. **Handle timeouts gracefully** - Network issues are common in access control systems
 3. **Implement proper logging** - Essential for debugging and monitoring
-4. **Use appropriate polling intervals** - Balance responsiveness with network overhead
+4. **Use appropriate polling intervals** - OSDP requires regular polling to supervise PDs
 5. **Validate device responses** - Check for NACK replies and handle appropriately
-6. **Implement connection recovery** - Automatically reconnect when connections are lost
-7. **Test with real hardware** - Simulators may not catch all edge cases
-
-## Common Patterns
-
-### Device Discovery
-
-```csharp
-// Discover device on one or more connections (e.g., different baud rates)
-var connections = new IOsdpConnection[]
-{
-    new SerialPortOsdpConnection("COM1", 9600),
-    new SerialPortOsdpConnection("COM1", 115200)
-};
-
-var options = new DiscoveryOptions
-{
-    ProgressCallback = result => Console.WriteLine($"Status: {result.Status}")
-};
-
-var discovery = await controlPanel.DiscoverDevice(connections, options);
-if (discovery != null)
-{
-    Console.WriteLine($"Found device at address {discovery.Address}");
-    Console.WriteLine($"Vendor: {BitConverter.ToString(discovery.Id.VendorCode)}");
-    Console.WriteLine($"Uses default key: {discovery.UsesDefaultSecurityKey}");
-}
-```
-
-### Periodic Status Checks
-
-```csharp
-// Periodic device health check
-var timer = new Timer(async _ =>
-{
-    try
-    {
-        await controlPanel.LocalStatus(connectionId, deviceAddress);
-    }
-    catch
-    {
-        Console.WriteLine("Device health check failed");
-    }
-}, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
-```
+6. **Test with real hardware** - Simulators may not catch all edge cases
 
 This guide covers the most common scenarios. For complete API documentation, refer to the XML documentation comments in the source code.
