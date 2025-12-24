@@ -19,9 +19,9 @@ To passively monitor a serial line, you need a **Serial Tap/Y-Cable** setup:
 - USB-to-Serial adapter (FTDI FT232, CH340, CP2102, etc.)
 - Jumper wires or serial tap cable
 - Examples:
-  - USB-to-Serial adapter connected to RX line only
+  - USB-to-Serial adapter tapped into the serial line
   - Professional serial tap device
-  - DIY Y-cable with diode isolation
+  - DIY Y-cable with isolation
 
 ### Connection Diagram
 
@@ -32,14 +32,13 @@ ACU ←──────────────→ PD
            └─→ Tap Point
                   |
                   ├─ GND ──→ [USB-Serial] GND
-                  └─ RX ───→ [USB-Serial] RX
-                             [USB-Serial] TX (disconnected)
+                  ├─ TX ───→ [USB-Serial] RX
+                  └─ RX ───→ [USB-Serial] TX
                              [USB-Serial] USB → PC
 ```
 
 **Important:**
-- Connect adapter's **RX** to the serial data line
-- Leave adapter's **TX disconnected** (read-only mode)
+- Connect both **RX and TX** lines to monitor bidirectional communication
 - Connect **common ground** between all devices
 - Do **NOT** connect control signals (RTS, DTR, etc.)
 
@@ -50,7 +49,9 @@ ACU ←──────────────→ PD
 
 ## Configuration
 
-Edit `appsettings.json` to configure the monitor:
+The monitor can be configured using `appsettings.json` (optional). If the file doesn't exist, default values are used.
+
+Create `appsettings.json` in the same directory as the executable:
 
 ```json
 {
@@ -74,7 +75,12 @@ Edit `appsettings.json` to configure the monitor:
 
 ### Secure Channel Support
 
-If the ACU-PD communication uses a secure channel, provide the encryption key:
+The monitor supports decrypting secure channel communications:
+
+- **Default Behavior** (`SecurityKey: null`): Uses the OSDP default key (SCBK-D: `30 31 32 33 34 35 36 37 38 39 3A 3B 3C 3D 3E 3F`)
+- **Custom Key**: Provide a 16-byte array for custom secure channel keys
+
+Example with custom key:
 
 ```json
 {
@@ -86,6 +92,8 @@ If the ACU-PD communication uses a secure channel, provide the encryption key:
 }
 ```
 
+**Note:** The security key must match the key used by the ACU-PD pair to successfully decrypt secure channelRemo packets.
+
 ## Usage
 
 ### Build and Run
@@ -93,7 +101,7 @@ If the ACU-PD communication uses a secure channel, provide the encryption key:
 ```bash
 cd src/samples/PassiveOsdpMonitor
 
-# Edit configuration
+# (Optional) Edit configuration
 notepad appsettings.json  # Windows
 nano appsettings.json     # Linux
 
@@ -102,6 +110,27 @@ dotnet build
 dotnet run
 ```
 
+### Publish as Single Executable
+
+Create a standalone executable that doesn't require .NET runtime installation:
+
+**Windows:**
+```bash
+dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
+```
+
+**Linux:**
+```bash
+dotnet publish -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true
+```
+
+The executable will be in `bin/Release/net8.0/{runtime}/publish/`.
+
+**Deployment:**
+1. Copy the executable to your target machine
+2. (Optional) Place `appsettings.json` in the same directory as the executable
+3. Run the executable - it will use `appsettings.json` if present, otherwise defaults
+
 ### Example Output
 
 ```
@@ -109,6 +138,8 @@ Passive OSDP Monitor v1.0
 ========================
 Serial Port: COM3
 Baud Rate: 9600
+Security Key: Using default OSDP key (SCBK-D)
+Note: Specify SecurityKey in appsettings.json for custom keys
 OSDPCap File: ./captures/passive-capture-20231202-143530.osdpcap
 Parsed Text: ./captures/passive-capture-20231202-143530.txt
 
@@ -119,7 +150,7 @@ Packets captured: 200
 ...
 ^C
 Stopping monitor...
-Monitor stopped.
+Monitor stopped
 Total packets captured: 347
 Total bytes read: 18,234
 ```
