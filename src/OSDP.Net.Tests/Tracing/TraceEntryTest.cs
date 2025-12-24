@@ -310,4 +310,150 @@ public class TraceEntryTest
             Assert.That(entry.Data[4], Is.EqualTo(0x01));
         }
     }
+
+    [TestFixture]
+    public class AddressPropertyTest
+    {
+        [Test]
+        public void Address_WithCommandPacket_ShouldExtractCorrectAddress()
+        {
+            // Arrange - Command packet for address 0
+            var data = new byte[] { 0x00, 0x0D, 0x00, 0x06, 0x60 }; // Address byte is 0x00
+
+            // Act
+            var entry = new TraceEntry(TraceDirection.Output, Guid.NewGuid(), data);
+
+            // Assert
+            Assert.That(entry.Address, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Address_WithReplyPacket_ShouldMaskReplyBit()
+        {
+            // Arrange - Reply packet for address 0 (0x80 has reply bit set)
+            var data = new byte[] { 0x80, 0x14, 0x00, 0x06, 0x45 }; // Address byte is 0x80 (address 0 with reply bit)
+
+            // Act
+            var entry = new TraceEntry(TraceDirection.Input, Guid.NewGuid(), data);
+
+            // Assert - Reply bit (0x80) should be masked off, resulting in address 0
+            Assert.That(entry.Address, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Address_WithNonZeroAddress_ShouldExtractCorrectly()
+        {
+            // Arrange - Command packet for address 5
+            var data = new byte[] { 0x05, 0x0D, 0x00, 0x06, 0x60 };
+
+            // Act
+            var entry = new TraceEntry(TraceDirection.Output, Guid.NewGuid(), data);
+
+            // Assert
+            Assert.That(entry.Address, Is.EqualTo(5));
+        }
+
+        [Test]
+        public void Address_WithNonZeroAddressReply_ShouldMaskReplyBit()
+        {
+            // Arrange - Reply packet for address 5 (0x85 = 0x80 | 0x05)
+            var data = new byte[] { 0x85, 0x14, 0x00, 0x06, 0x45 };
+
+            // Act
+            var entry = new TraceEntry(TraceDirection.Input, Guid.NewGuid(), data);
+
+            // Assert - Reply bit (0x80) should be masked off, resulting in address 5
+            Assert.That(entry.Address, Is.EqualTo(5));
+        }
+
+        [Test]
+        public void Address_WithMaxAddress_ShouldExtractCorrectly()
+        {
+            // Arrange - Command packet for max address (127 = 0x7F)
+            var data = new byte[] { 0x7F, 0x0D, 0x00, 0x06, 0x60 };
+
+            // Act
+            var entry = new TraceEntry(TraceDirection.Output, Guid.NewGuid(), data);
+
+            // Assert
+            Assert.That(entry.Address, Is.EqualTo(127));
+        }
+
+        [Test]
+        public void Address_WithMaxAddressReply_ShouldMaskReplyBit()
+        {
+            // Arrange - Reply packet for max address (0xFF = 0x80 | 0x7F)
+            var data = new byte[] { 0xFF, 0x14, 0x00, 0x06, 0x45 };
+
+            // Act
+            var entry = new TraceEntry(TraceDirection.Input, Guid.NewGuid(), data);
+
+            // Assert - Reply bit (0x80) should be masked off, resulting in address 127
+            Assert.That(entry.Address, Is.EqualTo(127));
+        }
+
+        [Test]
+        public void Address_WithEmptyData_ShouldReturnNull()
+        {
+            // Arrange
+            var data = Array.Empty<byte>();
+
+            // Act
+            var entry = new TraceEntry(TraceDirection.Output, Guid.NewGuid(), data);
+
+            // Assert
+            Assert.That(entry.Address, Is.Null);
+        }
+
+        [Test]
+        public void Address_WithNullData_ShouldReturnNull()
+        {
+            // Act
+            var entry = new TraceEntry(TraceDirection.Output, Guid.NewGuid(), null);
+
+            // Assert
+            Assert.That(entry.Address, Is.Null);
+        }
+
+        [Test]
+        public void Address_WithSingleByteData_ShouldExtractAddress()
+        {
+            // Arrange
+            var data = new byte[] { 0x03 };
+
+            // Act
+            var entry = new TraceEntry(TraceDirection.Output, Guid.NewGuid(), data);
+
+            // Assert
+            Assert.That(entry.Address, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void Address_WithTypicalOsdpPacket_ShouldExtractCorrectly()
+        {
+            // Arrange - Typical OSDP poll command for address 0
+            // Data starts after SOM byte (0x53 is skipped in Bus.cs)
+            var data = new byte[] { 0x00, 0x08, 0x00, 0x04, 0x60, 0x3D, 0x57 };
+
+            // Act
+            var entry = new TraceEntry(TraceDirection.Output, Guid.NewGuid(), data);
+
+            // Assert
+            Assert.That(entry.Address, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void Address_WithTypicalOsdpReply_ShouldMaskReplyBit()
+        {
+            // Arrange - Typical OSDP ACK reply for address 0
+            // Data starts after SOM byte (0x53 is skipped in Bus.cs)
+            var data = new byte[] { 0x80, 0x07, 0x00, 0x05, 0x40, 0xFE, 0x9C };
+
+            // Act
+            var entry = new TraceEntry(TraceDirection.Input, Guid.NewGuid(), data);
+
+            // Assert
+            Assert.That(entry.Address, Is.EqualTo(0));
+        }
+    }
 }

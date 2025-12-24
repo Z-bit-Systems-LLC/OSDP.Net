@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using OSDP.Net.Messages;
 using OSDP.Net.Model;
 
 namespace OSDP.Net.Tracing;
@@ -20,7 +21,7 @@ public class OSDPPacketTextFormatter : IPacketTextFormatter
 
         string deltaString = FormatTimeDelta(timeDelta);
         string direction = packet.CommandType != null ? "ACU -> PD" : "PD -> ACU";
-        string type = (packet.CommandType?.ToString() ?? packet.ReplyType?.ToString()) ?? "Unknown";
+        string type = (packet.CommandType?.GetDisplayName() ?? packet.ReplyType?.GetDisplayName()) ?? "Unknown";
 
         sb.AppendLine($"{timestamp:yy-MM-dd HH:mm:ss.fff}{deltaString} {direction}: {type}");
         sb.Append($"    Address: {packet.Address} Sequence: {packet.Sequence}");

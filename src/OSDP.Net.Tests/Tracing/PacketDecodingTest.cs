@@ -111,11 +111,117 @@ public class PacketDecodingTest
 
         Assert.That(actual.Count, Is.EqualTo(1));
         var actualEntry = actual[0];
-        
+
         Assert.That(actualEntry.TimeStamp, Is.EqualTo(DateTime.Parse("2023-07-17 13:06:46.5794404")));
         Assert.That(actualEntry.Direction, Is.EqualTo(TraceDirection.Input));
         Assert.That(actualEntry.Packet.Address, Is.EqualTo(0));
         Assert.That(actualEntry.TraceVersion, Is.EqualTo("1"));
         Assert.That(actualEntry.Source, Is.EqualTo("OSDP.Net"));
+    }
+
+    [Test]
+    public void TryParseMessage_ValidCommand_ReturnsTrue()
+    {
+        // Arrange
+        var testData = BinaryUtils.HexToBytes("53-00-0D-00-06-6A-00-02-02-02-01-59-92").ToArray();
+
+        // Act
+        var result = PacketDecoding.TryParseMessage(testData, new ACUMessageSecureChannel(), out var packet);
+
+        // Assert
+        Assert.That(result, Is.True);
+        Assert.That(packet, Is.Not.Null);
+        Assert.That(packet!.Address, Is.EqualTo(0));
+        Assert.That(packet.CommandType, Is.EqualTo(CommandType.BuzzerControl));
+    }
+
+    [Test]
+    public void TryParseMessage_ValidReply_ReturnsTrue()
+    {
+        // Arrange
+        var testData = BinaryUtils.HexToBytes("53-80-14-00-06-45-00-0E-E3-10-10-00-00-74-97-23-06-06-1B-88").ToArray();
+
+        // Act
+        var result = PacketDecoding.TryParseMessage(testData, new ACUMessageSecureChannel(), out var packet);
+
+        // Assert
+        Assert.That(result, Is.True);
+        Assert.That(packet, Is.Not.Null);
+        Assert.That(packet!.Address, Is.EqualTo(0));
+        Assert.That(packet.ReplyType, Is.EqualTo(ReplyType.PdIdReport));
+    }
+
+    [Test]
+    public void TryParseMessage_EmptyData_ReturnsFalse()
+    {
+        // Arrange
+        var testData = Array.Empty<byte>();
+
+        // Act
+        var result = PacketDecoding.TryParseMessage(testData, new ACUMessageSecureChannel(), out var packet);
+
+        // Assert
+        Assert.That(result, Is.False);
+        Assert.That(packet, Is.Null);
+    }
+
+    [Test]
+    public void TryParseMessage_TruncatedData_ReturnsFalse()
+    {
+        // Arrange - only first 3 bytes of a valid packet
+        var testData = BinaryUtils.HexToBytes("53-00-0D").ToArray();
+
+        // Act
+        var result = PacketDecoding.TryParseMessage(testData, new ACUMessageSecureChannel(), out var packet);
+
+        // Assert
+        Assert.That(result, Is.False);
+        Assert.That(packet, Is.Null);
+    }
+
+    [Test]
+    public void TryParseMessage_WithoutSecureChannel_ValidCommand_ReturnsTrue()
+    {
+        // Arrange
+        var testData = BinaryUtils.HexToBytes("53-00-0D-00-06-6A-00-02-02-02-01-59-92").ToArray();
+
+        // Act
+        var result = PacketDecoding.TryParseMessage(testData, out var packet);
+
+        // Assert
+        Assert.That(result, Is.True);
+        Assert.That(packet, Is.Not.Null);
+        Assert.That(packet!.Address, Is.EqualTo(0));
+        Assert.That(packet.CommandType, Is.EqualTo(CommandType.BuzzerControl));
+    }
+
+    [Test]
+    public void TryParseMessage_WithoutSecureChannel_ValidReply_ReturnsTrue()
+    {
+        // Arrange
+        var testData = BinaryUtils.HexToBytes("53-80-14-00-06-45-00-0E-E3-10-10-00-00-74-97-23-06-06-1B-88").ToArray();
+
+        // Act
+        var result = PacketDecoding.TryParseMessage(testData, out var packet);
+
+        // Assert
+        Assert.That(result, Is.True);
+        Assert.That(packet, Is.Not.Null);
+        Assert.That(packet!.Address, Is.EqualTo(0));
+        Assert.That(packet.ReplyType, Is.EqualTo(ReplyType.PdIdReport));
+    }
+
+    [Test]
+    public void TryParseMessage_WithoutSecureChannel_InvalidData_ReturnsFalse()
+    {
+        // Arrange
+        var testData = Array.Empty<byte>();
+
+        // Act
+        var result = PacketDecoding.TryParseMessage(testData, out var packet);
+
+        // Assert
+        Assert.That(result, Is.False);
+        Assert.That(packet, Is.Null);
     }
 }

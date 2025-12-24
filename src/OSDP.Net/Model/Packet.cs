@@ -10,7 +10,7 @@ namespace OSDP.Net.Model;
 /// <summary>
 /// Information details of a message packet
 /// </summary>
-public class Packet
+public class Packet : IPacket
 {
     private readonly byte[] _rawPayloadData;
     private readonly byte[] _rawData;
@@ -218,4 +218,10 @@ public class Packet
     /// Raw bytes of the entire message data
     /// </summary>
     public ReadOnlySpan<byte> RawData => _rawData;
+
+    /// <inheritdoc />
+    ReadOnlyMemory<byte> IPacket.RawPayloadData => _rawPayloadData;
+
+    /// <inheritdoc />
+    ReadOnlyMemory<byte> IPacket.RawData => _rawData;
 }

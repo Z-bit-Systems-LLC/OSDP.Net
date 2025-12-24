@@ -36,6 +36,15 @@ public struct TraceEntry
     public byte[] Data { get; }
 
     /// <summary>
+    /// The OSDP device address extracted from the packet data.
+    /// </summary>
+    /// <remarks>
+    /// This is the address byte from the OSDP packet with the reply bit (0x80) masked off.
+    /// Returns null if the data is empty or null.
+    /// </remarks>
+    public byte? Address { get; }
+
+    /// <summary>
     /// Initializes a new instance of the TraceEntry struct.
     /// </summary>
     /// <param name="direction">The direction in which the data is sent.</param>
@@ -46,5 +55,8 @@ public struct TraceEntry
         Direction = direction;
         ConnectionId = connectionId;
         Data = data;
+        // Extract address from data[0] if available (0x7F mask removes reply bit)
+        // The address byte is at position 0 in the trace data (after driver byte is skipped in Bus.cs)
+        Address = data is { Length: > 0 } ? (byte)(data[0] & 0x7F) : null;
     }
 }
