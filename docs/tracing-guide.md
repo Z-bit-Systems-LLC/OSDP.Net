@@ -307,7 +307,7 @@ The `.osdpcap` format is JSON lines with the following structure:
 {"timeSec":"1689599213","timeNano":"245123400","io":"input","data":"53-80-07-00-05-40-FE-9C","osdpTraceVersion":"1","osdpSource":"OSDP.Net"}
 ```
 
-Details about the '.osdpcap' can be found at [osdpcap format document](https://github.com/Security-Industry-Association/libosdp-conformance/blob/master/doc/doc-src/osdpcap-format.md).
+Details about the `.osdpcap` can be found at [osdpcap format document](https://github.com/Security-Industry-Association/libosdp-conformance/blob/master/doc/doc-src/osdpcap-format.md).
 
 ## Human-Readable Output
 
