@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Text;
 using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
@@ -23,7 +22,7 @@ internal class NoPayloadCommandData : CommandData
 
     public NoPayloadCommandData(CommandType commandType)
     {
-        if (!_validCommandTypes.Contains(commandType))
+        if (Array.IndexOf(_validCommandTypes, commandType) < 0)
         {
             throw new ArgumentException("Invalid command type for a sending a payload with no data.");
         }
