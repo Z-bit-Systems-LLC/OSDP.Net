@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>  
     <!-- Common properties for all projects -->
-    <VersionPrefix>5.0.34</VersionPrefix>
+    <VersionPrefix>5.0.35</VersionPrefix>
     <VersionSuffix>beta</VersionSuffix>
 	
     <Authors>Jonathan Horvath</Authors>
