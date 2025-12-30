@@ -47,6 +47,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{9C49
 		scripts\Increment-Version.ps1 = scripts\Increment-Version.ps1
 		scripts\Set-Version.ps1 = scripts\Set-Version.ps1
 		scripts\validate-api.ps1 = scripts\validate-api.ps1
+		scripts\Publish-Documentation.ps1 = scripts\Publish-Documentation.ps1
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PassiveOsdpMonitor", "src\samples\PassiveOsdpMonitor\PassiveOsdpMonitor.csproj", "{ACA98FD0-A447-43A3-B43A-A10BC75E6870}"

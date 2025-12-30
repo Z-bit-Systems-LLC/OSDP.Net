@@ -427,6 +427,23 @@ MSCFILE_DIRS           =
     Write-Host "Doxyfile created successfully" -ForegroundColor Green
 }
 
+function Update-DoxyfileVersion {
+    param(
+        [string]$DoxyfilePath,
+        [string]$ProjectVersion
+    )
+
+    if (-not (Test-Path $DoxyfilePath)) {
+        return
+    }
+
+    Write-Host "Updating PROJECT_NUMBER in Doxyfile to: $ProjectVersion" -ForegroundColor Cyan
+
+    $content = Get-Content $DoxyfilePath -Raw
+    $updatedContent = $content -replace 'PROJECT_NUMBER\s*=\s*[^\r\n]*', "PROJECT_NUMBER         = $ProjectVersion"
+    Set-Content -Path $DoxyfilePath -Value $updatedContent -NoNewline -Encoding UTF8
+}
+
 function Invoke-DoxygenGeneration {
     param(
         [string]$DoxyfilePath,
@@ -495,6 +512,11 @@ try {
     # Generate Doxyfile if requested or if it doesn't exist
     if ($GenerateDoxyfile -or -not (Test-Path $DoxyfilePath)) {
         New-DoxyfileConfig -OutputFile $DoxyfilePath -ProjectVersion $projectVersion
+        Write-Host ""
+    }
+    else {
+        # Update version in existing Doxyfile
+        Update-DoxyfileVersion -DoxyfilePath $DoxyfilePath -ProjectVersion $projectVersion
         Write-Host ""
     }
 

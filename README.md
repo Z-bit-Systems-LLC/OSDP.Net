@@ -7,10 +7,6 @@ OSDP.Net is a .NET implementation of the Open Supervised Device Protocol (OSDP).
 This protocol has been adopted by the Security Industry Association (SIA) to standardize access control hardware communication. 
 Further information can be found at [SIA OSDP Homepage](https://www.securityindustry.org/industry-standards/open-supervised-device-protocol/).
 
-## Important Announcement 10/14/2025
-
-We have switched to trunk-based development. The `main` branch is now the default branch. Please submit pull requests against the `main` branch.
-
 ## Prerequisites
 
 OSDP.Net supports the following .NET implementations:
@@ -204,6 +200,7 @@ For more information, see the [Terminal.Gui PuTTY discussion](https://github.com
 
 - [PowerShell Support](docs/powershell.md)
 - [Supported Commands and Replies](docs/supported_commands.md)
+- [Tracing Guide](docs/tracing-guide.md)
 
 ## Contributing
 
