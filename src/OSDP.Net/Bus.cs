@@ -39,10 +39,10 @@ namespace OSDP.Net
         private readonly BlockingCollection<ReplyTracker> _replies;
         private readonly Action<TraceEntry> _tracer;
         private readonly AutoResetEvent _commandAvailableEvent = new (false);
-        private readonly AutoResetEvent _shutdownComplete = new (false);
         private readonly IDeviceProxyFactory _deviceProxyFactory;
-        
+
         private CancellationTokenSource _cancellationTokenSource;
+        private Task _pollingTask;
         private  ImmutableSortedSet<DeviceProxy> _configuredDevices = ImmutableSortedSet<DeviceProxy>.Empty;
 
         public Bus(IOsdpConnection connection, BlockingCollection<ReplyTracker> replies, TimeSpan pollInterval,
@@ -75,7 +75,6 @@ namespace OSDP.Net
 
         public void Dispose()
         {
-            _shutdownComplete?.Dispose();
             _commandAvailableEvent?.Dispose();
             _cancellationTokenSource?.Dispose();
         }
@@ -89,16 +88,22 @@ namespace OSDP.Net
         /// Closes down the connection
         /// </summary>
         public async Task Close()
-        {            
+        {
             var cancellationTokenSource = _cancellationTokenSource;
+            var pollingTask = _pollingTask;
+
             if (cancellationTokenSource != null)
             {
                 cancellationTokenSource.Cancel();
-                _shutdownComplete.WaitOne(TimeSpan.FromSeconds(1));
-                _cancellationTokenSource = null;
-            }
 
-            await Task.CompletedTask.ConfigureAwait(false);
+                if (pollingTask != null)    
+                {
+                    await pollingTask.ConfigureAwait(false);
+                }
+
+                _cancellationTokenSource = null;
+                _pollingTask = null;
+            }
         }
 
         /// <summary>
@@ -155,7 +160,7 @@ namespace OSDP.Net
         }
 
         /// <summary>
-        /// Is the device currently online
+        /// Is the device currently online?
         /// </summary>
         /// <param name="address">Address of the device</param>
         /// <returns>True if the device is online</returns>
@@ -175,22 +180,20 @@ namespace OSDP.Net
             var cancellationTokenSource = _cancellationTokenSource;
             if (cancellationTokenSource != null) return;
             _cancellationTokenSource = cancellationTokenSource = new CancellationTokenSource();
-            
-            Task.Factory.StartNew(async () =>
+
+            _pollingTask = Task.Factory.StartNew(async () =>
             {
                 try
                 {
                     await PollingLoop(cancellationTokenSource.Token).ConfigureAwait(false);
                 }
-                catch(Exception exception)
+                catch (Exception exception)
                 {
-                    _logger?.LogError(exception, $"[{Connection}] Unexpected exception in polling loop. Connection ID:{Id}.");
+                    _logger?.LogError(exception,
+                        "[{OsdpConnection}] Unexpected exception in polling loop for connection {Guid}", Connection,
+                        Id);
                 }
-                finally
-                {
-                    _shutdownComplete.Set();
-                }
-            }, TaskCreationOptions.LongRunning);
+            }, TaskCreationOptions.LongRunning).Unwrap();
         }
 
         /// <summary>
@@ -345,7 +348,7 @@ namespace OSDP.Net
                 }
             }
 
-            // Polling task is complete. Time to close the connection.
+            // The polling task is complete. Time to close the connection.
             try
             { 
                 await Connection.Close();
