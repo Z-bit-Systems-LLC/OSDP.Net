@@ -21,7 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\OSDP.Net\OSDP.Net.csproj" />
+      <ProjectReference Include="..\..\src\OSDP.Net\OSDP.Net.csproj" />
     </ItemGroup>
 
 
