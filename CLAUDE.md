@@ -57,8 +57,8 @@ foreach ($issue in $issues) {
 
 ## Project Structure
 - Core library in `/src/OSDP.Net`
-- Tests in `/src/OSDP.Net.Tests`
-- Console application in `/src/Console`
+- Tests in `/test/OSDP.Net.Tests`
+- Console applications in `/src/ACUConsole` and `/src/PDConsole`
 - Sample applications in `/src/samples`
 
 ## Documentation
