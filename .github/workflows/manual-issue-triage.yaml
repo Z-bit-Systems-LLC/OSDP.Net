@@ -1,4 +1,4 @@
-name: Manual Issue Triage
+name: Claude Issue Triage
 on:
   workflow_dispatch:
     inputs:
@@ -11,17 +11,33 @@ jobs:
   triage:
     runs-on: ubuntu-latest
     permissions:
-      contents: read        # Read repository files and code
-      issues: write         # Read issues and post comments/labels
-      pull-requests: write  # Optional: if you want Claude to create PRs from issues
+      contents: read
+      issues: write
+      pull-requests: write
+    
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          settings: |
+            {
+              "permissions": {
+                "allow": [
+                  "mcp__github__*",
+                  "Read",
+                  "Grep",
+                  "WebSearch"
+                ]
+              }
+            }
           prompt: |
-            Analyze issue #${{ inputs.issue_number }} and:
-            1. Add appropriate labels (bug/feature/question)
-            2. Assess priority and complexity
-            3. Identify affected C# files/modules
-            4. Suggest implementation approach
+            Analyze issue #${{ inputs.issue_number }} for this C# OSDP library and:
+            1. Read the issue details
+            2. Categorize (bug/feature/question/enhancement)
+            3. Search the codebase for relevant C# files
+            4. Assess complexity and priority
+            5. Post a comment with your analysis
