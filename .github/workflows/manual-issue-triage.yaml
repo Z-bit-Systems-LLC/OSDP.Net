@@ -1,0 +1,23 @@
+name: Manual Issue Triage
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to triage'
+        required: true
+        type: number
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            Analyze issue #${{ inputs.issue_number }} and:
+            1. Add appropriate labels (bug/feature/question)
+            2. Assess priority and complexity
+            3. Identify affected C# files/modules
+            4. Suggest implementation approach
