@@ -10,6 +10,10 @@ on:
 jobs:
   triage:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read        # Read repository files and code
+      issues: write         # Read issues and post comments/labels
+      pull-requests: write  # Optional: if you want Claude to create PRs from issues
     steps:
       - uses: anthropics/claude-code-action@v1
         with:
