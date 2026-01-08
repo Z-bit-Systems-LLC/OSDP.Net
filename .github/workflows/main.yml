@@ -10,9 +10,10 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}   
           prompt: |
             Analyze this issue and:
             1. Add appropriate labels (bug/feature/question)
-            2. Assess priority (high/medium/low)
-            3. Identify which files/modules are affected
-            4. Provide a plan for implementation
+            2. Assess priority and complexity
+            3. Identify affected C# files/modules
+            4. Suggest implementation approach
