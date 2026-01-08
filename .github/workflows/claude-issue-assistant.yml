@@ -1,0 +1,32 @@
+name: Claude Issue Assistant
+on:
+  issue_comment:
+    types: [created]
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  respond:
+    # Trigger on @claude mentions or when "needs-triage" label is added
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'issues' && github.event.label.name == 'needs-triage')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+              with:
+                anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+                github_token: ${{ secrets.GITHUB_TOKEN }}
+                claude_args: "--allowedTools 'Read,Grep,WebFetch,WebSearch,mcp__github__*'"
+                # No prompt needed - Claude responds to the comment/issue content automatically
+
