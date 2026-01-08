@@ -1,4 +1,4 @@
-name: Claude Issue Triage
+name: Manual Issue Triage
 on:
   workflow_dispatch:
     inputs:
