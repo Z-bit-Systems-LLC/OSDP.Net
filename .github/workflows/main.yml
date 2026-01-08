@@ -1,0 +1,18 @@
+name: Auto-triage Issues
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Analyze this issue and:
+            1. Add appropriate labels (bug/feature/question)
+            2. Assess priority (high/medium/low)
+            3. Identify which files/modules are affected
+            4. Provide a plan for implementation
