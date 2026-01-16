@@ -156,16 +156,21 @@ namespace OSDP.Net.Messages.SecureChannel
         {
             // Per Section D.1.3
             bool useDefaultKey = command.SecureBlockData[0] == 0;
+            bool pdHasDefaultKey = _securityKey.SequenceEqual(SecurityContext.DefaultKey);
 
-            if (useDefaultKey && 
-                !_securityKey.SequenceEqual(SecurityContext.DefaultKey))
+            if (useDefaultKey && !pdHasDefaultKey)
             {
-                // We want to fail only when device has already been configured with a
-                // non-default key AND the use of the default key isn't allowed.
+                // ACU requests SCBK-D but PD has non-default key configured
                 return new Nak(ErrorCode.DoesNotSupportSecurityBlock);
             }
 
-            Context.Reset(useDefaultKey ? SecurityContext.DefaultKey : _securityKey);
+            if (!useDefaultKey && pdHasDefaultKey)
+            {
+                // ACU requests SCBK but PD only has default key configured
+                return new Nak(ErrorCode.DoesNotSupportSecurityBlock);
+            }
+
+            Context.Reset(_securityKey);
 
             // generate a set of session keys: S-ENC, S-MAC1, S-MAC2 using command.Payload (which is RND.A)
             using var crypto = Context.CreateCypher(true);
