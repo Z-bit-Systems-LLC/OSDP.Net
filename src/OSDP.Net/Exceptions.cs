@@ -88,4 +88,35 @@ namespace OSDP.Net
         {
         }
     }
+
+    /// <summary>
+    /// Exception thrown when the PD's Security Control Block (SCB) key type indicator
+    /// does not match what the ACU sent during secure channel initialization.
+    /// This indicates a protocol violation per OSDP specification.
+    /// </summary>
+    public class SecureChannelKeyTypeMismatchException : OSDPNetException
+    {
+        /// <summary>
+        /// Gets a value indicating whether the ACU was using the default key (SCBK-D).
+        /// </summary>
+        public bool AcuUsedDefaultKey { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether the PD claimed to use the default key (SCBK-D).
+        /// </summary>
+        public bool PdClaimedDefaultKey { get; }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="SecureChannelKeyTypeMismatchException"/>.
+        /// </summary>
+        /// <param name="acuUsedDefaultKey">Whether the ACU used the default key.</param>
+        /// <param name="pdClaimedDefaultKey">Whether the PD claimed to use the default key.</param>
+        public SecureChannelKeyTypeMismatchException(bool acuUsedDefaultKey, bool pdClaimedDefaultKey)
+            : base($"SCB key type mismatch: ACU used {(acuUsedDefaultKey ? "SCBK-D" : "SCBK")} " +
+                   $"but PD responded with {(pdClaimedDefaultKey ? "SCBK-D" : "SCBK")}")
+        {
+            AcuUsedDefaultKey = acuUsedDefaultKey;
+            PdClaimedDefaultKey = pdClaimedDefaultKey;
+        }
+    }
 }

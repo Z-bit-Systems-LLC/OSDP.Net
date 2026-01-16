@@ -443,7 +443,7 @@ namespace OSDP.Net
             switch ((ReplyType)reply.ReplyMessage.Type)
             {
                 case ReplyType.CrypticData:
-                    device.InitializeSecureChannel(reply.ReplyMessage.Payload);
+                    device.InitializeSecureChannel(reply.ReplyMessage.Payload, reply.ReplyMessage.SecureBlockData);
                     break;
                 case ReplyType.InitialRMac:
                     if (!reply.ValidateSecureChannelEstablishment())

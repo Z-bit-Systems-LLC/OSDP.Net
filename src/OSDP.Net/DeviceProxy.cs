@@ -164,8 +164,22 @@ internal class DeviceProxy : IComparable<DeviceProxy>
         _counter = RetryAmount;
     }
 
-    internal void InitializeSecureChannel(byte[] payload)
+    internal void InitializeSecureChannel(byte[] payload, byte[] secureBlockData)
     {
+        // Validate SCB key type: secureBlockData[0] indicates SCBK-D (0x00) or SCBK (0x01)
+        // This must match the key type the ACU sent in osdp_CHLNG
+        if (secureBlockData == null || secureBlockData.Length == 0)
+        {
+            throw new InvalidPayloadException(
+                "osdp_CCRYPT response missing security control block data for key type validation");
+        }
+
+        bool pdClaimsDefaultKey = secureBlockData[0] == 0x00;
+        if (IsDefaultKey != pdClaimsDefaultKey)
+        {
+            throw new SecureChannelKeyTypeMismatchException(IsDefaultKey, pdClaimsDefaultKey);
+        }
+
         MessageSecureChannel.InitializeACU(payload.Skip(8).Take(8).ToArray(),
             payload.Skip(16).Take(16).ToArray());
     }
