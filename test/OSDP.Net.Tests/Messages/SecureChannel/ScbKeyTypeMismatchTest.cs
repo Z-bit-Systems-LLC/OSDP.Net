@@ -229,6 +229,50 @@ public class ScbKeyTypeMismatchTest
     }
 
     /// <summary>
+    /// Verifies that initialization fails when payload is null.
+    /// </summary>
+    [Test]
+    public void GivenNullPayload_InitializationFails()
+    {
+        // Arrange
+        var deviceProxy = new DeviceProxy(
+            address: 0,
+            useCrc: true,
+            useSecureChannel: true,
+            secureChannelKey: NonDefaultKey);
+
+        var secureBlockData = new byte[] { 0x01 }; // SCBK
+
+        // Act & Assert
+        var exception = Assert.Throws<InvalidPayloadException>(
+            () => deviceProxy.InitializeSecureChannel(null, secureBlockData));
+        Assert.That(exception!.Message, Does.Contain("32 bytes"));
+    }
+
+    /// <summary>
+    /// Verifies that initialization fails when payload is too short.
+    /// The osdp_CCRYPT payload must be 32 bytes (cUID[8] + clientRnd[8] + cryptogram[16]).
+    /// </summary>
+    [Test]
+    public void GivenShortPayload_InitializationFails()
+    {
+        // Arrange
+        var deviceProxy = new DeviceProxy(
+            address: 0,
+            useCrc: true,
+            useSecureChannel: true,
+            secureChannelKey: NonDefaultKey);
+
+        var shortPayload = new byte[16]; // Too short, should be 32
+        var secureBlockData = new byte[] { 0x01 }; // SCBK
+
+        // Act & Assert
+        var exception = Assert.Throws<InvalidPayloadException>(
+            () => deviceProxy.InitializeSecureChannel(shortPayload, secureBlockData));
+        Assert.That(exception!.Message, Does.Contain("32 bytes").And.Contain("16"));
+    }
+
+    /// <summary>
     /// Builds a mock osdp_CCRYPT response payload and SCB data for testing.
     /// </summary>
     private static (byte[] payload, byte[] secureBlockData) BuildCcryptResponse(

@@ -166,6 +166,13 @@ internal class DeviceProxy : IComparable<DeviceProxy>
 
     internal void InitializeSecureChannel(byte[] payload, byte[] secureBlockData)
     {
+        // Validate payload: must be 32 bytes (cUID[8] + clientRnd[8] + clientCryptogram[16])
+        if (payload == null || payload.Length < 32)
+        {
+            throw new InvalidPayloadException(
+                $"osdp_CCRYPT payload must be 32 bytes, received {payload?.Length ?? 0}");
+        }
+
         // Validate SCB key type: secureBlockData[0] indicates SCBK-D (0x00) or SCBK (0x01)
         // This must match the key type the ACU sent in osdp_CHLNG
         if (secureBlockData == null || secureBlockData.Length == 0)
