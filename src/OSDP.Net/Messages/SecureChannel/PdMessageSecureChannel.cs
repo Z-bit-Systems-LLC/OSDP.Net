@@ -13,7 +13,7 @@ namespace OSDP.Net.Messages.SecureChannel
 {
     /// <summary>
     /// Message channel which represents the Periphery Device (PD) side of the OSDP 
-    /// communications (i.e. OSDP commands are received and replies are sent out)
+    /// communications (i.e., OSDP commands are received and replies are sent out)
     /// </summary>
     internal class PdMessageSecureChannelBase : MessageSecureChannel
     {
@@ -21,8 +21,8 @@ namespace OSDP.Net.Messages.SecureChannel
         /// Initializes a new instance of the PDMessageChannel
         /// </summary>
         /// <param name="context">Optional security context state to be used by the channel. If one 
-        /// is not provided, new default instance of the context will be created internally. This is
-        /// useful when more than one channel have a need to share the same security state (i.e. in
+        /// is not provided, a new default instance of the context will be created internally. This is
+        /// useful when more than one channel has a need to share the same security state (i.e., in
         /// cases of implementing a spy that analyzes traffic flow through the two inbound and outbound
         /// channels</param>
         /// <param name="loggerFactory">Optional logger factory from which a logger object for the
@@ -42,17 +42,14 @@ namespace OSDP.Net.Messages.SecureChannel
             isIncoming ? GenerateCommandMac(message) : GenerateReplyMac(message);
     }
 
-    internal class PdMessageSecureChannel : PdMessageSecureChannelBase
+    internal class PdMessageSecureChannel(
+        IOsdpConnection connection,
+        SecurityContext context = null,
+        ILoggerFactory loggerFactory = null)
+        : PdMessageSecureChannelBase(context, loggerFactory)
     {
-        private readonly IOsdpConnection _connection;
         private byte[] _expectedServerCryptogram;
         private byte[] _securityKey;
-
-        public PdMessageSecureChannel(IOsdpConnection connection, SecurityContext context = null, ILoggerFactory loggerFactory = null)
-            : base(context, loggerFactory) 
-        {
-            _connection = connection;
-        }
 
         public PdMessageSecureChannel(IOsdpConnection connection, byte[] securityKey, ILoggerFactory loggerFactory = null)
             : this(connection, context: null, loggerFactory)
@@ -70,18 +67,18 @@ namespace OSDP.Net.Messages.SecureChannel
         {
             var commandBuffer = new Collection<byte>();
 
-            if (!await Bus.WaitForStartOfMessage(_connection, commandBuffer, TimeSpan.FromSeconds(8), cancellationToken)
+            if (!await Bus.WaitForStartOfMessage(connection, commandBuffer, TimeSpan.FromSeconds(8), cancellationToken)
                     .ConfigureAwait(false))
             {
                 return null;
             }
 
-            if (!await Bus.WaitForMessageLength(_connection, commandBuffer, cancellationToken).ConfigureAwait(false))
+            if (!await Bus.WaitForMessageLength(connection, commandBuffer, cancellationToken).ConfigureAwait(false))
             {
                 throw new TimeoutException("Timeout waiting for command message length");
             }
 
-            if (!await Bus.WaitForRestOfMessage(_connection, commandBuffer, Bus.ExtractMessageLength(commandBuffer),
+            if (!await Bus.WaitForRestOfMessage(connection, commandBuffer, Bus.ExtractMessageLength(commandBuffer),
                     cancellationToken).ConfigureAwait(false))
             {
                 throw new TimeoutException("Timeout waiting for command of reply message");
@@ -114,7 +111,7 @@ namespace OSDP.Net.Messages.SecureChannel
                 Logger?.LogDebug("Outgoing: {Data}", BitConverter.ToString(replyBuffer));
             }
 
-            await _connection.WriteAsync(replyBuffer);
+            await connection.WriteAsync(replyBuffer);
         }
 
         private async Task<bool> HandleCommand(IncomingMessage command)
@@ -132,7 +129,7 @@ namespace OSDP.Net.Messages.SecureChannel
             if (reply == null) return false;
 
             // If we return NAK from here, it is generally because command didn't pass secure channel validation
-            // in this case, we can only send the reply unsecured
+            // in this case we can only send the reply unsecured
             await SendReply(new OutgoingReply(command, reply), reply.Code == (byte)ReplyType.Nak);
 
             if (command.Type == (byte)CommandType.ServerCryptogram)
@@ -160,13 +157,13 @@ namespace OSDP.Net.Messages.SecureChannel
 
             if (useDefaultKey && !pdHasDefaultKey)
             {
-                // ACU requests SCBK-D but PD has non-default key configured
+                // ACU requests SCBK-D, but PD has a non-default key configured
                 return new Nak(ErrorCode.DoesNotSupportSecurityBlock);
             }
 
             if (!useDefaultKey && pdHasDefaultKey)
             {
-                // ACU requests SCBK but PD only has default key configured
+                // ACU requests a SCBK, but PD only has a default key configured
                 return new Nak(ErrorCode.DoesNotSupportSecurityBlock);
             }
 
@@ -178,9 +175,12 @@ namespace OSDP.Net.Messages.SecureChannel
 
             // TODO: we should validate payload and SCB type
 
-            Context.Enc = SecurityContext.GenerateKey(crypto, new byte[] { 0x01, 0x82, rndA[0], rndA[1], rndA[2], rndA[3], rndA[4], rndA[5] });
-            Context.SMac1 = SecurityContext.GenerateKey(crypto, new byte[] { 0x01, 0x01, rndA[0], rndA[1], rndA[2], rndA[3], rndA[4], rndA[5] });
-            Context.SMac2 = SecurityContext.GenerateKey(crypto, new byte[] { 0x01, 0x02, rndA[0], rndA[1], rndA[2], rndA[3], rndA[4], rndA[5] });
+            Context.Enc = SecurityContext.GenerateKey(crypto, [0x01, 0x82, rndA[0], rndA[1], rndA[2], rndA[3], rndA[4], rndA[5]
+            ]);
+            Context.SMac1 = SecurityContext.GenerateKey(crypto, [0x01, 0x01, rndA[0], rndA[1], rndA[2], rndA[3], rndA[4], rndA[5]
+            ]);
+            Context.SMac2 = SecurityContext.GenerateKey(crypto, [0x01, 0x02, rndA[0], rndA[1], rndA[2], rndA[3], rndA[4], rndA[5]
+            ]);
 
             // TODO: this should be some kind of unique identifier, but a) not sure how to generate it and b) seems
             // the other side presently simply ignores these bytes. So for time being simply leaving this uninitialized
@@ -192,7 +192,7 @@ namespace OSDP.Net.Messages.SecureChannel
             var clientCryptogram = SecurityContext.GenerateKey(crypto, rndA, rndB);
             _expectedServerCryptogram = SecurityContext.GenerateKey(crypto, rndB, rndA);
 
-            // reply with osdp_CCRYPT, returning PD's Id (cUID), its random number and the client cryptogram
+            // reply with osdp_CCRYPT, returning PD's ID (cUID), its random number and the client cryptogram
             return new ChallengeResponse(cUID, rndB, clientCryptogram, useDefaultKey);
         }
         

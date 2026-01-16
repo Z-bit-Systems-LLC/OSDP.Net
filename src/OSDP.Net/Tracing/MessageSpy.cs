@@ -106,7 +106,7 @@ public class MessageSpy
     }
 
     /// <summary>
-    /// Parses raw OSDP data into a Packet, automatically detecting command vs reply.
+    /// Parses raw OSDP data into a Packet, automatically detecting command vs. reply.
     /// </summary>
     /// <param name="data">Raw OSDP message data starting with SOM byte.</param>
     /// <returns>Parsed Packet containing the message details.</returns>

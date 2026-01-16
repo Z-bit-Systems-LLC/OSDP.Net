@@ -23,7 +23,7 @@ namespace OSDP.Net.Tests.Messages.SecureChannel;
 public class ScbKeyTypeMismatchTest
 {
     private static readonly byte[] NonDefaultKey =
-        { 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x01, 0x02, 0x03, 0x04, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
+        [0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x01, 0x02, 0x03, 0x04, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f];
 
     /// <summary>
     /// Verifies that when ACU uses SCBK and PD correctly responds with SCBK,
@@ -95,7 +95,7 @@ public class ScbKeyTypeMismatchTest
         Assert.That(deviceProxy.MessageSecureChannel.IsUsingDefaultKey, Is.False,
             "ACU should be configured to use non-default key (SCBK)");
 
-        // PD uses the correct key for crypto but sends wrong SCB header (claims SCBK-D)
+        // PD uses the correct key for crypto but sends a wrong SCB header (claims SCBK-D)
         var (payload, secureBlockData) = BuildCcryptResponse(
             deviceProxy, NonDefaultKey, pdClaimsDefaultKey: true);
 
@@ -132,7 +132,7 @@ public class ScbKeyTypeMismatchTest
         Assert.That(deviceProxy.MessageSecureChannel.IsUsingDefaultKey, Is.True,
             "ACU should be configured to use default key (SCBK-D)");
 
-        // PD uses the correct key for crypto but sends wrong SCB header (claims SCBK)
+        // PD uses the correct key for crypto but sends a wrong SCB header (claims SCBK)
         var (payload, secureBlockData) = BuildCcryptResponse(
             deviceProxy, SecurityContext.DefaultKey, pdClaimsDefaultKey: false);
 
@@ -169,9 +169,9 @@ public class ScbKeyTypeMismatchTest
             secureChannelKey: SecurityContext.DefaultKey);
 
         Assert.That(deviceProxy.MessageSecureChannel.IsUsingDefaultKey, Is.True,
-            "ACU should be configured to use default key (SCBK-D)");
+            "ACU should be configured to use a default key (SCBK-D)");
 
-        // PD generates cryptogram using a NON-default key AND claims SCBK in SCB
+        // PD generates a cryptogram using a NON-default key AND claims SCBK in SCB
         // This simulates a real key mismatch where PD is actually using a different key
         var (payload, secureBlockData) = BuildCcryptResponse(
             deviceProxy, NonDefaultKey, pdClaimsDefaultKey: false);
@@ -224,12 +224,12 @@ public class ScbKeyTypeMismatchTest
 
         // Act & Assert - empty secureBlockData should throw InvalidPayloadException
         var exception = Assert.Throws<InvalidPayloadException>(
-            () => deviceProxy.InitializeSecureChannel(payload, Array.Empty<byte>()));
+            () => deviceProxy.InitializeSecureChannel(payload, []));
         Assert.That(exception!.Message, Does.Contain("security control block"));
     }
 
     /// <summary>
-    /// Verifies that initialization fails when payload is null.
+    /// Verifies that initialization fails when a payload is null.
     /// </summary>
     [Test]
     public void GivenNullPayload_InitializationFails()
@@ -306,11 +306,10 @@ public class ScbKeyTypeMismatchTest
         using var crypto = context.CreateCypher(true);
 
         // Generate S-ENC key
-        var enc = SecurityContext.GenerateKey(crypto, new byte[]
-        {
+        var enc = SecurityContext.GenerateKey(crypto, [
             0x01, 0x82, serverRnd[0], serverRnd[1], serverRnd[2],
             serverRnd[3], serverRnd[4], serverRnd[5]
-        });
+        ]);
 
         // Generate client cryptogram using S-ENC
         crypto.Key = enc;
