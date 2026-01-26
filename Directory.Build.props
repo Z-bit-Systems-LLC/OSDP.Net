@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>  
     <!-- Common properties for all projects -->
-    <VersionPrefix>5.0.38</VersionPrefix>
+    <VersionPrefix>5.0.39</VersionPrefix>
 	
     <Authors>Jonathan Horvath</Authors>
     <Company>Z-bit Systems LLC</Company>
