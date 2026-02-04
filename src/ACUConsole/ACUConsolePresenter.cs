@@ -534,17 +534,27 @@ namespace ACUConsole
                 () => _controlPanel.OutputControl(_connectionId, address, outputControls));
         }
 
-        public async Task SendReaderLedControl(byte address, byte ledNumber, LedColor color)
+        public async Task SendReaderLedControl(Model.DialogInputs.ReaderLedControlInput input)
         {
             var ledControls = new ReaderLedControls([
-                new ReaderLedControl(0, ledNumber,
-                    TemporaryReaderControlCode.CancelAnyTemporaryAndDisplayPermanent, 1, 0,
-                    LedColor.Red, LedColor.Green, 0,
-                    PermanentReaderControlCode.SetPermanentState, 1, 0, color, color)
+                new ReaderLedControl(
+                    input.ReaderNumber,
+                    input.LedNumber,
+                    input.TemporaryMode,
+                    input.TemporaryOnTime,
+                    input.TemporaryOffTime,
+                    (LedColor)input.TemporaryOnColor,
+                    (LedColor)input.TemporaryOffColor,
+                    input.TemporaryTimer,
+                    input.PermanentMode,
+                    input.PermanentOnTime,
+                    input.PermanentOffTime,
+                    (LedColor)input.PermanentOnColor,
+                    (LedColor)input.PermanentOffColor)
             ]);
-            
-            await ExecuteCommand("Reader LED Control Command", address, 
-                () => _controlPanel.ReaderLedControl(_connectionId, address, ledControls));
+
+            await ExecuteCommand("Reader LED Control Command", input.DeviceAddress,
+                () => _controlPanel.ReaderLedControl(_connectionId, input.DeviceAddress, ledControls));
         }
 
         public async Task SendReaderBuzzerControl(byte address, byte readerNumber, byte repeatTimes)

@@ -631,19 +631,55 @@ namespace ACUConsole
                 return;
             }
 
+            // First show device selection dialog
             var deviceList = _presenter.GetDeviceList();
-            var input = ReaderLedControlDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
-            
-            if (!input.WasCancelled)
+            var deviceSelection = DeviceSelectionDialog.Show("Reader LED Control", _presenter.Settings.Devices.ToArray(), deviceList);
+
+            if (deviceSelection.WasCancelled)
             {
-                try
+                return;
+            }
+
+            try
+            {
+                // Query device capabilities
+                var caps = await _presenter.SendDeviceCapabilities(deviceSelection.SelectedDeviceAddress);
+                var ledCapability = caps.Get(CapabilityFunction.ReaderLEDControl);
+
+                // Build capability notice message
+                string capabilityMessage;
+                if (ledCapability == null)
                 {
-                    await _presenter.SendReaderLedControl(input.DeviceAddress, input.LedNumber, input.Color);
+                    capabilityMessage = "Device does not report LED capability.\n\n" +
+                                        "LED control may not be supported.";
                 }
-                catch (Exception ex)
+                else
                 {
-                    ShowError("Error", ex.Message);
+                    var complianceLevel = ledCapability.Compliance;
+                    var ledsPerReader = ledCapability.NumberOf;
+                    var description = ReaderLedControlDialog.GetComplianceLevelDescription(complianceLevel);
+
+                    capabilityMessage = $"LED Capability Detected:\n\n" +
+                                        $"  Compliance Level: {complianceLevel}\n" +
+                                        $"  Description: {description}\n" +
+                                        $"  LEDs per Reader: {ledsPerReader}";
                 }
+
+                // Show capability notice dialog (informational only)
+                MessageBox.Query(70, 12, "LED Capability", capabilityMessage, "Continue");
+
+                // Show LED settings dialog
+                var input = ReaderLedControlDialog.Show();
+
+                if (!input.WasCancelled)
+                {
+                    input.DeviceAddress = deviceSelection.SelectedDeviceAddress;
+                    await _presenter.SendReaderLedControl(input);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError("Error", ex.Message);
             }
         }
 
@@ -835,7 +871,7 @@ namespace ACUConsole
             {
                 try
                 {
-                    // Check if device supports Extended ID Report (Capability 17)
+                    // Check if the device supports Extended ID Report (Capability 17)
                     var caps = await _presenter.SendDeviceCapabilities(deviceSelection.SelectedDeviceAddress);
                     if (caps.Get(CapabilityFunction.ExtendedIdResponse) == null)
                     {

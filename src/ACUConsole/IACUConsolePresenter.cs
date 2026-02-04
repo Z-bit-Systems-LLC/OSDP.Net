@@ -49,7 +49,7 @@ namespace ACUConsole
         Task SendReaderStatus(byte address);
         Task SendCommunicationConfiguration(byte address, byte newAddress, int newBaudRate);
         Task SendOutputControl(byte address, byte outputNumber, bool activate);
-        Task SendReaderLedControl(byte address, byte ledNumber, LedColor color);
+        Task SendReaderLedControl(Model.DialogInputs.ReaderLedControlInput input);
         Task SendReaderBuzzerControl(byte address, byte readerNumber, byte repeatTimes);
         Task SendReaderTextOutput(byte address, byte readerNumber, string text);
         Task SendManufacturerSpecific(byte address, byte[] vendorCode, byte[] data);
