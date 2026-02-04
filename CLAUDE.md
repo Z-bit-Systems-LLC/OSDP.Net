@@ -102,3 +102,8 @@ foreach ($issue in $issues) {
 
 ## Domain-Specific Terms
 - Maintain consistent terminology for domain-specific terms like APDU, INCITS, OSDP, osdpcap, rmac, Wiegand
+
+## Prompt Aliases
+When the user says these phrases, interpret them as the corresponding command:
+- **"release the code"** → Run the release script with autoconfirm: `pwsh -File ci/release.ps1 -AutoConfirm`
+- **"inspect the code"** → Run ReSharper code inspection and analyze results using the commands in the "Code Inspection" section above: run `jb inspectcode OSDP.Net.sln --output=inspectcode-results.xml`, then use the PowerShell commands to check for errors/warnings and display details
