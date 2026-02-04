@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OSDP.Net;
 using OSDP.Net.Connections;
+using OSDP.Net.Model;
 using OSDP.Net.Model.ReplyData;
 
 namespace CardReader;
@@ -30,7 +31,7 @@ internal class Program
                 .AddFilter("OSDP.Net", LogLevel.Debug);
         });
 
-        var deviceConfiguration = new DeviceConfiguration
+        var deviceConfiguration = new DeviceConfiguration(new ClientIdentification([0x01, 0x02, 0x03], 6))
         {
             Address = deviceAddress,
             RequireSecurity = requireSecurity,

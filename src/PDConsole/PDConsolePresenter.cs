@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using OSDP.Net;
 using OSDP.Net.Connections;
+using OSDP.Net.Model;
 using PDConsole.Configuration;
 
 namespace PDConsole
@@ -48,7 +49,9 @@ namespace PDConsole
                 _cancellationTokenSource = new CancellationTokenSource();
 
                 // Create device configuration
-                var deviceConfig = new DeviceConfiguration
+                var vendorCode = ConvertHexStringToBytes(_settings.Device.VendorCode, 3);
+                var serialNumber = ParseSerialNumber(_settings.Device.SerialNumber);
+                var deviceConfig = new DeviceConfiguration(new ClientIdentification(vendorCode, serialNumber))
                 {
                     Address = _settings.Device.Address,
                     RequireSecurity = _settings.Security.RequireSecureChannel,
@@ -263,7 +266,7 @@ namespace PDConsole
         private void OnDeviceCommandReceived(object sender, CommandEvent e)
         {
             _commandHistory.Add(e);
-            
+
             // Keep only the last 100 commands
             if (_commandHistory.Count > 100)
             {
@@ -271,6 +274,41 @@ namespace PDConsole
             }
 
             CommandReceived?.Invoke(this, e);
+        }
+
+        private static byte[] ConvertHexStringToBytes(string hex, int expectedLength)
+        {
+            hex = hex.Replace(" ", "").Replace("-", "");
+            var bytes = new byte[expectedLength];
+
+            for (int i = 0; i < Math.Min(hex.Length / 2, expectedLength); i++)
+            {
+                bytes[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+            }
+
+            return bytes;
+        }
+
+        private static uint ParseSerialNumber(string serialNumber)
+        {
+            if (string.IsNullOrEmpty(serialNumber))
+            {
+                return 0;
+            }
+
+            // Try to parse as a number first
+            if (uint.TryParse(serialNumber, out var result))
+            {
+                return result;
+            }
+
+            // If not a number, hash the string to get a consistent serial number
+            uint hash = 0;
+            foreach (char c in serialNumber)
+            {
+                hash = (hash * 31) + c;
+            }
+            return hash;
         }
 
         public void Dispose()

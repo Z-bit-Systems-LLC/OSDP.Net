@@ -2,6 +2,7 @@ using System;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using OSDP.Net.Model;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
 using DeviceCapabilities = OSDP.Net.Model.ReplyData.DeviceCapabilities;
@@ -154,7 +155,10 @@ public class IntegrationTestFixtureBase
     protected async Task InitTestTargetDevice(
         Action<DeviceConfiguration> configureDevice = null, int baudRate = IntegrationConsts.DefaultTestBaud)
     {
-        var deviceConfig = new DeviceConfiguration { Address = IntegrationConsts.DefaultTestDeviceAddr };
+        var deviceConfig = new DeviceConfiguration(new ClientIdentification([0x01, 0x02, 0x03], 12345))
+        {
+            Address = IntegrationConsts.DefaultTestDeviceAddr
+        };
         configureDevice?.Invoke(deviceConfig);
 
         DeviceAddress = deviceConfig.Address;
@@ -269,7 +273,10 @@ public class IntegrationTestFixtureBase
 
 public class TestConfiguration
 {
-    public DeviceConfiguration Device { get; } = new () { Address = IntegrationConsts.DefaultTestDeviceAddr };
+    public DeviceConfiguration Device { get; } = new (new ClientIdentification([0x01, 0x02, 0x03], 12345))
+    {
+        Address = IntegrationConsts.DefaultTestDeviceAddr
+    };
 
     internal PanelConfiguration Panel { get; } = new ();
 }

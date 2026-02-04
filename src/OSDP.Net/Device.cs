@@ -99,7 +99,7 @@ public class Device : IDisposable
         {
             var currentContextCount = _connectionContextCounter;
             var channel = new PdMessageSecureChannel(
-                incomingConnection, _deviceConfiguration.SecurityKey, loggerFactory: _loggerFactory)
+                incomingConnection, _deviceConfiguration.SecurityKey, _deviceConfiguration.Identification.ToBytes(), _loggerFactory)
             {
                 Address = _deviceConfiguration.Address,
                 SecurityMode = !_deviceConfiguration.RequireSecurity
@@ -540,19 +540,28 @@ public class Device : IDisposable
 
 
 /// <summary>
-/// Represents a set of configuration options to be used when initializing 
+/// Represents a set of configuration options to be used when initializing
 /// a new instance of the Device class
 /// </summary>
 public class DeviceConfiguration : ICloneable
 {
     /// <summary>
-    /// Address the device is assigned 
+    /// Creates a new DeviceConfiguration with the required client identification.
+    /// </summary>
+    /// <param name="identification">Client identification used during secure channel establishment</param>
+    public DeviceConfiguration(ClientIdentification identification)
+    {
+        Identification = identification;
+    }
+
+    /// <summary>
+    /// Address the device is assigned
     /// </summary>
     public byte Address { get; set; }
 
     /// <summary>
     /// Indicates whether the device will require an establishment of a secure
-    /// channel. When this value is 'true', PD will be initialized with SCBK (non-default 
+    /// channel. When this value is 'true', PD will be initialized with SCBK (non-default
     /// SecurityKey) in full-security mode; or with SCBK_D in "installation
     /// mode" if SecurityKey is not set to a non-default installation value.
     /// </summary>
@@ -570,8 +579,18 @@ public class DeviceConfiguration : ICloneable
     /// decision, by default, this list will include IdReport, DeviceCapabilities and CommSet
     /// commands, but a PD manufacturer can use this property to override that default
     /// </summary>
-    public CommandType[] AllowUnsecured { get; set; } = [
-        CommandType.IdReport, CommandType.DeviceCapabilities, CommandType.CommunicationSet];
+    public CommandType[] AllowUnsecured { get; set; } =
+    [
+        CommandType.IdReport, CommandType.DeviceCapabilities, CommandType.CommunicationSet
+    ];
+
+    /// <summary>
+    /// Client identification (cUID) used during secure channel establishment.
+    /// Composed of vendor code (3 bytes) and serial number (4 bytes).
+    /// This is required for OSDP secure channel compliance.
+    /// See OSDP specification for osdp_CCRYPT response format.
+    /// </summary>
+    public ClientIdentification Identification { get; }
 
     /// <summary>
     /// Creates a new object that is a copy of the current instance

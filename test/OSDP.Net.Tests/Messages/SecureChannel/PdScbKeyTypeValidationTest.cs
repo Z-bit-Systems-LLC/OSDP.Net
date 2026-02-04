@@ -107,7 +107,8 @@ public class PdScbKeyTypeValidationTest
     private static TestPdMessageSecureChannel CreateTestChannel(byte[] securityKey)
     {
         var mockConnection = new Mock<IOsdpConnection>();
-        return new TestPdMessageSecureChannel(mockConnection.Object, securityKey);
+        var clientUID = new byte[] { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+        return new TestPdMessageSecureChannel(mockConnection.Object, securityKey, clientUID);
     }
 
     /// <summary>
@@ -181,8 +182,8 @@ public class PdScbKeyTypeValidationTest
     /// </summary>
     private class TestPdMessageSecureChannel : PdMessageSecureChannel
     {
-        public TestPdMessageSecureChannel(IOsdpConnection connection, byte[] securityKey)
-            : base(connection, securityKey)
+        public TestPdMessageSecureChannel(IOsdpConnection connection, byte[] securityKey, byte[] clientUID = null)
+            : base(connection, securityKey, clientUID)
         {
         }
 

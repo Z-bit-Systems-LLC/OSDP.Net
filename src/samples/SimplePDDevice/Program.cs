@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OSDP.Net;
 using OSDP.Net.Connections;
+using OSDP.Net.Model;
 
 namespace SimplePDDevice;
 
@@ -41,7 +42,8 @@ internal class Program
         var logger = loggerFactory.CreateLogger<Program>();
 
         // Device configuration
-        var deviceConfiguration = new DeviceConfiguration
+        // Identification uses the same vendor code and serial number as HandleIdReport()
+        var deviceConfiguration = new DeviceConfiguration(new ClientIdentification([0x01, 0x02, 0x03], 12345))
         {
             Address = deviceAddress,
             RequireSecurity = requireSecurity,

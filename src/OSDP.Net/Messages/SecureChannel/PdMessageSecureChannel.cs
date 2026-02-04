@@ -50,11 +50,22 @@ namespace OSDP.Net.Messages.SecureChannel
     {
         private byte[] _expectedServerCryptogram;
         private byte[] _securityKey;
+        private readonly byte[] _clientUID;
 
-        public PdMessageSecureChannel(IOsdpConnection connection, byte[] securityKey, ILoggerFactory loggerFactory = null)
+        public PdMessageSecureChannel(IOsdpConnection connection, byte[] securityKey, byte[] clientUID, ILoggerFactory loggerFactory = null)
             : this(connection, context: null, loggerFactory)
         {
             _securityKey = securityKey;
+
+            if (clientUID == null)
+            {
+                throw new ArgumentNullException(nameof(clientUID));
+            }
+            if (clientUID.Length != 8)
+            {
+                throw new ArgumentException("Client UID must be exactly 8 bytes", nameof(clientUID));
+            }
+            _clientUID = clientUID;
         }
 
         public byte Address { get; set; }
@@ -182,9 +193,9 @@ namespace OSDP.Net.Messages.SecureChannel
             Context.SMac2 = SecurityContext.GenerateKey(crypto, [0x01, 0x02, rndA[0], rndA[1], rndA[2], rndA[3], rndA[4], rndA[5]
             ]);
 
-            // TODO: this should be some kind of unique identifier, but a) not sure how to generate it and b) seems
-            // the other side presently simply ignores these bytes. So for time being simply leaving this uninitialized
-            byte[] cUID = new byte[8];
+            // Client UID is vendor code (3 bytes) + serial number (4 bytes) + padding (1 byte).
+            // See OSDP specification and GitHub issue #191.
+            byte[] cUID = _clientUID;
             byte[] rndB = new byte[8];
 
             new Random().NextBytes(rndB);

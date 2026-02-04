@@ -115,7 +115,10 @@ A PD responds to commands from an ACU and can report events.
 ```csharp
 public class MyDevice : Device
 {
-    public MyDevice() : base(new DeviceConfiguration
+    // DeviceConfiguration requires ClientIdentification with vendor code and serial number
+    // These values should match what HandleIdReport() returns
+    public MyDevice() : base(new DeviceConfiguration(
+        new ClientIdentification([0x12, 0x34, 0x56], 12345))
     {
         Address = 0,
         RequireSecurity = true,
@@ -127,32 +130,22 @@ public class MyDevice : Device
     // Override command handlers as needed
     protected override PayloadData HandleIdReport()
     {
-        return new DeviceIdentification
-        {
-            VendorCode = new byte[] { 0x12, 0x34, 0x56 },
-            ModelNumber = 1,
-            Version = 1,
-            SerialNumber = 12345,
-            FirmwareMajor = 1,
-            FirmwareMinor = 0,
-            FirmwareBuild = 1
-        };
+        return new DeviceIdentification(
+            vendorCode: [0x12, 0x34, 0x56],
+            modelNumber: 1,
+            version: 1,
+            serialNumber: 12345,
+            firmwareMajor: 1,
+            firmwareMinor: 0,
+            firmwareBuild: 1
+        );
     }
 
     protected override PayloadData HandleDeviceCapabilities()
     {
-        return new Model.ReplyData.DeviceCapabilities
-        {
-            Capabilities = new[]
-            {
-                new DeviceCapability
-                {
-                    Function = CapabilityFunction.ContactStatusMonitoring,
-                    Compliance = 1,
-                    NumberOf = 4
-                }
-            }
-        };
+        return new DeviceCapabilities([
+            new DeviceCapability(CapabilityFunction.ContactStatusMonitoring, 1, 4)
+        ]);
     }
 }
 
@@ -220,16 +213,15 @@ var tcpListener = new TcpConnectionListener(IPAddress.Any, 3001);
 
 ```csharp
 // Device configuration with security
-var deviceConfig = new DeviceConfiguration
+// ClientIdentification uses vendor code (3 bytes) + serial number for the secure channel cUID
+var deviceConfig = new DeviceConfiguration(new ClientIdentification([0x12, 0x34, 0x56], 12345))
 {
     Address = 0,
     RequireSecurity = true,
     SecurityKey = new byte[] { 0x4A, 0x7D, 0x2F, 0x91, 0xC3, 0x5E, 0x88, 0x12,
-                              0xB6, 0x3C, 0xF4, 0x69, 0xA8, 0x1D, 0xE7, 0x52 }
+                              0xB6, 0x3C, 0xF4, 0x69, 0xA8, 0x1D, 0xE7, 0x52 },
+    AllowUnsecured = [CommandType.Poll, CommandType.IdReport]
 };
-
-// Allow certain commands without security (if needed)
-deviceConfig.AllowUnsecured = new[] { CommandType.Poll, CommandType.IdReport };
 ```
 
 ### Updating Security Keys
