@@ -10,6 +10,11 @@ The `/memory` directory contains local session memory for Claude Code:
 - **Update as needed**: Remove completed items, add new discoveries, track ongoing improvements
 - **Files**: Markdown documents with implementation notes, future improvements, architectural decisions, etc.
 
+## PowerShell
+- **Always use PowerShell Core (`pwsh`)** instead of Windows PowerShell (`powershell`)
+- Scripts in this repository use modern PowerShell features (e.g., multi-argument `Join-Path`) that require PowerShell Core
+- Run scripts with: `pwsh -File script.ps1`
+
 ## Build Commands
 - Build project: `dotnet build`
 - Build with specific configuration: `dotnet build --configuration Release`
@@ -24,11 +29,11 @@ The `/memory` directory contains local session memory for Claude Code:
 - Always run ReSharper code inspection before committing changes
 - Run inspection: `jb inspectcode OSDP.Net.sln --output=inspectcode-results.xml`
 - The command will create a SARIF JSON report with inspection results
-- Check counts:
+- Check counts (run with `pwsh`):
   - Errors: `(Select-String -Path inspectcode-results.xml -Pattern '"level": "error",' -SimpleMatch).Count` (must be 0)
   - Warnings: `(Select-String -Path inspectcode-results.xml -Pattern '"level": "warning",' -SimpleMatch).Count` (must be 0)
-- View details of errors and warnings:
-```powershell
+- View details of errors and warnings (run with `pwsh`):
+```pwsh
 $json = Get-Content inspectcode-results.xml -Raw | ConvertFrom-Json
 $issues = $json.runs[0].results | Where-Object { $_.level -eq 'error' -or $_.level -eq 'warning' }
 foreach ($issue in $issues) {
