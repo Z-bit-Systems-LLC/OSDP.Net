@@ -659,10 +659,9 @@ namespace ACUConsole
                     var ledsPerReader = ledCapability.NumberOf;
                     var description = ReaderLedControlDialog.GetComplianceLevelDescription(complianceLevel);
 
-                    capabilityMessage = $"LED Capability Detected:\n\n" +
-                                        $"  Compliance Level: {complianceLevel}\n" +
-                                        $"  Description: {description}\n" +
-                                        $"  LEDs per Reader: {ledsPerReader}";
+                    capabilityMessage = $"Compliance Level: {complianceLevel}\n" +
+                                        $" LEDs per Reader: {ledsPerReader}\n\n" +
+                                        description;
                 }
 
                 // Show capability notice dialog (informational only)
@@ -719,10 +718,9 @@ namespace ACUConsole
                     var buzzersPerReader = buzzerCapability.NumberOf;
                     var description = ReaderBuzzerControlDialog.GetComplianceLevelDescription(complianceLevel);
 
-                    capabilityMessage = $"Buzzer Capability Detected:\n\n" +
-                                        $"  Compliance Level: {complianceLevel}\n" +
-                                        $"  Description: {description}\n" +
-                                        $"  Buzzers per Reader: {buzzersPerReader}";
+                    capabilityMessage = $"  Compliance Level: {complianceLevel}\n" +
+                                        $"Buzzers per Reader: {buzzersPerReader}\n\n" +
+                                        description;
                 }
 
                 // Show capability notice dialog (informational only)
@@ -903,36 +901,56 @@ namespace ACUConsole
             var deviceList = _presenter.GetDeviceList();
             var deviceSelection = DeviceSelectionDialog.Show("Extended ID Report", _presenter.Settings.Devices.ToArray(), deviceList);
 
-            if (!deviceSelection.WasCancelled)
+            if (deviceSelection.WasCancelled)
             {
-                try
+                return;
+            }
+
+            try
+            {
+                // Check if the device supports Extended ID Report (Capability 17)
+                var caps = await _presenter.SendDeviceCapabilities(deviceSelection.SelectedDeviceAddress);
+                var extendedIdCapability = caps.Get(CapabilityFunction.ExtendedIdResponse);
+
+                if (extendedIdCapability == null)
                 {
-                    // Check if the device supports Extended ID Report (Capability 17)
-                    var caps = await _presenter.SendDeviceCapabilities(deviceSelection.SelectedDeviceAddress);
-                    if (caps.Get(CapabilityFunction.ExtendedIdResponse) == null)
+                    // Show notice dialog allowing user to continue
+                    var shouldContinue = MessageBox.Query(
+                        70, 10,
+                        "Extended ID Capability",
+                        "Device does not report Extended ID capability.\n\n" +
+                        "Do you want to send the command anyway?",
+                        1,
+                        "Cancel",
+                        "Continue");
+
+                    if (shouldContinue == 0) // User clicked Cancel
                     {
-                        // Show notice dialog allowing user to continue
-                        var shouldContinue = MessageBox.Query(
-                            70, 10,
-                            "Notice",
-                            "Device does not advertise support for Extended ID Report (Capability 17).\n\nDo you want to send the command anyway?",
-                            1,
-                            "Cancel",
-                            "Continue");
-
-                        if (shouldContinue == 0) // User clicked Cancel
-                        {
-                            return;
-                        }
+                        return;
                     }
-
-                    await _presenter.SendExtendedIdReport(deviceSelection.SelectedDeviceAddress);
-                    // Extended ID information is logged in the event history
                 }
-                catch (Exception ex)
+                else
                 {
-                    ShowError("Error", ex.Message);
+                    var complianceLevel = extendedIdCapability.Compliance;
+                    var description = complianceLevel switch
+                    {
+                        0 => "Not supported",
+                        1 => "Extended ID response supported",
+                        _ => $"Unknown compliance level: {complianceLevel}"
+                    };
+
+                    var capabilityMessage = $"Compliance Level: {complianceLevel}\n\n" +
+                                            description;
+
+                    MessageBox.Query(70, 10, "Extended ID Capability", capabilityMessage, "Continue");
                 }
+
+                await _presenter.SendExtendedIdReport(deviceSelection.SelectedDeviceAddress);
+                // Extended ID information is logged in the event history
+            }
+            catch (Exception ex)
+            {
+                ShowError("Error", ex.Message);
             }
         }
 
