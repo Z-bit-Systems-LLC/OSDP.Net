@@ -557,11 +557,17 @@ namespace ACUConsole
                 () => _controlPanel.ReaderLedControl(_connectionId, input.DeviceAddress, ledControls));
         }
 
-        public async Task SendReaderBuzzerControl(byte address, byte readerNumber, byte repeatTimes)
+        public async Task SendReaderBuzzerControl(Model.DialogInputs.ReaderBuzzerControlInput input)
         {
-            var buzzerControl = new ReaderBuzzerControl(readerNumber, ToneCode.Default, 2, 2, repeatTimes);
-            await ExecuteCommand("Reader Buzzer Control Command", address, 
-                () => _controlPanel.ReaderBuzzerControl(_connectionId, address, buzzerControl));
+            var buzzerControl = new ReaderBuzzerControl(
+                input.ReaderNumber,
+                input.ToneCode,
+                input.OnTime,
+                input.OffTime,
+                input.Count);
+
+            await ExecuteCommand("Reader Buzzer Control Command", input.DeviceAddress,
+                () => _controlPanel.ReaderBuzzerControl(_connectionId, input.DeviceAddress, buzzerControl));
         }
 
         public async Task SendReaderTextOutput(byte address, byte readerNumber, string text)

@@ -50,7 +50,7 @@ namespace ACUConsole
         Task SendCommunicationConfiguration(byte address, byte newAddress, int newBaudRate);
         Task SendOutputControl(byte address, byte outputNumber, bool activate);
         Task SendReaderLedControl(Model.DialogInputs.ReaderLedControlInput input);
-        Task SendReaderBuzzerControl(byte address, byte readerNumber, byte repeatTimes);
+        Task SendReaderBuzzerControl(Model.DialogInputs.ReaderBuzzerControlInput input);
         Task SendReaderTextOutput(byte address, byte readerNumber, string text);
         Task SendManufacturerSpecific(byte address, byte[] vendorCode, byte[] data);
         Task SendEncryptionKeySet(byte address, byte[] key);

@@ -691,19 +691,55 @@ namespace ACUConsole
                 return;
             }
 
+            // First show device selection dialog
             var deviceList = _presenter.GetDeviceList();
-            var input = ReaderBuzzerControlDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
-            
-            if (!input.WasCancelled)
+            var deviceSelection = DeviceSelectionDialog.Show("Reader Buzzer Control", _presenter.Settings.Devices.ToArray(), deviceList);
+
+            if (deviceSelection.WasCancelled)
             {
-                try
+                return;
+            }
+
+            try
+            {
+                // Query device capabilities
+                var caps = await _presenter.SendDeviceCapabilities(deviceSelection.SelectedDeviceAddress);
+                var buzzerCapability = caps.Get(CapabilityFunction.ReaderAudibleOutput);
+
+                // Build capability notice message
+                string capabilityMessage;
+                if (buzzerCapability == null)
                 {
-                    await _presenter.SendReaderBuzzerControl(input.DeviceAddress, input.ReaderNumber, input.RepeatTimes);
+                    capabilityMessage = "Device does not report buzzer capability.\n\n" +
+                                        "Buzzer control may not be supported.";
                 }
-                catch (Exception ex)
+                else
                 {
-                    ShowError("Error", ex.Message);
+                    var complianceLevel = buzzerCapability.Compliance;
+                    var buzzersPerReader = buzzerCapability.NumberOf;
+                    var description = ReaderBuzzerControlDialog.GetComplianceLevelDescription(complianceLevel);
+
+                    capabilityMessage = $"Buzzer Capability Detected:\n\n" +
+                                        $"  Compliance Level: {complianceLevel}\n" +
+                                        $"  Description: {description}\n" +
+                                        $"  Buzzers per Reader: {buzzersPerReader}";
                 }
+
+                // Show capability notice dialog (informational only)
+                MessageBox.Query(70, 12, "Buzzer Capability", capabilityMessage, "Continue");
+
+                // Show buzzer settings dialog
+                var input = ReaderBuzzerControlDialog.Show();
+
+                if (!input.WasCancelled)
+                {
+                    input.DeviceAddress = deviceSelection.SelectedDeviceAddress;
+                    await _presenter.SendReaderBuzzerControl(input);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError("Error", ex.Message);
             }
         }
 
