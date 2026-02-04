@@ -1,3 +1,6 @@
+using System.Linq;
+using OSDP.Net.Connections;
+
 namespace ACUConsole
 {
     /// <summary>
@@ -6,17 +9,9 @@ namespace ACUConsole
     public static class Constants
     {
         /// <summary>
-        /// Standard baud rates supported by OSDP devices
+        /// Standard baud rates supported by OSDP devices as strings for UI display
         /// </summary>
         public static readonly string[] StandardBaudRates =
-        [
-            "9600",
-            "19200",
-            "38400",
-            "57600",
-            "115200",
-            "230400",
-            "460800"
-        ];
+            SerialPortOsdpConnection.StandardBaudRates.Select(r => r.ToString()).ToArray();
     }
 }

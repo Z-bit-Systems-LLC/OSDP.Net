@@ -1,5 +1,7 @@
 using System;
 using System.IO.Ports;
+using System.Linq;
+using OSDP.Net.Connections;
 using PDConsole.Configuration;
 using PDConsole.Extensions;
 using PDConsole.Model.DialogInputs;
@@ -13,15 +15,7 @@ namespace PDConsole.Dialogs
     public static class SerialConnectionDialog
     {
         private static readonly string[] StandardBaudRates =
-        [
-            "9600",
-            "19200",
-            "38400",
-            "57600",
-            "115200",
-            "230400",
-            "460800"
-        ];
+            SerialPortOsdpConnection.StandardBaudRates.Select(r => r.ToString()).ToArray();
 
         /// <summary>
         /// Shows the serial connection configuration dialog and returns user input
