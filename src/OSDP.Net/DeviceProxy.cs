@@ -39,7 +39,6 @@ internal class DeviceProxy : IComparable<DeviceProxy>
 
         if (UseSecureChannel)
         {
-#if NET8_0_OR_GREATER
             if (secureChannelVersion == SecureChannelVersion.V2)
             {
                 SecureChannelKey = secureChannelKey ?? throw new ArgumentNullException(nameof(secureChannelKey),
@@ -53,7 +52,6 @@ internal class DeviceProxy : IComparable<DeviceProxy>
                 MessageSecureChannel = new SC2ACUMessageSecureChannel(new SC2SecurityContext(SecureChannelKey));
             }
             else
-#endif
             {
                 SecureChannelKey = secureChannelKey ?? SecurityContext.DefaultKey;
                 IsDefaultKey = SecurityContext.DefaultKey.SequenceEqual(SecureChannelKey);
@@ -190,7 +188,6 @@ internal class DeviceProxy : IComparable<DeviceProxy>
 
     internal void InitializeSecureChannel(byte[] payload, byte[] secureBlockData)
     {
-#if NET8_0_OR_GREATER
         if (SecureChannelVersion == SecureChannelVersion.V2)
         {
             // SC2 payload: cUID[8] + RndB[16] + cryptogram[32] = 56 bytes
@@ -206,7 +203,6 @@ internal class DeviceProxy : IComparable<DeviceProxy>
             ((SC2MessageSecureChannel)MessageSecureChannel).InitializeACU(clientRnd, clientCryptogram, cUID);
             return;
         }
-#endif
 
         // SC1 payload: cUID[8] + clientRnd[8] + clientCryptogram[16] = 32 bytes
         if (payload == null || payload.Length < 32)

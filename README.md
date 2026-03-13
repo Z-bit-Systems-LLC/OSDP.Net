@@ -196,7 +196,28 @@ export TERM=xterm-256color
 
 For more information, see the [Terminal.Gui PuTTY discussion](https://github.com/gui-cs/Terminal.Gui/discussions/1455).
 
-## Documentation 
+## Secure Channel v2 (SC2)
+
+OSDP.Net includes a demo implementation of Secure Channel v2 (SC2), which upgrades from AES-128 CBC (SC1) to AES-256 GCM authenticated encryption with KMAC256 key derivation. SC2 is available on all supported target frameworks.
+
+```c#
+// SC2 requires an explicit 32-byte key (no default key)
+byte[] sc2Key = new byte[32]; // your 256-bit key
+panel.AddDevice(connectionId, address, useCrc: true, useSecureChannel: true,
+    secureChannelKey: sc2Key, secureChannelVersion: SecureChannelVersion.V2);
+```
+
+### Platform-Specific Crypto Performance
+
+| Target Framework | KMAC256 | AES-GCM | Hardware Acceleration |
+|---|---|---|---|
+| .NET 10+ | Native BCL (where supported) or BouncyCastle fallback | Native BCL | ✅ AES-NI |
+| .NET 8 | BouncyCastle | Native BCL | ✅ AES-NI |
+| .NET Standard 2.0 / .NET Framework | BouncyCastle | BouncyCastle | ❌ Software only |
+
+> **Note:** On .NET Standard 2.0 and .NET Framework targets, SC2 uses BouncyCastle's managed AES-GCM implementation which does not benefit from AES-NI hardware acceleration. This is suitable for low-throughput environments but may have reduced performance compared to .NET 8+ targets. For production deployments with high message volumes, .NET 8 or later is recommended.
+
+## Documentation
 
 - [PowerShell Support](docs/powershell.md)
 - [Supported Commands and Replies](docs/supported_commands.md)

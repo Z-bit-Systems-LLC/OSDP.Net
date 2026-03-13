@@ -1,4 +1,3 @@
-#if NET8_0_OR_GREATER
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -83,7 +82,7 @@ internal class SC2PdMessageSecureChannel : SC2PdMessageSecureChannelBase
     /// <summary>
     /// Commands allowed without secure channel.
     /// </summary>
-    public CommandType[] AllowUnsecured { get; set; } = [];
+    public CommandType[] AllowUnsecured { get; set; } = Array.Empty<CommandType>();
 
     /// <summary>
     /// Reads the next command from the ACU, handling SC2 handshake messages internally.
@@ -194,7 +193,10 @@ internal class SC2PdMessageSecureChannel : SC2PdMessageSecureChannelBase
 
         byte[] rndA = command.Payload;
         byte[] rndB = new byte[16];
-        RandomNumberGenerator.Fill(rndB);
+        using (var rng = RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(rndB);
+        }
 
         SC2Context.DeriveSessionKeys(rndA, rndB);
         SC2Context.ClientUID = (byte[])_clientUID.Clone();
@@ -259,4 +261,3 @@ internal class SC2PdMessageSecureChannel : SC2PdMessageSecureChannelBase
         _securityKey = keySetPayload.KeyData;
     }
 }
-#endif

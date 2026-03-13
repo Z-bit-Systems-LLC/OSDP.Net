@@ -1,8 +1,5 @@
-#if NET8_0_OR_GREATER
 using System;
 using System.Security.Cryptography;
-using Org.BouncyCastle.Crypto.Macs;
-using Org.BouncyCastle.Crypto.Parameters;
 
 namespace OSDP.Net.Messages.SecureChannel;
 
@@ -88,7 +85,10 @@ internal class SC2SecurityContext
         SENC = Array.Empty<byte>();
         SNONCE = Array.Empty<byte>();
         ServerCryptogram = Array.Empty<byte>();
-        RandomNumberGenerator.Fill(ServerRandomNumber);
+        using (var rng = RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(ServerRandomNumber);
+        }
     }
 
     /// <summary>
@@ -102,13 +102,13 @@ internal class SC2SecurityContext
         var sencInput = new byte[rndA.Length + rndB.Length];
         Buffer.BlockCopy(rndA, 0, sencInput, 0, rndA.Length);
         Buffer.BlockCopy(rndB, 0, sencInput, rndA.Length, rndB.Length);
-        SENC = Kmac256(_scbk, sencInput, KeySize * 8);
+        SENC = SC2CryptoProvider.Kmac256(_scbk, sencInput, KeySize * 8);
 
         // SNONCE = KMAC256(SCBK, RNDB || RNDA, 256, "")
         var snonceInput = new byte[rndB.Length + rndA.Length];
         Buffer.BlockCopy(rndB, 0, snonceInput, 0, rndB.Length);
         Buffer.BlockCopy(rndA, 0, snonceInput, rndB.Length, rndA.Length);
-        SNONCE = Kmac256(_scbk, snonceInput, KeySize * 8);
+        SNONCE = SC2CryptoProvider.Kmac256(_scbk, snonceInput, KeySize * 8);
     }
 
     /// <summary>
@@ -215,23 +215,4 @@ internal class SC2SecurityContext
         Counter = 0;
         IsSecurityEstablished = true;
     }
-
-    /// <summary>
-    /// Computes a KMAC256 message authentication code using BouncyCastle.
-    /// </summary>
-    /// <param name="key">The key bytes.</param>
-    /// <param name="data">The input data.</param>
-    /// <param name="outputBitLength">The desired output length in bits.</param>
-    /// <returns>The KMAC256 output.</returns>
-    private static byte[] Kmac256(byte[] key, byte[] data, int outputBitLength)
-    {
-        var outputLength = outputBitLength / 8;
-        var kmac = new KMac(256, Array.Empty<byte>());
-        kmac.Init(new KeyParameter(key));
-        kmac.BlockUpdate(data, 0, data.Length);
-        var output = new byte[outputLength];
-        kmac.OutputFinal(output, 0, outputLength);
-        return output;
-    }
 }
-#endif

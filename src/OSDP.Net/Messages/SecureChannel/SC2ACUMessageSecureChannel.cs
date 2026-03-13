@@ -1,4 +1,3 @@
-#if NET8_0_OR_GREATER
 using Microsoft.Extensions.Logging;
 
 namespace OSDP.Net.Messages.SecureChannel;
@@ -19,4 +18,3 @@ internal class SC2ACUMessageSecureChannel : SC2MessageSecureChannel
     {
     }
 }
-#endif

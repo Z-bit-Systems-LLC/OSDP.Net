@@ -78,7 +78,6 @@ internal class OutgoingMessage : Message
         {
             if (isSC2)
             {
-#if NET8_0_OR_GREATER
                 // SC2: prepend command byte to payload and encrypt together
                 // Pass header as AAD (Associated Authenticated Data) for GCM
                 var plaintext = new byte[1 + payload.Length];
@@ -87,7 +86,6 @@ internal class OutgoingMessage : Message
                 var aad = buffer.AsSpan(0, currentLength);
                 ((SC2MessageSecureChannel)secureChannel).EncodePayload(plaintext, buffer.AsSpan(currentLength), aad);
                 currentLength += plaintext.Length;
-#endif
             }
             else
             {

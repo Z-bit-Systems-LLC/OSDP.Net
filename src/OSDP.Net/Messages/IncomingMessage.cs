@@ -57,14 +57,10 @@ namespace OSDP.Net.Messages
                     ciphertextWithTag.Length - channel.AuthenticationTagSize,
                     channel.AuthenticationTagSize).ToArray();
 
-#if NET8_0_OR_GREATER
                 // DecodePayload handles GCM decryption and authentication validation
                 // Pass header bytes as AAD (Associated Authenticated Data) for GCM
                 var aad = data.Slice(0, ciphertextWithTagStart);
                 var decrypted = ((SC2MessageSecureChannel)channel).DecodePayload(ciphertextWithTag, aad);
-#else
-                var decrypted = channel.DecodePayload(ciphertextWithTag);
-#endif
                 Type = decrypted[0];
                 Payload = decrypted.Length > 1
                     ? decrypted.AsSpan(1).ToArray()

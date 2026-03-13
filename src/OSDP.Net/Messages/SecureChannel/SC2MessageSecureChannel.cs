@@ -1,6 +1,4 @@
-#if NET8_0_OR_GREATER
 using System;
-using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 
 namespace OSDP.Net.Messages.SecureChannel;
@@ -83,8 +81,8 @@ internal abstract class SC2MessageSecureChannel : IMessageSecureChannel
 
         var nonce = SC2Context.ComputeNonce();
         var tag = new byte[16];
-        using var aesGcm = new AesGcm(SC2Context.SENC, 16);
-        aesGcm.Encrypt(nonce, payload, destination.Slice(0, payload.Length), tag, associatedData);
+        SC2CryptoProvider.AesGcmEncrypt(SC2Context.SENC, nonce, payload,
+            destination.Slice(0, payload.Length), tag, associatedData);
         _lastTag = tag;
         SC2Context.IncrementCounter();
     }
@@ -121,8 +119,7 @@ internal abstract class SC2MessageSecureChannel : IMessageSecureChannel
 
         var nonce = SC2Context.ComputeNonce();
         var plaintext = new byte[ciphertextLength];
-        using var aesGcm = new AesGcm(SC2Context.SENC, 16);
-        aesGcm.Decrypt(nonce, ciphertext, tag, plaintext, associatedData);
+        SC2CryptoProvider.AesGcmDecrypt(SC2Context.SENC, nonce, ciphertext, tag, plaintext, associatedData);
         SC2Context.IncrementCounter();
         _lastTag = tag.ToArray();
         return plaintext;
@@ -173,4 +170,3 @@ internal abstract class SC2MessageSecureChannel : IMessageSecureChannel
         return payload;
     }
 }
-#endif

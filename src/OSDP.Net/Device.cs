@@ -98,7 +98,6 @@ public class Device : IDisposable
         try
         {
             var currentContextCount = _connectionContextCounter;
-#if NET8_0_OR_GREATER
             if (_deviceConfiguration.SecureChannelVersion == SecureChannelVersion.V2)
             {
                 var channel = new SC2PdMessageSecureChannel(
@@ -109,13 +108,12 @@ public class Device : IDisposable
                     SecurityMode = !_deviceConfiguration.RequireSecurity
                         ? SecurityMode.Unsecured
                         : SecurityMode.FullSecurity,
-                    AllowUnsecured = _deviceConfiguration.AllowUnsecured ?? [],
+                    AllowUnsecured = _deviceConfiguration.AllowUnsecured ?? Array.Empty<CommandType>(),
                 };
 
                 await RunClientLoop(channel, incomingConnection, currentContextCount);
             }
             else
-#endif
             {
                 var channel = new PdMessageSecureChannel(
                     incomingConnection, _deviceConfiguration.SecurityKey,
@@ -128,7 +126,7 @@ public class Device : IDisposable
                            _deviceConfiguration.SecurityKey.SequenceEqual(SecurityContext.DefaultKey))
                         ? SecurityMode.InstallMode
                         : SecurityMode.FullSecurity,
-                    AllowUnsecured = _deviceConfiguration.AllowUnsecured ?? [],
+                    AllowUnsecured = _deviceConfiguration.AllowUnsecured ?? Array.Empty<CommandType>(),
                 };
 
                 await RunClientLoop(channel, incomingConnection, currentContextCount);
@@ -166,7 +164,6 @@ public class Device : IDisposable
         }
     }
 
-#if NET8_0_OR_GREATER
     private async Task RunClientLoop(SC2PdMessageSecureChannel channel, IOsdpConnection connection, int contextCount)
     {
         while (connection.IsOpen && !_cancellationTokenSource.Token.IsCancellationRequested)
@@ -184,7 +181,6 @@ public class Device : IDisposable
             }
         }
     }
-#endif
 
     /// <summary>
     /// Stops listening for OSDP messages on the device.
@@ -620,7 +616,7 @@ public class DeviceConfiguration : ICloneable
 
     /// <summary>
     /// The secure channel version to use (V1 or V2).
-    /// SC2 requires a 32-byte key and .NET 8 or later.
+    /// SC2 requires a 32-byte key.
     /// </summary>
     public SecureChannelVersion SecureChannelVersion { get; set; } = SecureChannelVersion.V1;
 
