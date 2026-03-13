@@ -98,33 +98,40 @@ public class Device : IDisposable
         try
         {
             var currentContextCount = _connectionContextCounter;
-            var channel = new PdMessageSecureChannel(
-                incomingConnection, _deviceConfiguration.SecurityKey, _deviceConfiguration.Identification.ToBytes(), _loggerFactory)
+#if NET8_0_OR_GREATER
+            if (_deviceConfiguration.SecureChannelVersion == SecureChannelVersion.V2)
             {
-                Address = _deviceConfiguration.Address,
-                SecurityMode = !_deviceConfiguration.RequireSecurity
-                    ? SecurityMode.Unsecured
-                    : (_deviceConfiguration.SecurityKey == null ||
-                       _deviceConfiguration.SecurityKey.SequenceEqual(SecurityContext.DefaultKey))
-                    ? SecurityMode.InstallMode
-                    : SecurityMode.FullSecurity,
-                AllowUnsecured = _deviceConfiguration.AllowUnsecured ?? [],
-            };
-
-            while (incomingConnection.IsOpen && !_cancellationTokenSource.Token.IsCancellationRequested)
-            {
-                var command = await channel.ReadNextCommand(_cancellationTokenSource.Token);
-
-                if (command == null) continue;
-
-                var reply = HandleCommand(command);
-                await channel.SendReply(reply);
-
-                if (currentContextCount != _connectionContextCounter)
+                var channel = new SC2PdMessageSecureChannel(
+                    incomingConnection, _deviceConfiguration.SecurityKey,
+                    _deviceConfiguration.Identification.ToBytes(), _loggerFactory)
                 {
-                    _logger?.LogInformation("Interrupting existing connection due to 'force disconnect' flag");
-                    break;
-                }
+                    Address = _deviceConfiguration.Address,
+                    SecurityMode = !_deviceConfiguration.RequireSecurity
+                        ? SecurityMode.Unsecured
+                        : SecurityMode.FullSecurity,
+                    AllowUnsecured = _deviceConfiguration.AllowUnsecured ?? [],
+                };
+
+                await RunClientLoop(channel, incomingConnection, currentContextCount);
+            }
+            else
+#endif
+            {
+                var channel = new PdMessageSecureChannel(
+                    incomingConnection, _deviceConfiguration.SecurityKey,
+                    _deviceConfiguration.Identification.ToBytes(), _loggerFactory)
+                {
+                    Address = _deviceConfiguration.Address,
+                    SecurityMode = !_deviceConfiguration.RequireSecurity
+                        ? SecurityMode.Unsecured
+                        : (_deviceConfiguration.SecurityKey == null ||
+                           _deviceConfiguration.SecurityKey.SequenceEqual(SecurityContext.DefaultKey))
+                        ? SecurityMode.InstallMode
+                        : SecurityMode.FullSecurity,
+                    AllowUnsecured = _deviceConfiguration.AllowUnsecured ?? [],
+                };
+
+                await RunClientLoop(channel, incomingConnection, currentContextCount);
             }
         }
         catch (OperationCanceledException)
@@ -140,6 +147,44 @@ public class Device : IDisposable
             await incomingConnection.Close();
         }
     }
+
+    private async Task RunClientLoop(PdMessageSecureChannel channel, IOsdpConnection connection, int contextCount)
+    {
+        while (connection.IsOpen && !_cancellationTokenSource.Token.IsCancellationRequested)
+        {
+            var command = await channel.ReadNextCommand(_cancellationTokenSource.Token);
+            if (command == null) continue;
+
+            var reply = HandleCommand(command);
+            await channel.SendReply(reply);
+
+            if (contextCount != _connectionContextCounter)
+            {
+                _logger?.LogInformation("Interrupting existing connection due to 'force disconnect' flag");
+                break;
+            }
+        }
+    }
+
+#if NET8_0_OR_GREATER
+    private async Task RunClientLoop(SC2PdMessageSecureChannel channel, IOsdpConnection connection, int contextCount)
+    {
+        while (connection.IsOpen && !_cancellationTokenSource.Token.IsCancellationRequested)
+        {
+            var command = await channel.ReadNextCommand(_cancellationTokenSource.Token);
+            if (command == null) continue;
+
+            var reply = HandleCommand(command);
+            await channel.SendReply(reply);
+
+            if (contextCount != _connectionContextCounter)
+            {
+                _logger?.LogInformation("Interrupting existing connection due to 'force disconnect' flag");
+                break;
+            }
+        }
+    }
+#endif
 
     /// <summary>
     /// Stops listening for OSDP messages on the device.
@@ -572,6 +617,12 @@ public class DeviceConfiguration : ICloneable
     /// other out-of-band means
     /// </summary>
     public byte[] SecurityKey { get; set; } = SecurityContext.DefaultKey;
+
+    /// <summary>
+    /// The secure channel version to use (V1 or V2).
+    /// SC2 requires a 32-byte key and .NET 8 or later.
+    /// </summary>
+    public SecureChannelVersion SecureChannelVersion { get; set; } = SecureChannelVersion.V1;
 
     /// <summary>
     /// List of commands the PD will allow to be sent unsecured when a device is operating

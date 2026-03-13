@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OSDP.Net.Connections;
 using OSDP.Net.Messages;
+using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
 using OSDP.Net.PanelCommands.DeviceDiscover;
@@ -1190,6 +1191,33 @@ namespace OSDP.Net
             }
 
             foundBus.AddDevice(address, useCrc, useSecureChannel, useSecureChannel ? secureChannelKey : null);
+        }
+
+        /// <summary>
+        /// Add a PD to the control panel with a specific secure channel version.
+        /// This will replace an existing PD that is configured at the same address.
+        /// </summary>
+        /// <param name="connectionId">Identify the connection for communicating to the device.</param>
+        /// <param name="address">Address assigned to the device.</param>
+        /// <param name="useCrc">Use CRC for error checking.</param>
+        /// <param name="useSecureChannel">Require the device to communicate with a secure channel.</param>
+        /// <param name="secureChannelKey">The secure channel key.</param>
+        /// <param name="secureChannelVersion">The secure channel version (V1 or V2).</param>
+        public void AddDevice(Guid connectionId, byte address, bool useCrc, bool useSecureChannel,
+            byte[] secureChannelKey, SecureChannelVersion secureChannelVersion)
+        {
+            if (!_buses.TryGetValue(connectionId, out Bus foundBus))
+            {
+                throw new ArgumentException("Connection could not be found", nameof(connectionId));
+            }
+
+            if (address > 127)
+            {
+                throw new ArgumentOutOfRangeException(nameof(address), "Address is out of range, it must between 0 and 127.");
+            }
+
+            foundBus.AddDevice(address, useCrc, useSecureChannel, useSecureChannel ? secureChannelKey : null,
+                secureChannelVersion);
         }
 
         /// <summary>

@@ -36,6 +36,10 @@
     <PackageReference Include="System.IO.Ports" Version="10.0.1" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.5.1" />
+  </ItemGroup>
+
   <!-- Alternative: API compatibility checking (uncomment if needed) -->
   <!--
   <ItemGroup>

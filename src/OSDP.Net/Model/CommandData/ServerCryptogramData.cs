@@ -15,6 +15,19 @@ public class ServerCryptogramData : CommandData
     {
         ServerCryptogram = serverCryptogram ?? throw new ArgumentNullException(nameof(serverCryptogram));
         IsDefaultKey = isDefaultKey;
+        Version = SecureChannelVersion.V1;
+    }
+
+    /// <summary>
+    /// Creates a new ServerCryptogramData for the specified secure channel version.
+    /// </summary>
+    /// <param name="serverCryptogram">The server cryptogram (16 bytes for SC1, 32 bytes for SC2).</param>
+    /// <param name="version">The secure channel version.</param>
+    public ServerCryptogramData(byte[] serverCryptogram, SecureChannelVersion version)
+    {
+        ServerCryptogram = serverCryptogram ?? throw new ArgumentNullException(nameof(serverCryptogram));
+        IsDefaultKey = false;
+        Version = version;
     }
 
     /// <summary>
@@ -28,7 +41,12 @@ public class ServerCryptogramData : CommandData
     /// This property specifies if the default key is applied during the security initialization process.
     /// </summary>
     public bool IsDefaultKey { get; }
-    
+
+    /// <summary>
+    /// The secure channel version.
+    /// </summary>
+    public SecureChannelVersion Version { get; }
+
     /// <inheritdoc />
     public override CommandType CommandType => CommandType.ServerCryptogram;
 
@@ -41,11 +59,15 @@ public class ServerCryptogramData : CommandData
     /// <inheritdoc />
     public override ReadOnlySpan<byte> SecurityControlBlock()
     {
+        byte scbData = Version == SecureChannelVersion.V2
+            ? (byte)0x02
+            : (byte)(IsDefaultKey ? 0x00 : 0x01);
+
         return new byte[]
         {
             0x03,
             (byte)SecurityBlockType.SecureConnectionSequenceStep3,
-            (byte)(IsDefaultKey ? 0x00 : 0x01)
+            scbData
         };
     }
 

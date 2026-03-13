@@ -15,7 +15,7 @@ internal class DeviceProxy : IComparable<DeviceProxy>
 
     private readonly ConcurrentQueue<CommandData> _commands = new();
     private readonly bool _useSecureChannel;
-    
+
     private int _counter = RetryAmount;
     private DateTime _lastValidReply = DateTime.MinValue;
     private CommandData _retryCommand;
@@ -27,20 +27,38 @@ internal class DeviceProxy : IComparable<DeviceProxy>
     /// <param name="useCrc">Specifies whether to use CRC (Cyclic Redundancy Check) for message validation.</param>
     /// <param name="useSecureChannel">Specifies whether to use a secure channel for communication.</param>
     /// <param name="secureChannelKey">The key used for securing the communication channel.</param>
-    public DeviceProxy(byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey = null)
+    /// <param name="secureChannelVersion">The secure channel version (V1 or V2).</param>
+    public DeviceProxy(byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey = null,
+        SecureChannelVersion secureChannelVersion = SecureChannelVersion.V1)
     {
         _useSecureChannel = useSecureChannel;
+        SecureChannelVersion = secureChannelVersion;
 
         Address = address;
         MessageControl = new Control(0, useCrc, useSecureChannel);
 
         if (UseSecureChannel)
         {
-            SecureChannelKey = secureChannelKey ?? SecurityContext.DefaultKey;
-            
-            IsDefaultKey = SecurityContext.DefaultKey.SequenceEqual(SecureChannelKey);
+#if NET8_0_OR_GREATER
+            if (secureChannelVersion == SecureChannelVersion.V2)
+            {
+                SecureChannelKey = secureChannelKey ?? throw new ArgumentNullException(nameof(secureChannelKey),
+                    "SC2 requires an explicit 32-byte secure channel key.");
+                if (SecureChannelKey.Length != 32)
+                {
+                    throw new ArgumentException("SC2 requires a 32-byte secure channel key.", nameof(secureChannelKey));
+                }
 
-            MessageSecureChannel = new ACUMessageSecureChannel(new SecurityContext(SecureChannelKey));
+                IsDefaultKey = false; // SC2 has no default key concept
+                MessageSecureChannel = new SC2ACUMessageSecureChannel(new SC2SecurityContext(SecureChannelKey));
+            }
+            else
+#endif
+            {
+                SecureChannelKey = secureChannelKey ?? SecurityContext.DefaultKey;
+                IsDefaultKey = SecurityContext.DefaultKey.SequenceEqual(SecureChannelKey);
+                MessageSecureChannel = new ACUMessageSecureChannel(new SecurityContext(SecureChannelKey));
+            }
         }
         else
         {
@@ -49,6 +67,8 @@ internal class DeviceProxy : IComparable<DeviceProxy>
     }
 
     internal byte[] SecureChannelKey { get; }
+
+    internal SecureChannelVersion SecureChannelVersion { get; }
 
     private bool IsDefaultKey { get; }
 
@@ -110,14 +130,18 @@ internal class DeviceProxy : IComparable<DeviceProxy>
 
             if (UseSecureChannel && !MessageSecureChannel.IsInitialized)
             {
-                return new OutgoingMessage(Address, MessageControl,
-                    new SecurityInitialization(MessageSecureChannel.ServerRandomNumber, IsDefaultKey));
+                var secInit = SecureChannelVersion == SecureChannelVersion.V2
+                    ? new SecurityInitialization(MessageSecureChannel.ServerRandomNumber, SecureChannelVersion.V2)
+                    : new SecurityInitialization(MessageSecureChannel.ServerRandomNumber, IsDefaultKey);
+                return new OutgoingMessage(Address, MessageControl, secInit);
             }
 
             if (UseSecureChannel && !MessageSecureChannel.IsSecurityEstablished)
             {
-                return new OutgoingMessage(Address, MessageControl,
-                    new ServerCryptogramData(MessageSecureChannel.ServerCryptogram, IsDefaultKey));
+                var scrypt = SecureChannelVersion == SecureChannelVersion.V2
+                    ? new ServerCryptogramData(MessageSecureChannel.ServerCryptogram, SecureChannelVersion.V2)
+                    : new ServerCryptogramData(MessageSecureChannel.ServerCryptogram, IsDefaultKey);
+                return new OutgoingMessage(Address, MessageControl, scrypt);
             }
         }
 
@@ -166,7 +190,25 @@ internal class DeviceProxy : IComparable<DeviceProxy>
 
     internal void InitializeSecureChannel(byte[] payload, byte[] secureBlockData)
     {
-        // Validate payload: must be 32 bytes (cUID[8] + clientRnd[8] + clientCryptogram[16])
+#if NET8_0_OR_GREATER
+        if (SecureChannelVersion == SecureChannelVersion.V2)
+        {
+            // SC2 payload: cUID[8] + RndB[16] + cryptogram[32] = 56 bytes
+            if (payload == null || payload.Length < 56)
+            {
+                throw new InvalidPayloadException(
+                    $"SC2 osdp_CCRYPT payload must be 56 bytes, received {payload?.Length ?? 0}");
+            }
+
+            var cUID = payload.Take(8).ToArray();
+            var clientRnd = payload.Skip(8).Take(16).ToArray();
+            var clientCryptogram = payload.Skip(24).Take(32).ToArray();
+            ((SC2MessageSecureChannel)MessageSecureChannel).InitializeACU(clientRnd, clientCryptogram, cUID);
+            return;
+        }
+#endif
+
+        // SC1 payload: cUID[8] + clientRnd[8] + clientCryptogram[16] = 32 bytes
         if (payload == null || payload.Length < 32)
         {
             throw new InvalidPayloadException(
@@ -204,12 +246,14 @@ internal class DeviceProxy : IComparable<DeviceProxy>
 
 internal interface IDeviceProxyFactory
 {
-    DeviceProxy Create(byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey = null);
+    DeviceProxy Create(byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey = null,
+        SecureChannelVersion secureChannelVersion = SecureChannelVersion.V1);
 }
 
 internal class DeviceProxyFactory : IDeviceProxyFactory
 {
     public DeviceProxy Create(
-        byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey = null)
-        => new DeviceProxy(address, useCrc, useSecureChannel, secureChannelKey);
+        byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey = null,
+        SecureChannelVersion secureChannelVersion = SecureChannelVersion.V1)
+        => new DeviceProxy(address, useCrc, useSecureChannel, secureChannelKey, secureChannelVersion);
 }

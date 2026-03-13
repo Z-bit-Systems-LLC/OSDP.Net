@@ -24,7 +24,7 @@ namespace OSDP.Net.Messages
         public IncomingMessage(ReadOnlySpan<byte> data, IMessageSecureChannel channel)
         {
             IsUsingDefaultKey = channel.IsUsingDefaultKey;
-            
+
             // TODO: way too much copying in this code, simplify it.
             _originalMessage = data.ToArray();
 
@@ -36,35 +36,94 @@ namespace OSDP.Net.Messages
             bool isSecureControlBlockPresent = Convert.ToBoolean(data[4] & 0x08);
             byte secureBlockSize = (byte)(isSecureControlBlockPresent ? data[5] : 0);
             SecurityBlockType = (byte)(isSecureControlBlockPresent ? data[6] : 0);
-            int messageLength = data.Length - (IsUsingCrc ? 6 : 5);
+
             if (isSecureControlBlockPresent)
             {
                 SecureBlockData = data.Slice(MessageHeaderSize + 1, secureBlockSize - 2).ToArray();
-                Mac = data.Slice(messageLength, MacSize).ToArray();
             }
 
-            Type = data[MsgTypeIndex + secureBlockSize];
-
-            Payload = data.Slice(MessageHeaderSize + secureBlockSize, data.Length -
-                MessageHeaderSize - secureBlockSize - replyMessageFooterSize -
-                (IsSecureMessage ? MacSize : 0)).ToArray();
-            if (Payload.Length > 0 && HasSecureData)
+            // SC2 established messages: command/reply byte is encrypted inside the ciphertext
+            bool isSC2Established = channel.IsSecureChannelV2 && HasSecureData && channel.IsSecurityEstablished;
+            if (isSC2Established)
             {
-                if (channel.IsSecurityEstablished)
+                // SC2: no clear Type byte in header; ciphertext starts right after SCB
+                const int headerSize = 5; // SOM + ADDR + LEN(2) + CTRL
+                int ciphertextWithTagStart = headerSize + secureBlockSize;
+                int ciphertextWithTagLength = data.Length - ciphertextWithTagStart - replyMessageFooterSize;
+                var ciphertextWithTag = data.Slice(ciphertextWithTagStart, ciphertextWithTagLength).ToArray();
+
+                // Store the GCM tag for reference
+                Mac = ciphertextWithTag.AsSpan(
+                    ciphertextWithTag.Length - channel.AuthenticationTagSize,
+                    channel.AuthenticationTagSize).ToArray();
+
+#if NET8_0_OR_GREATER
+                // DecodePayload handles GCM decryption and authentication validation
+                // Pass header bytes as AAD (Associated Authenticated Data) for GCM
+                var aad = data.Slice(0, ciphertextWithTagStart);
+                var decrypted = ((SC2MessageSecureChannel)channel).DecodePayload(ciphertextWithTag, aad);
+#else
+                var decrypted = channel.DecodePayload(ciphertextWithTag);
+#endif
+                Type = decrypted[0];
+                Payload = decrypted.Length > 1
+                    ? decrypted.AsSpan(1).ToArray()
+                    : Array.Empty<byte>();
+
+                // GCM validates integrity during decryption; if we get here, it's valid
+                IsValidMac = true;
+            }
+            else
+            {
+                // SC1 / non-secure / handshake: original parsing logic
+                int messageLength = data.Length - (IsUsingCrc ? 6 : 5);
+                if (isSecureControlBlockPresent)
                 {
-                    var paddedPayload = channel.DecodePayload(Payload);
-                    var lastByteIdx = Payload.Length;
-                    while (lastByteIdx > 0 && paddedPayload[--lastByteIdx] != FirstPaddingByte)
+                    Mac = data.Slice(messageLength, MacSize).ToArray();
+                }
+
+                Type = data[MsgTypeIndex + secureBlockSize];
+
+                Payload = data.Slice(MessageHeaderSize + secureBlockSize, data.Length -
+                    MessageHeaderSize - secureBlockSize - replyMessageFooterSize -
+                    (IsSecureMessage ? MacSize : 0)).ToArray();
+                if (Payload.Length > 0 && HasSecureData)
+                {
+                    if (channel.IsSecurityEstablished)
                     {
+                        var paddedPayload = channel.DecodePayload(Payload);
+                        var lastByteIdx = Payload.Length;
+                        while (lastByteIdx > 0 && paddedPayload[--lastByteIdx] != FirstPaddingByte)
+                        {
+                        }
+
+                        if (lastByteIdx == 0)
+                            throw new Exception("The encrypted payload is missing a padding byte");
+
+                        Payload = paddedPayload.AsSpan().Slice(0, lastByteIdx).ToArray();
                     }
+                    else
+                    {
+                        IsPayloadDecrypted = false;
+                    }
+                }
 
-                    if (lastByteIdx == 0) throw new Exception("The encrypted payload is missing a padding byte");
-
-                    Payload = paddedPayload.AsSpan().Slice(0, lastByteIdx).ToArray();
+                if (IsSecureMessage)
+                {
+                    if (channel.IsSecurityEstablished)
+                    {
+                        var mac = channel.GenerateMac(data.Slice(0, messageLength).ToArray(), true);
+                        IsValidMac = !IsSecureMessage ||
+                                     mac.Slice(0, MacSize).SequenceEqual(Mac?.ToArray());
+                    }
+                    else
+                    {
+                        IsValidMac = false;
+                    }
                 }
                 else
                 {
-                    IsPayloadDecrypted = false;
+                    IsValidMac = true;
                 }
             }
 
@@ -72,23 +131,6 @@ namespace OSDP.Net.Messages
                 ? CalculateCrc(data.Slice(0, data.Length - 2)) ==
                   ConvertBytesToUnsignedShort(data.Slice(data.Length - 2, 2))
                 : CalculateChecksum(data.Slice(0, data.Length - 1).ToArray()) == data[data.Length - 1];
-
-            if (IsSecureMessage)
-            {
-                if (channel.IsSecurityEstablished)
-                {
-                    var mac = channel.GenerateMac(data.Slice(0, messageLength).ToArray(), true);
-                    IsValidMac = !IsSecureMessage || mac.Slice(0, MacSize).SequenceEqual(Mac?.ToArray());
-                }
-                else
-                {
-                    IsValidMac = false;
-                }
-            }
-            else
-            {
-                IsValidMac = true;
-            }
         }
 
         /// <summary>

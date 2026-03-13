@@ -80,6 +80,18 @@ public abstract class MessageSecureChannel : IMessageSecureChannel
     /// <inheritdoc />
     public void Establish(byte[] rmac) => Context.Establish(rmac);
 
+    /// <inheritdoc />
+    public bool IsSecureChannelV2 => false;
+
+    /// <inheritdoc />
+    public int AuthenticationTagSize => Message.MacSize;
+
+    /// <inheritdoc />
+    public void Establish()
+    {
+        throw new NotSupportedException("Parameterless Establish is only supported by SC2 channels.");
+    }
+
     /// <summary>
     /// Generates a MAC for a command message
     /// </summary>

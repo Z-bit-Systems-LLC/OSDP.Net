@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 
 using OSDP.Net.Connections;
 using OSDP.Net.Messages;
+using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
 using OSDP.Net.Tracing;
@@ -125,10 +126,12 @@ namespace OSDP.Net
         /// <param name="useCrc">Use CRC for error checking</param>
         /// <param name="useSecureChannel">Use a secure channel to communicate</param>
         /// <param name="secureChannelKey">Set the secure channel key, default is used if not specified</param>
-        public void AddDevice(byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey = null)
+        /// <param name="secureChannelVersion">The secure channel version (V1 or V2)</param>
+        public void AddDevice(byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey = null,
+            SecureChannelVersion secureChannelVersion = SecureChannelVersion.V1)
         {
             var configuredDevices = _configuredDevices.ToImmutableSortedSet();
-            
+
             var foundDevice = configuredDevices.FirstOrDefault(device => device.Address == address);
 
             if (foundDevice != null)
@@ -136,10 +139,11 @@ namespace OSDP.Net
                 configuredDevices = configuredDevices.Remove(foundDevice);
             }
 
-            var addedDevice = _deviceProxyFactory.Create(address, useCrc, useSecureChannel, secureChannelKey);
+            var addedDevice = _deviceProxyFactory.Create(address, useCrc, useSecureChannel, secureChannelKey,
+                secureChannelVersion);
 
             configuredDevices = configuredDevices.Add(addedDevice);
-            
+
             _configuredDevices = configuredDevices;
         }
 
@@ -499,7 +503,8 @@ namespace OSDP.Net
         private void ResetDevice(DeviceProxy device)
         {
             device.RequestDelay = DateTime.UtcNow + TimeSpan.FromSeconds(1);
-            AddDevice(device.Address, device.MessageControl.UseCrc, device.UseSecureChannel, device.SecureChannelKey);
+            AddDevice(device.Address, device.MessageControl.UseCrc, device.UseSecureChannel, device.SecureChannelKey,
+                device.SecureChannelVersion);
         }
 
         private async Task<ReplyTracker> SendCommandAndReceiveReply(OutgoingMessage command, DeviceProxy device, CancellationToken cancellationToken)

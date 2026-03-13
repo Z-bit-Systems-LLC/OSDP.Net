@@ -48,11 +48,23 @@ namespace OSDP.Net.Model.ReplyData
         /// <returns>An instance of ChallengeResponse representing the message payload</returns>
         public static ChallengeResponse ParseData(ReadOnlySpan<byte> data, bool isDefaultKey)
         {
+            // SC2: cUID(8) + RndB(16) + cryptogram(32) = 56 bytes
+            if (data.Length == 56)
+            {
+                return new ChallengeResponse(
+                    data.Slice(0, 8).ToArray(),
+                    data.Slice(8, 16).ToArray(),
+                    data.Slice(24, 32).ToArray(),
+                    false
+                );
+            }
+
+            // SC1: cUID(8) + RndB(8) + cryptogram(16) = 32 bytes
             if (data.Length != 32)
             {
-                throw new InvalidPayloadException($"Challenge response must be 32 bytes, received {data.Length}");
+                throw new InvalidPayloadException($"Challenge response must be 32 or 56 bytes, received {data.Length}");
             }
-            
+
             return new ChallengeResponse(
                 data.Slice(0, 8).ToArray(),
                 data.Slice(8, 8).ToArray(),

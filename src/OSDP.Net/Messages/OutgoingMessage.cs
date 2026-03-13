@@ -26,6 +26,7 @@ internal class OutgoingMessage : Message
         var payload = PayloadData.BuildData();
 
         var securityEstablished = secureChannel is { IsSecurityEstablished: true };
+        var isSC2 = securityEstablished && secureChannel.IsSecureChannelV2;
 
         if (securityEstablished && payload.Length > 0)
         {
@@ -33,12 +34,31 @@ internal class OutgoingMessage : Message
         }
 
         bool isSecurityBlockPresent = securityEstablished || PayloadData.IsSecurityInitialization;
-        var securityBlock = isSecurityBlockPresent ? PayloadData.SecurityControlBlock() : Array.Empty<byte>();
+        ReadOnlySpan<byte> securityBlock;
+        if (isSC2)
+        {
+            // SC2: always use WithDataSecurity because command byte is encrypted
+            bool isReply = (Address & 0x80) != 0;
+            securityBlock = isReply
+                ? SecurityBlock.ReplyMessageWithDataSecurity
+                : SecurityBlock.CommandMessageWithDataSecurity;
+        }
+        else
+        {
+            securityBlock = isSecurityBlockPresent
+                ? PayloadData.SecurityControlBlock()
+                : Array.Empty<byte>();
+        }
 
-        int headerLength = StartOfMessageLength + securityBlock.Length + sizeof(ReplyType);
-        int totalLength = headerLength + payload.Length +
+        int authTagSize = securityEstablished ? secureChannel.AuthenticationTagSize : 0;
+
+        // SC2: command byte is inside ciphertext, not in clear header
+        int ciphertextLength = isSC2 ? 1 + payload.Length : payload.Length;
+        int commandByteInHeader = isSC2 ? 0 : sizeof(ReplyType);
+        int headerLength = StartOfMessageLength + securityBlock.Length + commandByteInHeader;
+        int totalLength = headerLength + ciphertextLength +
                           (ControlBlock.UseCrc ? 2 : 1) +
-                          (securityEstablished ? MacSize : 0);
+                          authTagSize;
         var buffer = new byte[totalLength];
         int currentLength = 0;
 
@@ -54,19 +74,37 @@ internal class OutgoingMessage : Message
             currentLength += securityBlock.Length;
         }
 
-        buffer[currentLength++] = PayloadData.Code;
-
         if (securityEstablished)
         {
-            secureChannel.EncodePayload(payload, buffer.AsSpan(currentLength));
-            currentLength += payload.Length;
+            if (isSC2)
+            {
+#if NET8_0_OR_GREATER
+                // SC2: prepend command byte to payload and encrypt together
+                // Pass header as AAD (Associated Authenticated Data) for GCM
+                var plaintext = new byte[1 + payload.Length];
+                plaintext[0] = PayloadData.Code;
+                payload.CopyTo(plaintext, 1);
+                var aad = buffer.AsSpan(0, currentLength);
+                ((SC2MessageSecureChannel)secureChannel).EncodePayload(plaintext, buffer.AsSpan(currentLength), aad);
+                currentLength += plaintext.Length;
+#endif
+            }
+            else
+            {
+                // SC1: command byte in clear header, encrypt payload separately
+                buffer[currentLength++] = PayloadData.Code;
+                secureChannel.EncodePayload(payload, buffer.AsSpan(currentLength));
+                currentLength += payload.Length;
+            }
+
             secureChannel.GenerateMac(buffer.AsSpan(0, currentLength), false)
-                .Slice(0, MacSize)
+                .Slice(0, authTagSize)
                 .CopyTo(buffer.AsSpan(currentLength));
-            currentLength += MacSize;
+            currentLength += authTagSize;
         }
         else
         {
+            buffer[currentLength++] = PayloadData.Code;
             payload.CopyTo(buffer, currentLength);
             currentLength += payload.Length;
         }

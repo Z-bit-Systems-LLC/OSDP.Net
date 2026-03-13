@@ -318,7 +318,8 @@ internal class TestDeviceProxyFactory : IDeviceProxyFactory
     }
 
     public DeviceProxy Create(
-        byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey = null)
+        byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey = null,
+        SecureChannelVersion secureChannelVersion = SecureChannelVersion.V1)
         => new TestDeviceProxy(address, useCrc, useSecureChannel, secureChannelKey, _panelConfiguration);
 }
 

@@ -3,6 +3,22 @@
 namespace OSDP.Net.Messages.SecureChannel;
 
 /// <summary>
+/// Specifies the version of the OSDP secure channel protocol.
+/// </summary>
+public enum SecureChannelVersion
+{
+    /// <summary>
+    /// OSDP Secure Channel v1: AES-128 CBC with CBC-MAC
+    /// </summary>
+    V1 = 1,
+
+    /// <summary>
+    /// OSDP Secure Channel v2: AES-256 GCM with KMAC key derivation
+    /// </summary>
+    V2 = 2
+}
+
+/// <summary>
 /// Represents the secure channel context within which a message is packed/unpacked
 /// </summary>
 public interface IMessageSecureChannel
@@ -101,4 +117,21 @@ public interface IMessageSecureChannel
     /// <param name="payload">The payload data to pad.</param>
     /// <returns>The padded data.</returns>
     ReadOnlySpan<byte> PadTheData(ReadOnlySpan<byte> payload);
+
+    /// <summary>
+    /// Indicates whether this channel uses Secure Channel v2 (AES-256 GCM).
+    /// </summary>
+    bool IsSecureChannelV2 { get; }
+
+    /// <summary>
+    /// The size of the authentication tag appended to secure messages.
+    /// 4 bytes for SC1 (truncated CBC-MAC), 16 bytes for SC2 (GCM tag).
+    /// </summary>
+    int AuthenticationTagSize { get; }
+
+    /// <summary>
+    /// Establishes the secure channel without an RMAC (used by SC2 where
+    /// the initial nonce state is computed deterministically).
+    /// </summary>
+    void Establish();
 }
