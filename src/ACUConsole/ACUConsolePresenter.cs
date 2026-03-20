@@ -17,6 +17,7 @@ using log4net.Config;
 using Microsoft.Extensions.Logging;
 using OSDP.Net;
 using OSDP.Net.Connections;
+using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
 using OSDP.Net.PanelCommands.DeviceDiscover;
@@ -368,14 +369,15 @@ namespace ACUConsole
             foreach (var device in _settings.Devices)
             {
                 _controlPanel.AddDevice(_connectionId, device.Address, device.UseCrc,
-                    device.UseSecureChannel, device.SecureChannelKey);
+                    device.UseSecureChannel, device.SecureChannelKey, device.SecureChannelVersion);
             }
 
             AddLogMessage($"Connection started with ID: {_connectionId}");
         }
 
         // Device Management Methods
-        public void AddDevice(string name, byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey)
+        public void AddDevice(string name, byte address, bool useCrc, bool useSecureChannel,
+            byte[] secureChannelKey, SecureChannelVersion secureChannelVersion)
         {
             if (!IsConnected)
             {
@@ -383,7 +385,8 @@ namespace ACUConsole
             }
 
             _lastNak.TryRemove(address, out _);
-            _controlPanel.AddDevice(_connectionId, address, useCrc, useSecureChannel, secureChannelKey);
+            _controlPanel.AddDevice(_connectionId, address, useCrc, useSecureChannel, secureChannelKey,
+                secureChannelVersion);
 
             var foundDevice = _settings.Devices.FirstOrDefault(device => device.Address == address);
             if (foundDevice != null)
@@ -397,7 +400,8 @@ namespace ACUConsole
                 Name = name,
                 UseSecureChannel = useSecureChannel,
                 UseCrc = useCrc,
-                SecureChannelKey = secureChannelKey
+                SecureChannelKey = secureChannelKey,
+                SecureChannelVersion = secureChannelVersion
             });
 
             AddLogMessage($"Device '{name}' added at address {address}");
@@ -598,8 +602,8 @@ namespace ACUConsole
                 {
                     device.UseSecureChannel = true;
                     device.SecureChannelKey = key;
-                    _controlPanel.AddDevice(_connectionId, device.Address, device.UseCrc, 
-                        device.UseSecureChannel, device.SecureChannelKey);
+                    _controlPanel.AddDevice(_connectionId, device.Address, device.UseCrc,
+                        device.UseSecureChannel, device.SecureChannelKey, device.SecureChannelVersion);
                 }
             }
         }

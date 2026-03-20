@@ -1,3 +1,5 @@
+using OSDP.Net.Messages.SecureChannel;
+
 namespace ACUConsole.Model.DialogInputs
 {
     /// <summary>
@@ -10,6 +12,7 @@ namespace ACUConsole.Model.DialogInputs
         public bool UseCrc { get; set; }
         public bool UseSecureChannel { get; set; }
         public byte[] SecureChannelKey { get; set; } = [];
+        public SecureChannelVersion SecureChannelVersion { get; set; } = SecureChannelVersion.V1;
         public bool WasCancelled { get; set; }
         public bool OverwriteExisting { get; set; }
     }

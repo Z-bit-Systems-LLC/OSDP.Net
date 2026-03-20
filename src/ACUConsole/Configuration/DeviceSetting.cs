@@ -1,3 +1,5 @@
+using OSDP.Net.Messages.SecureChannel;
+
 namespace ACUConsole.Configuration
 {
     public class DeviceSetting
@@ -14,5 +16,7 @@ namespace ACUConsole.Configuration
         public bool UseCrc { get; set; } = true;
 
         public byte[] SecureChannelKey { get; set; } = DefaultKey;
+
+        public SecureChannelVersion SecureChannelVersion { get; set; } = SecureChannelVersion.V1;
     }
 }

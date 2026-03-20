@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ACUConsole.Configuration;
 using ACUConsole.Model;
+using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
 
@@ -34,7 +35,8 @@ namespace ACUConsole
         Task StopConnection();
 
         // Device Management Methods
-        void AddDevice(string name, byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey);
+        void AddDevice(string name, byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey,
+            SecureChannelVersion secureChannelVersion);
         void RemoveDevice(byte address);
         Task<string> DiscoverDevice(string portName, int pingTimeout, int reconnectDelay, CancellationToken cancellationToken = default);
 

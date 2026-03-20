@@ -404,7 +404,7 @@ namespace ACUConsole
                 try
                 {
                     _presenter.AddDevice(input.Name, input.Address, input.UseCrc,
-                        input.UseSecureChannel, input.SecureChannelKey);
+                        input.UseSecureChannel, input.SecureChannelKey, input.SecureChannelVersion);
 
                     // Add device to status tracking
                     _deviceStatuses[input.Address] = new DeviceConnectionStatus

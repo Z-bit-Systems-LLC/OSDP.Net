@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using OSDP.Net;
 using OSDP.Net.Connections;
+using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model;
 using PDConsole.Configuration;
 
@@ -51,11 +53,17 @@ namespace PDConsole
                 // Create device configuration
                 var vendorCode = ConvertHexStringToBytes(_settings.Device.VendorCode, 3);
                 var serialNumber = ParseSerialNumber(_settings.Device.SerialNumber);
+                var securityKey = _settings.Security.SecureChannelVersion == SecureChannelVersion.V2
+                    && _settings.Security.SecureChannelKey.Length == SecuritySettings.DefaultKey.Length
+                        ? SecuritySettings.DefaultSC2Key
+                        : _settings.Security.SecureChannelKey;
+
                 var deviceConfig = new DeviceConfiguration(new ClientIdentification(vendorCode, serialNumber))
                 {
                     Address = _settings.Device.Address,
                     RequireSecurity = _settings.Security.RequireSecureChannel,
-                    SecurityKey = _settings.Security.SecureChannelKey
+                    SecurityKey = securityKey,
+                    SecureChannelVersion = _settings.Security.SecureChannelVersion
                 };
 
                 // Create the device
@@ -172,7 +180,8 @@ namespace PDConsole
                 var json = File.ReadAllText(filePath);
                 _settings = JsonSerializer.Deserialize<Settings>(json, new JsonSerializerOptions
                 {
-                    PropertyNameCaseInsensitive = true
+                    PropertyNameCaseInsensitive = true,
+                    Converters = { new JsonStringEnumConverter() }
                 }) ?? new Settings();
 
                 _currentSettingsFilePath = filePath;
@@ -196,7 +205,8 @@ namespace PDConsole
 
                 var json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions
                 {
-                    WriteIndented = true
+                    WriteIndented = true,
+                    Converters = { new JsonStringEnumConverter() }
                 });
 
                 File.WriteAllText(filePath, json);
