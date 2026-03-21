@@ -92,6 +92,11 @@ public class Packet : IPacket
     public bool IsUsingDefaultKey => _isUsingDefaultKey;
 
     /// <summary>
+    /// Indicates whether the message was parsed using Secure Channel v2 (AES-256 GCM).
+    /// </summary>
+    public bool IsSecureChannelV2 => IncomingMessage.IsSecureChannelV2;
+
+    /// <summary>
     /// Parse the payload data into an object
     /// </summary>
     /// <returns>A message data object representation of the payload data</returns>

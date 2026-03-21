@@ -358,7 +358,8 @@ namespace ACUConsole
             Action<TraceEntry> tracer = _ => { };
             if (_settings.IsTracing)
             {
-                _packetCaptureTracer = new ACUPacketCaptureTracer();
+                var captureKey = _settings.Devices.FirstOrDefault()?.SecureChannelKey;
+                _packetCaptureTracer = new ACUPacketCaptureTracer(captureKey);
                 tracer = _packetCaptureTracer.Trace;
             }
 

@@ -16,10 +16,12 @@ namespace ACUConsole.Tracing
 
         private readonly ConcurrentDictionary<Guid, CaptureWriters> _writers = new();
         private readonly string _captureDirectoryPath;
+        private readonly byte[] _securityKey;
         private bool _disposed;
 
-        public ACUPacketCaptureTracer()
+        public ACUPacketCaptureTracer(byte[] securityKey = null)
         {
+            _securityKey = securityKey;
             _captureDirectoryPath = CaptureDirectory;
 
             if (!Directory.Exists(_captureDirectoryPath))
@@ -53,7 +55,7 @@ namespace ACUConsole.Tracing
             var osdpcapPath = $"{basePath}.osdpcap";
             var txtPath = $"{basePath}.txt";
 
-            return new CaptureWriters(osdpcapPath, txtPath);
+            return new CaptureWriters(osdpcapPath, txtPath, _securityKey);
         }
 
         public void CloseWriter(Guid connectionId)
@@ -86,11 +88,11 @@ namespace ACUConsole.Tracing
             private readonly IPacketTextFormatter _formatter;
             private DateTime _lastPacketTime = DateTime.MinValue;
 
-            public CaptureWriters(string osdpcapPath, string txtPath)
+            public CaptureWriters(string osdpcapPath, string txtPath, byte[] securityKey = null)
             {
                 CaptureWriter = new OSDPCaptureFileWriter(osdpcapPath, "ACUConsole", append: true);
                 _textWriter = new StreamWriter(txtPath, append: true);
-                _messageSpy = new MessageSpy();
+                _messageSpy = new MessageSpy(securityKey);
                 _formatter = new OSDPPacketTextFormatter();
             }
 

@@ -27,7 +27,8 @@ public class OSDPPacketTextFormatter : IPacketTextFormatter
         sb.Append($"    Address: {packet.Address} Sequence: {packet.Sequence}");
         if (packet.IsSecureMessage)
         {
-            sb.Append(packet.IsUsingDefaultKey ? " [Secure - Default Key]" : " [Secure]");
+            string scVersion = packet.IsSecureChannelV2 ? " SC2" : "";
+            sb.Append(packet.IsUsingDefaultKey ? " [Secure - Default Key]" : $" [Secure{scVersion}]");
         }
         else
         {

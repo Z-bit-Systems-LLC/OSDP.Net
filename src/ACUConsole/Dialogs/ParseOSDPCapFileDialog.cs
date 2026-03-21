@@ -34,7 +34,7 @@ namespace ACUConsole.Dialogs
             // Then show parsing options dialog
             var addressTextField = new TextField(30, 1, 20, string.Empty);
             var ignorePollsAndAcksCheckBox = new CheckBox(1, 3, "Ignore Polls And Acks", false);
-            var keyTextField = new TextField(15, 5, 35, Convert.ToHexString(DeviceSetting.DefaultKey));
+            var keyTextField = new TextField(15, 5, 40, Convert.ToHexString(DeviceSetting.DefaultKey));
 
             void ParseButtonClicked()
             {
@@ -49,9 +49,9 @@ namespace ACUConsole.Dialogs
                     address = addr;
                 }
 
-                if (keyTextField.Text != null && keyTextField.Text.Length != 32)
+                if (keyTextField.Text != null && keyTextField.Text.Length != 32 && keyTextField.Text.Length != 64)
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid key length entered!", "OK");
+                    MessageBox.ErrorQuery(50, 10, "Error", "Key must be 32 hex chars (SC1) or 64 hex chars (SC2)!", "OK");
                     return;
                 }
 

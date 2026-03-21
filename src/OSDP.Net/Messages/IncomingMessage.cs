@@ -44,6 +44,7 @@ namespace OSDP.Net.Messages
 
             // SC2 established messages: command/reply byte is encrypted inside the ciphertext
             bool isSC2Established = channel.IsSecureChannelV2 && HasSecureData && channel.IsSecurityEstablished;
+            IsSecureChannelV2 = channel.IsSecureChannelV2;
             if (isSC2Established)
             {
                 // SC2: no clear Type byte in header; ciphertext starts right after SCB
@@ -150,6 +151,11 @@ namespace OSDP.Net.Messages
         /// Indicates if the message was sent via an established secure channel
         /// </summary>
         public bool IsSecureMessage => SecureSessionMessages.Contains(SecurityBlockType) && IsDataSecure;
+
+        /// <summary>
+        /// Indicates whether the message was parsed using Secure Channel v2 (AES-256 GCM).
+        /// </summary>
+        public bool IsSecureChannelV2 { get; }
 
         /// <summary>
         /// Indicates if the message has a valid MAC signature which was validated via
