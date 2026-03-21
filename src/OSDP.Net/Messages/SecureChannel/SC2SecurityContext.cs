@@ -112,7 +112,7 @@ internal class SC2SecurityContext
     }
 
     /// <summary>
-    /// Computes a 32-byte cryptogram by AES-256 ECB encrypting the concatenation of two random numbers.
+    /// Computes a 32-byte cryptogram by AES-256 CBC encrypting the concatenation of two random numbers.
     /// </summary>
     /// <param name="rnd1">First 16-byte random number.</param>
     /// <param name="rnd2">Second 16-byte random number.</param>
@@ -125,8 +125,9 @@ internal class SC2SecurityContext
 
         using var aes = Aes.Create();
         aes.Key = SENC;
-        aes.Mode = CipherMode.ECB;
+        aes.Mode = CipherMode.CBC;
         aes.Padding = PaddingMode.None;
+        aes.IV = new byte[16];
 
         using var encryptor = aes.CreateEncryptor();
         return encryptor.TransformFinalBlock(plaintext, 0, plaintext.Length);
@@ -194,14 +195,14 @@ internal class SC2SecurityContext
         ClientUID = (byte[])cUID.Clone();
         DeriveSessionKeys(ServerRandomNumber, clientRandomNumber);
 
-        // Validate client cryptogram: AES256_ECB(RNDA || RNDB, SENC)
+        // Validate client cryptogram: AES256_CBC(RNDA || RNDB, SENC)
         var expectedClientCryptogram = ComputeCryptogram(ServerRandomNumber, clientRandomNumber);
         if (!clientCryptogram.AsSpan().SequenceEqual(expectedClientCryptogram))
         {
             throw new Exception("Invalid client cryptogram");
         }
 
-        // Compute server cryptogram: AES256_ECB(RNDB || RNDA, SENC)
+        // Compute server cryptogram: AES256_CBC(RNDB || RNDA, SENC)
         ServerCryptogram = ComputeCryptogram(clientRandomNumber, ServerRandomNumber);
         IsInitialized = true;
     }
