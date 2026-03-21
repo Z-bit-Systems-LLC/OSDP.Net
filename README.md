@@ -219,6 +219,7 @@ panel.AddDevice(connectionId, address, useCrc: true, useSecureChannel: true,
 
 ## Documentation
 
+- [SC2 Implementation Guide](docs/sc2-overview.md) — Language-agnostic reference for implementing Secure Channel v2
 - [PowerShell Support](docs/powershell.md)
 - [Supported Commands and Replies](docs/supported_commands.md)
 - [Tracing Guide](docs/tracing-guide.md)
