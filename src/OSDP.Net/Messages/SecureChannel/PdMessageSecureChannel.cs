@@ -246,13 +246,15 @@ namespace OSDP.Net.Messages.SecureChannel
         {
             if (IsSecurityEstablished)
             {
-                return command.IsSecureMessage ? null : new Nak(ErrorCode.CommunicationSecurityNotMet);
+                return command.IsSecureMessage || AllowUnsecured.Contains((CommandType)command.Type)
+                    ? null
+                    : new Nak(ErrorCode.CommunicationSecurityNotMet);
             }
             else if (SecurityMode != SecurityMode.FullSecurity)
             {
                 return null;
             }
-            else 
+            else
             {
                 return AllowUnsecured.Contains((CommandType)command.Type) ?
                     null : new Nak(ErrorCode.CommunicationSecurityNotMet);
