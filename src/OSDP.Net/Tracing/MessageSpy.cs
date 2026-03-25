@@ -103,8 +103,8 @@ public class MessageSpy
         _sc2Channel = null;
         _rndA = null;
 
-        // Detect SC2 from security block data: SEC_BLOCK_DATA[0] == 0x02
-        if (command.SecureBlockData is { Length: > 0 } && command.SecureBlockData[0] == 0x02)
+        // Detect SC2 from security key length (32 bytes for SC2, 16 bytes for SC1)
+        if (_securityKey is { Length: 32 })
         {
             _isSC2 = true;
             _rndA = (byte[])command.Payload.Clone();

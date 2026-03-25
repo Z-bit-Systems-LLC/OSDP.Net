@@ -183,12 +183,6 @@ internal class SC2PdMessageSecureChannel : SC2PdMessageSecureChannelBase
     /// <returns>A ChallengeResponse reply.</returns>
     private PayloadData HandleSessionChallenge(IncomingMessage command)
     {
-        // SC2 requires SEC_BLOCK_DATA[0] == 0x02
-        if (command.SecureBlockData[0] != 0x02)
-        {
-            return new Nak(ErrorCode.DoesNotSupportSecurityBlock);
-        }
-
         SC2Context.Reset();
 
         byte[] rndA = command.Payload;

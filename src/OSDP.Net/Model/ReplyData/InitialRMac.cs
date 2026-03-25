@@ -38,11 +38,15 @@ namespace OSDP.Net.Model.ReplyData
         /// <inheritdoc />
         public override ReadOnlySpan<byte> SecurityControlBlock()
         {
+            byte scbData = RMac.Length == 0
+                ? (byte)0x02
+                : (byte)(ServerCryptogramAccepted ? 0x01 : 0xff);
+
             return new byte[]
             {
                 0x03,
-                (byte)SecurityBlockType.SecureConnectionSequenceStep2,
-                (byte)(ServerCryptogramAccepted ? 0x01 : 0xff)
+                (byte)SecurityBlockType.SecureConnectionSequenceStep4,
+                scbData
             };
         }
 

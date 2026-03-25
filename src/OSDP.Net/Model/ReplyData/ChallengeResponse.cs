@@ -93,11 +93,15 @@ namespace OSDP.Net.Model.ReplyData
         /// <inheritdoc />
         public override ReadOnlySpan<byte> SecurityControlBlock()
         {
+            byte scbData = RndB.Length == 16
+                ? (byte)0x02
+                : (byte)(IsUsingDefaultKey ? 0x00 : 0x01);
+
             return new byte[]
             {
                 0x03,
                 (byte)SecurityBlockType.SecureConnectionSequenceStep2,
-                (byte)(IsUsingDefaultKey ? 0x00 : 0x01)
+                scbData
             };
         }
     }

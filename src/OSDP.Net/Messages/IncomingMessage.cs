@@ -244,6 +244,6 @@ namespace OSDP.Net.Messages
         /// Checks whether the secure cryptogram has been accepted.
         /// </summary>
         /// <returns>Returns true if the secure cryptogram has been accepted; otherwise, false.</returns>
-        public bool SecureCryptogramHasBeenAccepted() => SecureBlockData[0] == 0x01;
+        public bool SecureCryptogramHasBeenAccepted() => SecureBlockData[0] == 0x01 || SecureBlockData[0] == 0x02;
     }
 }

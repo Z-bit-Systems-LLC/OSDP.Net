@@ -244,7 +244,7 @@ The PD validates the server cryptogram and confirms the secure channel is establ
 [4]      Control byte (SCB bit set)
 [5]      SCB length = 0x03
 [6]      SCB type = 0x14 (SCS_14: Sequence Step 4)
-[7]      SCB data = 0x01 (cryptogram accepted)
+[7]      SCB data = 0x02 (SC2 indicator; SC1 uses 0x01 for accepted)
 [8]      Reply code = 0x78 (osdp_RMAC_I)
          (no payload — SC2 does not compute an RMAC)
 [9:10]   CRC-16
@@ -260,7 +260,7 @@ The PD validates the server cryptogram and confirms the secure channel is establ
    - Mark `IsSecurityEstablished = true`
 
 **ACU actions (after receiving osdp_RMAC_I):**
-1. Verify `SCB data[0] == 0x01` (cryptogram accepted)
+1. Verify `SCB data[0]` indicates acceptance (`0x01` for SC1, `0x02` for SC2)
 2. Establish the secure channel:
    - Set message counter = 0
    - Mark `IsSecurityEstablished = true`
@@ -402,11 +402,19 @@ When the counter reaches 500,000,000, the session must be re-established by perf
 
 ### SC2 Indicator Values (SCB data byte)
 
+The SCB data byte is the third byte of the Security Control Block (after length and type). It is carried in all four handshake steps (SCS_11 through SCS_14) to consistently identify the secure channel version.
+
 | Value | Meaning |
 |---|---|
 | `0x00` | SC1, default key (SCBK-D) |
 | `0x01` | SC1, device-specific key |
 | `0x02` | SC2 |
+
+For SC2, all handshake messages use `0x02`:
+- SCS_11 (osdp_CHLNG): ACU sends `03-11-02`
+- SCS_12 (osdp_CCRYPT): PD sends `03-12-02`
+- SCS_13 (osdp_SCRYPT): ACU sends `03-13-02`
+- SCS_14 (osdp_RMAC_I): PD sends `03-14-02`
 
 ### OSDP Command/Reply Codes (Handshake)
 
