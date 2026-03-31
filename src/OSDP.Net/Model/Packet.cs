@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 using OSDP.Net.Messages;
 using OSDP.Net.Model.CommandData;
@@ -153,7 +153,7 @@ public class Packet : IPacket
             case Messages.CommandType.GenerateChallenge:
                 return null;
             case Messages.CommandType.AuthenticateChallenge:
-                return MessageDataFragment.ParseData(RawPayloadData);
+                return MessageDataFragment.ParseData(RawPayloadData, MessageDataFragmentFieldSize.TwoBytes);
             case Messages.CommandType.KeepActive:
                 return null;
         }
