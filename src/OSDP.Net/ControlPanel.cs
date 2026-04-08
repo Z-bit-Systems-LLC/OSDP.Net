@@ -501,7 +501,8 @@ namespace OSDP.Net
                     reply = await SendCommand(connectionId, address, new Model.CommandData.ManufacturerSpecific(
                             manufacturerSpecific.VendorCode, manufactureCommandCode.Concat(
                                 new MessageDataFragment(totalSize, offset, fragmentSize,
-                                        manufactureCommandData.Skip(offset).Take(fragmentSize).ToArray()).BuildData()
+                                        manufactureCommandData.Skip(offset).Take(fragmentSize).ToArray(), 
+                                        MessageDataFragmentFieldSize.FourBytes).BuildData()
                                     .ToArray()).ToArray()), cancellationToken)
                         .ConfigureAwait(false);
 
@@ -687,7 +688,8 @@ namespace OSDP.Net
                 var reply = await SendCommand(connectionId, address,
             new FileTransferFragment(fileType,
                 new MessageDataFragment(totalSize, offset, nextFragmentSize,
-                    fileData.Skip(offset).Take(nextFragmentSize).ToArray())),
+                    fileData.Skip(offset).Take(nextFragmentSize).ToArray(), 
+                    MessageDataFragmentFieldSize.FourBytes)),
                         cancellationToken, throwOnNak: false)
                     .ConfigureAwait(false);
 
@@ -987,7 +989,8 @@ namespace OSDP.Net
                     await SendCommand(connectionId, address, new AuthenticationChallengeFragment(
                             new MessageDataFragment(totalSize, offset, fragmentSize,
                                 requestData.Skip(offset).Take((ushort)Math.Min(fragmentSize, totalSize - offset))
-                                    .ToArray())), cancellationToken)
+                                    .ToArray(), 
+                                MessageDataFragmentFieldSize.TwoBytes)), cancellationToken)
                         .ConfigureAwait(false);
 
                     offset += fragmentSize;
