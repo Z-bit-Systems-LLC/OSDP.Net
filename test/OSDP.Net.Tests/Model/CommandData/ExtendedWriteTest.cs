@@ -104,4 +104,63 @@ internal class ExtendedWriteTest
         Assert.That(command.PCommand, Is.EqualTo(4));
         Assert.That(command.PData, Is.EqualTo(new byte[] { 0x01 }));
     }
+
+    [Test]
+    public void ParseData_FullPayload()
+    {
+        var payload = new byte[] { 0x01, 0x02, 0xAA, 0xBB, 0xCC };
+
+        var actual = ExtendedWrite.ParseData(payload);
+
+        Assert.That(actual.Mode, Is.EqualTo(1));
+        Assert.That(actual.PCommand, Is.EqualTo(2));
+        Assert.That(actual.PData, Is.EqualTo(new byte[] { 0xAA, 0xBB, 0xCC }));
+    }
+
+    [Test]
+    public void ParseData_NoPData()
+    {
+        var payload = new byte[] { 0x00, 0x01 };
+
+        var actual = ExtendedWrite.ParseData(payload);
+
+        Assert.That(actual.Mode, Is.EqualTo(0));
+        Assert.That(actual.PCommand, Is.EqualTo(1));
+        Assert.That(actual.PData, Is.Empty);
+    }
+
+    [Test]
+    public void ParseData_ShortPayload_Lenient()
+    {
+        // Lenient parsing mirrors ExtendedRead.ParseData — partial payloads must not throw.
+        var payload = new byte[] { 0x01 };
+
+        var actual = ExtendedWrite.ParseData(payload);
+
+        Assert.That(actual.Mode, Is.EqualTo(1));
+        Assert.That(actual.PCommand, Is.EqualTo(0));
+        Assert.That(actual.PData, Is.Empty);
+    }
+
+    [Test]
+    public void ParseData_EmptyPayload_Lenient()
+    {
+        var actual = ExtendedWrite.ParseData([]);
+
+        Assert.That(actual.Mode, Is.EqualTo(0));
+        Assert.That(actual.PCommand, Is.EqualTo(0));
+        Assert.That(actual.PData, Is.Empty);
+    }
+
+    [Test]
+    public void ParseData_RoundTripsThroughBuildData()
+    {
+        var original = ExtendedWrite.ModeOnePassAPDUCommand(0x03, [0x00, 0xA4, 0x04, 0x00]);
+
+        var parsed = ExtendedWrite.ParseData(original.BuildData());
+
+        Assert.That(parsed.Mode, Is.EqualTo(original.Mode));
+        Assert.That(parsed.PCommand, Is.EqualTo(original.PCommand));
+        Assert.That(parsed.PData, Is.EqualTo(original.PData));
+    }
 }

@@ -222,6 +222,19 @@ public class TestDevice : Device
     public TestDevice(DeviceConfiguration config, ILoggerFactory loggerFactory)
         : base(config, loggerFactory) { }
 
+    /// <summary>
+    /// Optional hook used by integration tests to drive PD responses to <c>osdp_XWR</c>
+    /// without needing a dedicated TestDevice subclass per test.
+    /// </summary>
+    public Func<ExtendedWrite, PayloadData> ExtendedWriteHandler { get; set; }
+
+    protected override PayloadData HandleExtendedWrite(ExtendedWrite commandPayload)
+    {
+        return ExtendedWriteHandler != null
+            ? ExtendedWriteHandler(commandPayload)
+            : base.HandleExtendedWrite(commandPayload);
+    }
+
     protected override PayloadData HandleIdReport()
     {
         return new DeviceIdentification([0x01, 0x02, 0x03], 4, 5, 6, 7, 8, 9);

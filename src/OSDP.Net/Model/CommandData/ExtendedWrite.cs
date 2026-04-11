@@ -62,6 +62,21 @@ namespace OSDP.Net.Model.CommandData
             return data.ToArray();
         }
 
+        /// <summary>Parses the message payload bytes.</summary>
+        /// <param name="data">Message payload as bytes.</param>
+        /// <returns>An instance of <see cref="ExtendedWrite"/> representing the message payload.</returns>
+        /// <remarks>
+        /// Leniently handles short payloads so the PD does not NAK mid-handshake when an
+        /// ACU sends a Mode-only or Mode+PCommand probe. Missing fields default to zero/empty.
+        /// </remarks>
+        public static ExtendedWrite ParseData(ReadOnlySpan<byte> data)
+        {
+            byte mode = data.Length > 0 ? data[0] : (byte)0;
+            byte pCommand = data.Length > 1 ? data[1] : (byte)0;
+            byte[] pData = data.Length > 2 ? data.Slice(2).ToArray() : [];
+            return new ExtendedWrite(mode, pCommand, pData);
+        }
+
         /// <summary>
         /// Queries the PD for its current extended mode setting.
         /// </summary>

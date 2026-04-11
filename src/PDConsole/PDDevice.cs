@@ -16,7 +16,12 @@ namespace PDConsole
         : Device(config, loggerFactory)
     {
         private readonly List<CommandEvent> _commandHistory = new();
-        
+
+        // Transparent-mode (osdp_XWR/XRD) state. Tracks whether Mode 1 (APDU passthrough)
+        // has been enabled by the ACU and whether a virtual smart-card session is active.
+        private byte _transparentMode;
+        private bool _smartCardSessionActive;
+
         public event EventHandler<CommandEvent> CommandReceived;
         
         protected override PayloadData HandleIdReport()
@@ -163,6 +168,72 @@ namespace PDConsole
         {
             LogCommand("Manufacturer Specific", commandPayload);
             return new Ack();
+        }
+
+        protected override PayloadData HandleExtendedWrite(ExtendedWrite commandPayload)
+        {
+            LogCommand("Extended Write (Transparent Mode)", commandPayload);
+
+            switch (commandPayload.Mode)
+            {
+                // Mode 0 - Configuration
+                case 0:
+                    switch (commandPayload.PCommand)
+                    {
+                        case 1: // Read mode setting
+                            return ExtendedRead.ModeZeroSettingReport(_transparentMode, _transparentMode == 1);
+
+                        case 2: // Set mode (pData[0] = new mode, pData[1] = enable)
+                            if (commandPayload.PData.Length >= 2)
+                            {
+                                _transparentMode = commandPayload.PData[0];
+                                _smartCardSessionActive = false;
+                            }
+                            return new Ack();
+
+                        default:
+                            return new Nak(ErrorCode.UnableToProcessCommand);
+                    }
+
+                // Mode 1 - Transparent APDU
+                case 1:
+                    if (commandPayload.PData.Length < 1)
+                        return new Nak(ErrorCode.UnableToProcessCommand);
+
+                    var readerNumber = commandPayload.PData[0];
+                    switch (commandPayload.PCommand)
+                    {
+                        case 1: // Pass APDU — echo success status word (90 00) as a canned response
+                            _smartCardSessionActive = true;
+                            return ExtendedRead.ApduResponse(readerNumber, [0x90, 0x00]);
+
+                        case 2: // Terminate smart-card session
+                            _smartCardSessionActive = false;
+                            return ExtendedRead.SessionTerminated(readerNumber);
+
+                        case 4: // Scan for smart card
+                            return _smartCardSessionActive
+                                ? ExtendedRead.CardPresent(readerNumber)
+                                : new Ack();
+
+                        default:
+                            return new Nak(ErrorCode.UnableToProcessCommand);
+                    }
+
+                default:
+                    return new Nak(ErrorCode.UnableToProcessCommand);
+            }
+        }
+
+        /// <summary>
+        /// Enqueues an unsolicited card-present transparent-mode reply to be delivered
+        /// on the next ACU poll. Used by the simulation UI to mimic a smart card tap.
+        /// </summary>
+        public void SimulateSmartCardPresent(byte readerNumber)
+        {
+            _smartCardSessionActive = true;
+            EnqueuePollReply(ExtendedRead.CardPresent(readerNumber));
+            LogCommand("Simulated Smart Card Present", new { ReaderNumber = readerNumber });
         }
         
         protected override PayloadData HandlePivData(GetPIVData commandPayload)
