@@ -26,7 +26,7 @@ namespace OSDP.Net.Model.CommandData
     /// </summary>
     public class MessageDataFragment
     {
-        private readonly MessageDataFragmentFieldSize sizeAndOffsetFieldSize;
+        private readonly MessageDataFragmentFieldSize _sizeAndOffsetFieldSize;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MessageDataFragment"/> class.
@@ -43,7 +43,7 @@ namespace OSDP.Net.Model.CommandData
             Offset = offset;
             FragmentSize = fragmentSize;
             DataFragment = dataFragment;
-            this.sizeAndOffsetFieldSize = sizeAndOffsetFieldSize;
+            _sizeAndOffsetFieldSize = sizeAndOffsetFieldSize;
         }
 
         /// <summary>
@@ -68,7 +68,7 @@ namespace OSDP.Net.Model.CommandData
 
         internal ReadOnlySpan<byte> BuildData()
         {
-            var useTwoByteFields = sizeAndOffsetFieldSize == MessageDataFragmentFieldSize.TwoBytes;
+            var useTwoByteFields = _sizeAndOffsetFieldSize == MessageDataFragmentFieldSize.TwoBytes;
             var data = new List<byte>();
             data.AddRange(useTwoByteFields ? Message.ConvertShortToBytes((ushort)TotalSize) : Message.ConvertIntToBytes(TotalSize));
             data.AddRange(useTwoByteFields ? Message.ConvertShortToBytes((ushort)Offset) : Message.ConvertIntToBytes(Offset));
