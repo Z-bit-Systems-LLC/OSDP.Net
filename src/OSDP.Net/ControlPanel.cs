@@ -15,6 +15,7 @@ using OSDP.Net.PanelCommands.DeviceDiscover;
 using OSDP.Net.Tracing;
 using CommunicationConfiguration = OSDP.Net.Model.CommandData.CommunicationConfiguration;
 using DeviceCapabilities = OSDP.Net.Model.ReplyData.DeviceCapabilities;
+using ExtendedRead = OSDP.Net.Model.ReplyData.ExtendedRead;
 using ManufacturerSpecific = OSDP.Net.Model.ReplyData.ManufacturerSpecific;
 
 namespace OSDP.Net
@@ -445,6 +446,28 @@ namespace OSDP.Net
                 Ack = reply.Type == (byte)ReplyType.Ack,
                 ReplyData = reply.Type == (byte)ReplyType.ManufactureSpecific
                     ? ManufacturerSpecific.ParseData(reply.Payload)
+                    : null
+            };
+        }
+
+        /// <summary>
+        /// Sends an extended write (transparent mode) command to a PD to facilitate
+        /// communications with an ISO 7816-4 based credential through the PD's reader.
+        /// </summary>
+        /// <param name="connectionId">Identify the connection for communicating to the device.</param>
+        /// <param name="address">Address assigned to the device.</param>
+        /// <param name="extendedWrite">The extended write command data.</param>
+        /// <returns>Reply data that is returned after sending the command. There is the possibility of different replies can be returned from PD.</returns>
+        public async Task<ReturnReplyData<ExtendedRead>> ExtendedWriteData(Guid connectionId, byte address,
+            ExtendedWrite extendedWrite)
+        {
+            var reply = await SendCommand(connectionId, address, extendedWrite).ConfigureAwait(false);
+
+            return new ReturnReplyData<ExtendedRead>
+            {
+                Ack = reply.Type == (byte)ReplyType.Ack,
+                ReplyData = reply.Type == (byte)ReplyType.ExtendedRead
+                    ? ExtendedRead.ParseData(reply.Payload)
                     : null
             };
         }
@@ -1467,6 +1490,11 @@ namespace OSDP.Net
                         new ManufacturerSpecificReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
                             ManufacturerSpecific.ParseData(reply.ReplyMessage.Payload)));
                     break;
+                case ReplyType.ExtendedRead:
+                    ExtendedReadReplyReceived?.Invoke(this,
+                        new ExtendedReadReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
+                            ExtendedRead.ParseData(reply.ReplyMessage.Payload)));
+                    break;
                 case ReplyType.PIVData:
                     PIVDataReplyReceived?.Invoke(this,
                         new MultiPartMessageDataReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
@@ -1547,6 +1575,11 @@ namespace OSDP.Net
         /// Occurs when manufacturer specific reply is received.
         /// </summary>
         public event EventHandler<ManufacturerSpecificReplyEventArgs> ManufacturerSpecificReplyReceived;
+
+        /// <summary>
+        /// Occurs when an extended read reply (transparent mode) is received.
+        /// </summary>
+        public event EventHandler<ExtendedReadReplyEventArgs> ExtendedReadReplyReceived;
 
         /// <summary>
         /// Occurs when key pad data reply is received.
@@ -1894,6 +1927,40 @@ namespace OSDP.Net
             /// A manufacturer specific reply.
             /// </summary>
             public ManufacturerSpecific ManufacturerSpecific { get; }
+        }
+
+        /// <summary>
+        /// The extended read (transparent mode) reply has been received.
+        /// </summary>
+        public class ExtendedReadReplyEventArgs : EventArgs
+        {
+            /// <summary>
+            /// Initializes a new instance of the <see cref="ExtendedReadReplyEventArgs"/> class.
+            /// </summary>
+            /// <param name="connectionId">Identify the connection for communicating to the device.</param>
+            /// <param name="address">Address assigned to the device.</param>
+            /// <param name="extendedRead">An extended read reply.</param>
+            public ExtendedReadReplyEventArgs(Guid connectionId, byte address, ExtendedRead extendedRead)
+            {
+                ConnectionId = connectionId;
+                Address = address;
+                ExtendedRead = extendedRead;
+            }
+
+            /// <summary>
+            /// Identify the connection for communicating to the device.
+            /// </summary>
+            public Guid ConnectionId { get; }
+
+            /// <summary>
+            /// Address assigned to the device.
+            /// </summary>
+            public byte Address { get; }
+
+            /// <summary>
+            /// An extended read reply.
+            /// </summary>
+            public ExtendedRead ExtendedRead { get; }
         }
 
         /// <summary>
