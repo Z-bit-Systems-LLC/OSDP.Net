@@ -119,5 +119,6 @@ For example, a response of `1:1:61-17-4F-0B-A0-00-00-03-08-00-00-10-00-01-00-90-
 ## Related documentation
 
 - [OSDP Transparent Mode](https://www.securityindustry.org/2026/03/18/security-industry-association-confirms-openness-of-transparent-mode-for-osdp-standard/) — SIA article confirming the protocol is open.
+- [`docs/transparent-mode-guide.md`](../../../docs/transparent-mode-guide.md) — transparent mode protocol overview, ACU and PD usage, and API reference.
 - [`docs/supported_commands.md`](../../../docs/supported_commands.md) — full list of OSDP commands supported by this library.
 - [`docs/api-usage-guide.md`](../../../docs/api-usage-guide.md) — general `ControlPanel` usage.
