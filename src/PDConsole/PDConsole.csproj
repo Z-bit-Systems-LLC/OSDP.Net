@@ -29,6 +29,7 @@
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
       <PackageReference Include="Terminal.Gui" Version="1.19.0" />
+      <PackageReference Update="Microsoft.SourceLink.GitHub" Version="10.0.202" />
     </ItemGroup>
 
     <ItemGroup>
