@@ -1462,90 +1462,124 @@ namespace OSDP.Net
 
         private void OnReplyReceived(ReplyTracker reply)
         {
+            // Not wrapped in try/catch: ReplyReceived is a private event whose subscribers are
+            // internal SendCommand handlers. Exceptions must propagate back to callers via the
+            // TaskCompletionSource so they receive the actual error instead of a timeout.
             ReplyReceived?.Invoke(this, new ReplyEventArgs { Reply = reply });
 
-            switch ((ReplyType)reply.ReplyMessage.Type)
+            try
             {
-                case ReplyType.Nak:
-                    NakReplyReceived?.Invoke(this,
-                        new NakReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            Nak.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.LocalStatusReport:
-                    LocalStatusReportReplyReceived?.Invoke(this,
-                        new LocalStatusReportReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            Model.ReplyData.LocalStatus.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.InputStatusReport:
-                    InputStatusReportReplyReceived?.Invoke(this,
-                        new InputStatusReportReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            Model.ReplyData.InputStatus.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.OutputStatusReport:
-                    OutputStatusReportReplyReceived?.Invoke(this,
-                        new OutputStatusReportReplyEventArgs(reply.ConnectionId,reply.ReplyMessage.Address,
-                            Model.ReplyData.OutputStatus.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.ReaderStatusReport:
-                    ReaderStatusReportReplyReceived?.Invoke(this,
-                        new ReaderStatusReportReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            Model.ReplyData.ReaderStatus.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.RawReaderData:
-                    RawCardDataReplyReceived?.Invoke(this,
-                        new RawCardDataReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            RawCardData.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.FormattedReaderData:
-                    FormattedCardDataReplyReceived?.Invoke(this,
-                        new FormattedCardDataReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            FormattedCardData.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.ManufactureSpecific:
-                    ManufacturerSpecificReplyReceived?.Invoke(this,
-                        new ManufacturerSpecificReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            ManufacturerSpecific.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.ExtendedRead:
-                    ExtendedReadReplyReceived?.Invoke(this,
-                        new ExtendedReadReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            ExtendedRead.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.PIVData:
-                    PIVDataReplyReceived?.Invoke(this,
-                        new MultiPartMessageDataReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.ExtendedPdIdReport:
-                    ExtendedIdReplyReceived?.Invoke(this,
-                        new MultiPartMessageDataReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.ResponseToChallenge:
-                    AuthenticationChallengeResponseReceived?.Invoke(this,
-                        new MultiPartMessageDataReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));   
-                    break;
-                case ReplyType.KeypadData:
-                    KeypadReplyReceived?.Invoke(this,
-                        new KeypadReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            KeypadData.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.BiometricData:
-                    BiometricReadResultsReplyReceived?.Invoke(this,
-                        new BiometricReadResultsReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            BiometricReadResult.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.BiometricMatchResult:
-                    BiometricMatchReplyReceived?.Invoke(this,
-                        new BiometricMatchReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            BiometricMatchResult.ParseData(reply.ReplyMessage.Payload)));
-                    break;
+                switch ((ReplyType)reply.ReplyMessage.Type)
+                {
+                    case ReplyType.Nak:
+                        NakReplyReceived?.Invoke(this,
+                            new NakReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
+                                Nak.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.LocalStatusReport:
+                        LocalStatusReportReplyReceived?.Invoke(this,
+                            new LocalStatusReportReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                Model.ReplyData.LocalStatus.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.InputStatusReport:
+                        InputStatusReportReplyReceived?.Invoke(this,
+                            new InputStatusReportReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                Model.ReplyData.InputStatus.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.OutputStatusReport:
+                        OutputStatusReportReplyReceived?.Invoke(this,
+                            new OutputStatusReportReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                Model.ReplyData.OutputStatus.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.ReaderStatusReport:
+                        ReaderStatusReportReplyReceived?.Invoke(this,
+                            new ReaderStatusReportReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                Model.ReplyData.ReaderStatus.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.RawReaderData:
+                        RawCardDataReplyReceived?.Invoke(this,
+                            new RawCardDataReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                RawCardData.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.FormattedReaderData:
+                        FormattedCardDataReplyReceived?.Invoke(this,
+                            new FormattedCardDataReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                FormattedCardData.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.ManufactureSpecific:
+                        ManufacturerSpecificReplyReceived?.Invoke(this,
+                            new ManufacturerSpecificReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                ManufacturerSpecific.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.ExtendedRead:
+                        ExtendedReadReplyReceived?.Invoke(this,
+                            new ExtendedReadReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                ExtendedRead.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.PIVData:
+                        PIVDataReplyReceived?.Invoke(this,
+                            new MultiPartMessageDataReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.ExtendedPdIdReport:
+                        ExtendedIdReplyReceived?.Invoke(this,
+                            new MultiPartMessageDataReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.ResponseToChallenge:
+                        AuthenticationChallengeResponseReceived?.Invoke(this,
+                            new MultiPartMessageDataReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.KeypadData:
+                        KeypadReplyReceived?.Invoke(this,
+                            new KeypadReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
+                                KeypadData.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.BiometricData:
+                        BiometricReadResultsReplyReceived?.Invoke(this,
+                            new BiometricReadResultsReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                BiometricReadResult.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.BiometricMatchResult:
+                        BiometricMatchReplyReceived?.Invoke(this,
+                            new BiometricMatchReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                BiometricMatchResult.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error in typed reply event handler for reply {ReplyType} from address {Address}",
+                    (ReplyType)reply.ReplyMessage.Type, reply.ReplyMessage.Address);
             }
 
-            RawReplyReceived?.Invoke(this,
-                new RawReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                    reply.ReplyMessage.Type, reply.ReplyMessage.Payload));
+            try
+            {
+                RawReplyReceived?.Invoke(this,
+                    new RawReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
+                        reply.ReplyMessage.Type, reply.ReplyMessage.Payload));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error in raw reply event handler for reply {ReplyType} from address {Address}",
+                    (ReplyType)reply.ReplyMessage.Type, reply.ReplyMessage.Address);
+            }
         }
 
         private event EventHandler<ReplyEventArgs> ReplyReceived;
