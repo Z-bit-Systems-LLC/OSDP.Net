@@ -187,27 +187,27 @@ namespace OSDP.Net
             await SendCommand(connectionId, address, command).ConfigureAwait(false);
         }
 
-		/// <summary>
-		/// Enqueue a custom command to be sent without waiting for a response.
-		/// </summary>
-		/// <param name="connectionId">Identify the connection for communicating to the device.</param>
-		/// <param name="address">Address assigned to the device.</param>
-		/// <param name="command">The custom command to send.</param>
-		public void EnqueueCustomCommand(Guid connectionId, byte address, CommandData command)
-		{
-			if (!_buses.TryGetValue(connectionId, out var bus))
-			{
-				throw new ArgumentException("Connection could not be found", nameof(connectionId));
-			}
+        /// <summary>
+        /// Enqueue a custom command to be sent without waiting for a response.
+        /// </summary>
+        /// <param name="connectionId">Identify the connection for communicating to the device.</param>
+        /// <param name="address">Address assigned to the device.</param>
+        /// <param name="command">The custom command to send.</param>
+        public void EnqueueCustomCommand(Guid connectionId, byte address, CommandData command)
+        {
+            if (!_buses.TryGetValue(connectionId, out var bus))
+            {
+                throw new ArgumentException("Connection could not be found", nameof(connectionId));
+            }
 
-			bus.SendCommand(address, command);
-		}
+            bus.SendCommand(address, command);
+        }
 
-		/// <summary>Request to get an ID Report from the PD.</summary>
-		/// <param name="connectionId">Identify the connection for communicating to the device.</param>
-		/// <param name="address">Address assigned to the device.</param>
-		/// <returns>ID report reply data that was requested.</returns>
-		public async Task<DeviceIdentification> IdReport(Guid connectionId, byte address) => 
+        /// <summary>Request to get an ID Report from the PD.</summary>
+        /// <param name="connectionId">Identify the connection for communicating to the device.</param>
+        /// <param name="address">Address assigned to the device.</param>
+        /// <returns>ID report reply data that was requested.</returns>
+        public async Task<DeviceIdentification> IdReport(Guid connectionId, byte address) =>
             await IdReport(connectionId, address, CancellationToken.None).ConfigureAwait(false);
 
         /// <summary>Request to get an ID Report from the PD.</summary>
@@ -1463,9 +1463,8 @@ namespace OSDP.Net
         private void OnReplyReceived(ReplyTracker reply)
         {
             ReplyReceived?.Invoke(this, new ReplyEventArgs { Reply = reply });
-			RawReplyReceived?.Invoke(this, new RawReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address, reply.ReplyMessage.Type, reply.ReplyMessage.Payload));
 
-			switch ((ReplyType)reply.ReplyMessage.Type)
+            switch ((ReplyType)reply.ReplyMessage.Type)
             {
                 case ReplyType.Nak:
                     NakReplyReceived?.Invoke(this,
@@ -1543,19 +1542,23 @@ namespace OSDP.Net
                             BiometricMatchResult.ParseData(reply.ReplyMessage.Payload)));
                     break;
             }
+
+            RawReplyReceived?.Invoke(this,
+                new RawReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
+                    reply.ReplyMessage.Type, reply.ReplyMessage.Payload));
         }
 
         private event EventHandler<ReplyEventArgs> ReplyReceived;
 
-		/// <summary>
-		/// Occurs when any reply is received
-		/// </summary>
-		public event EventHandler<RawReplyEventArgs> RawReplyReceived;
+        /// <summary>
+        /// Occurs when any reply is received.
+        /// </summary>
+        public event EventHandler<RawReplyEventArgs> RawReplyReceived;
 
-		/// <summary>
-		/// Occurs when connection status changed.
-		/// </summary>
-		public event EventHandler<ConnectionStatusEventArgs> ConnectionStatusChanged;
+        /// <summary>
+        /// Occurs when connection status changed.
+        /// </summary>
+        public event EventHandler<ConnectionStatusEventArgs> ConnectionStatusChanged;
 
         /// <summary>
         /// Occurs when a negative reply is received.
@@ -2174,48 +2177,48 @@ namespace OSDP.Net
             public FileTransferStatus Status { get; }
         }
 
-		/// <summary>
-		/// A reply has been received.
-		/// </summary>
-		public class RawReplyEventArgs : EventArgs
-		{
-			/// <summary>
-			/// Initializes a new instance of the <see cref="RawReplyEventArgs"/> class.
-			/// </summary>
-			/// <param name="connectionId">Identify the connection for communicating to the device.</param>
-			/// <param name="address">Address assigned to the device.</param>
-			/// <param name="command">The reply code of the message.</param>
-			/// <param name="payload">The raw reply payload.</param>
-			public RawReplyEventArgs(Guid connectionId, byte address, byte command, byte[] payload)
-			{
-				ConnectionId = connectionId;
-				Address = address;
-				Command = command;
-				Payload = payload;
-			}
+        /// <summary>
+        /// A reply has been received.
+        /// </summary>
+        public class RawReplyEventArgs : EventArgs
+        {
+            /// <summary>
+            /// Initializes a new instance of the <see cref="RawReplyEventArgs"/> class.
+            /// </summary>
+            /// <param name="connectionId">Identify the connection for communicating to the device.</param>
+            /// <param name="address">Address assigned to the device.</param>
+            /// <param name="replyType">The reply type code of the message.</param>
+            /// <param name="payload">The raw reply payload.</param>
+            public RawReplyEventArgs(Guid connectionId, byte address, byte replyType, ReadOnlyMemory<byte> payload)
+            {
+                ConnectionId = connectionId;
+                Address = address;
+                ReplyType = replyType;
+                Payload = payload;
+            }
 
-			/// <summary>
-			/// Identify the connection for communicating to the device.
-			/// </summary>
-			public Guid ConnectionId { get; }
+            /// <summary>
+            /// Identify the connection for communicating to the device.
+            /// </summary>
+            public Guid ConnectionId { get; }
 
-			/// <summary>
-			/// Address assigned to the device.
-			/// </summary>
-			public byte Address { get; }
+            /// <summary>
+            /// Address assigned to the device.
+            /// </summary>
+            public byte Address { get; }
 
-			/// <summary>
-			/// The reply code of the message.
-			/// </summary>
-			public byte Command { get; }
+            /// <summary>
+            /// The reply type code of the message.
+            /// </summary>
+            public byte ReplyType { get; }
 
-			/// <summary>
-			/// The raw reply payload.
-			/// </summary>
-			public byte[] Payload { get; }
-		}
+            /// <summary>
+            /// The raw reply payload.
+            /// </summary>
+            public ReadOnlyMemory<byte> Payload { get; }
+        }
 
-		private class ReplyEventArgs : EventArgs
+        private class ReplyEventArgs : EventArgs
         {
             public ReplyTracker Reply { get; set; }
         }
