@@ -154,6 +154,10 @@ catch (Exception ex)
 }
 ```
 
+## Related Projects
+
+- **OSDP PD Simulator** — A peripheral device simulator for testing ACU implementations: [GitHub](https://github.com/z9security/osdp-net-pd-sim)
+
 ## Custom Communication Implementations
 
 OSDP.Net is able to plug in different methods of communications beyond what is included with the default package. 
