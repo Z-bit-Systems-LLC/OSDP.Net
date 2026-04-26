@@ -145,7 +145,7 @@ public class Packet : IPacket
             case Messages.CommandType.ManufacturerSpecific:
                 return CommandData.ManufacturerSpecific.ParseData(RawPayloadData);
             case Messages.CommandType.ExtendedWrite:
-                return null;
+                return CommandData.ExtendedWrite.ParseData(RawPayloadData);
             case Messages.CommandType.Abort:
                 return null;
             case Messages.CommandType.PivData:
@@ -203,7 +203,7 @@ public class Packet : IPacket
             case Messages.ReplyType.ManufactureSpecific:
                 return ReplyData.ManufacturerSpecific.ParseData(RawPayloadData);
             case Messages.ReplyType.ExtendedRead:
-                break;
+                return ReplyData.ExtendedRead.ParseData(RawPayloadData);
         }
 
         return null;

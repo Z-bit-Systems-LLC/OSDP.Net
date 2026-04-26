@@ -1196,6 +1196,8 @@ namespace OSDP.Net
                 requestLock.Dispose();
             }
             _requestLocks.Clear();
+
+            OSDPFileCaptureTracer.CloseAllWriters();
         }
 
         /// <summary>

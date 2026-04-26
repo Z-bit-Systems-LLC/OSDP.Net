@@ -1,9 +1,11 @@
+using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using OSDP.Net;
 using OSDP.Net.Connections;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
+using OSDP.Net.Tracing;
 
 namespace SmartCardSample;
 
@@ -92,6 +94,43 @@ internal class Program
         _pollTimer.Stop();
         _pollTimer.Dispose();
         await _panel.Shutdown();
+
+        WriteParsedCapture(_connectionId);
+    }
+
+    private static void WriteParsedCapture(Guid connectionId)
+    {
+        var capturePath = $"{connectionId:D}.osdpcap";
+        if (!File.Exists(capturePath))
+        {
+            return;
+        }
+
+        try
+        {
+            var json = File.ReadAllText(capturePath);
+            var spy = new MessageSpy("0123456789:;<=>?"u8.ToArray());
+            var formatter = new OSDPPacketTextFormatter();
+            var sb = new StringBuilder();
+            DateTime previous = DateTime.MinValue;
+
+            foreach (var entry in spy.ParseCaptureFile(json))
+            {
+                TimeSpan? delta = previous > DateTime.MinValue ? entry.TimeStamp - previous : null;
+                previous = entry.TimeStamp;
+                sb.Append(formatter.FormatPacket(entry.Packet, entry.TimeStamp, delta));
+            }
+
+            var outputPath = Path.ChangeExtension(capturePath, ".txt");
+            File.WriteAllText(outputPath, sb.ToString());
+            Console.WriteLine();
+            Console.WriteLine($"Parsed capture written to {outputPath}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine();
+            Console.WriteLine($"Failed to parse capture file: {ex.Message}");
+        }
     }
 
     private static void OnExtendedReadReply(ExtendedRead reply)
