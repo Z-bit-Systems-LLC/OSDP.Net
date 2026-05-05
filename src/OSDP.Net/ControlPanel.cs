@@ -36,6 +36,8 @@ namespace OSDP.Net
         private readonly ConcurrentDictionary<int, SemaphoreSlim> _requestLocks = new();
         private readonly TimeSpan _timeToWaitToCheckOnData = TimeSpan.FromMilliseconds(10);
         private readonly IDeviceProxyFactory _deviceProxyFactory;
+        private CancellationTokenSource _shutdownCts = new();
+        private int _inFlightCommands;
 
         /// <summary>Initializes a new instance of the <see cref="T:OSDP.Net.ControlPanel" /> class.</summary>
         /// <param name="logger">The logger definition used for logging.</param>
@@ -236,21 +238,8 @@ namespace OSDP.Net
         public async Task<ExtendedDeviceIdentification> ExtendedIdReport(Guid connectionId, byte address,
             TimeSpan timeout, CancellationToken cancellationToken = default)
         {
-            var requestLock = GetRequestLock(connectionId, address);
-
-            if (!await requestLock.WaitAsync(timeout, cancellationToken))
-            {
-                throw new TimeoutException("Timeout waiting for another request to complete.");
-            }
-
-            try
-            {
-                return await WaitForExtendedIdData(connectionId, address, timeout, cancellationToken);
-            }
-            finally
-            {
-                requestLock.Release();
-            }
+            using var scope = await BeginCommandAsync(connectionId, address, timeout, cancellationToken);
+            return await WaitForExtendedIdData(connectionId, address, timeout, scope.Token);
         }
 
         private async Task<T> WaitForMultiPartData<T>(
@@ -387,27 +376,14 @@ namespace OSDP.Net
         public async Task<byte[]> GetPIVData(Guid connectionId, byte address, GetPIVData getPIVData, TimeSpan timeout,
             CancellationToken cancellationToken = default)
         {
-            var requestLock = GetRequestLock(connectionId, address);
-            
-            if (!await requestLock.WaitAsync(timeout, cancellationToken))
-            {
-                throw new TimeoutException("Timeout waiting for another request to complete.");
-            }
-            
-            try
-            {
-                return await WaitForPIVData(connectionId, address, getPIVData, timeout, cancellationToken);
-            }
-            finally
-            {
-                requestLock.Release();
-            }
+            using var scope = await BeginCommandAsync(connectionId, address, timeout, cancellationToken);
+            return await WaitForPIVData(connectionId, address, getPIVData, timeout, scope.Token);
         }
 
         private SemaphoreSlim GetRequestLock(Guid connectionId, byte address)
         {
             int hash = new { connectionId, address }.GetHashCode();
-            
+
             if (_requestLocks.TryGetValue(hash, out var requestLock))
             {
                 return requestLock;
@@ -416,6 +392,52 @@ namespace OSDP.Net
             var newRequestLock = new SemaphoreSlim(1, 1);
             _requestLocks[hash] = newRequestLock;
             return newRequestLock;
+        }
+
+        private async Task<CommandScope> BeginCommandAsync(Guid connectionId, byte address, TimeSpan timeout,
+            CancellationToken cancellationToken)
+        {
+            var linkedCts =
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownCts.Token);
+            Interlocked.Increment(ref _inFlightCommands);
+            try
+            {
+                var requestLock = GetRequestLock(connectionId, address);
+                if (!await requestLock.WaitAsync(timeout, linkedCts.Token).ConfigureAwait(false))
+                {
+                    throw new TimeoutException("Timeout waiting for another request to complete.");
+                }
+                return new CommandScope(this, requestLock, linkedCts);
+            }
+            catch
+            {
+                linkedCts.Dispose();
+                Interlocked.Decrement(ref _inFlightCommands);
+                throw;
+            }
+        }
+
+        private sealed class CommandScope : IDisposable
+        {
+            private readonly ControlPanel _owner;
+            private readonly SemaphoreSlim _requestLock;
+            private readonly CancellationTokenSource _linkedCts;
+
+            public CommandScope(ControlPanel owner, SemaphoreSlim requestLock, CancellationTokenSource linkedCts)
+            {
+                _owner = owner;
+                _requestLock = requestLock;
+                _linkedCts = linkedCts;
+            }
+
+            public CancellationToken Token => _linkedCts.Token;
+
+            public void Dispose()
+            {
+                _requestLock.Release();
+                _linkedCts.Dispose();
+                Interlocked.Decrement(ref _owner._inFlightCommands);
+            }
         }
 
         private async Task<byte[]> WaitForPIVData(Guid connectionId, byte address, GetPIVData getPIVData, TimeSpan timeout,
@@ -502,22 +524,9 @@ namespace OSDP.Net
             Model.CommandData.ManufacturerSpecific manufacturerSpecific, ushort maximumFragmentSize, TimeSpan timeout,
             CancellationToken cancellationToken = default)
         {
-            var requestLock = GetRequestLock(connectionId, address);
-
-            if (!await requestLock.WaitAsync(timeout, cancellationToken))
-            {
-                throw new TimeoutException("Timeout waiting for another request to complete.");
-            }
-
-            try
-            {
-                return await WaitForManufactureResponse(connectionId, address, manufacturerSpecific, maximumFragmentSize,
-                    cancellationToken);
-            }
-            finally
-            {
-                requestLock.Release();
-            }
+            using var scope = await BeginCommandAsync(connectionId, address, timeout, cancellationToken);
+            return await WaitForManufactureResponse(connectionId, address, manufacturerSpecific, maximumFragmentSize,
+                scope.Token);
         }
 
         private async Task<ReturnReplyData<ManufacturerSpecific>> WaitForManufactureResponse(Guid connectionId, byte address,
@@ -817,22 +826,8 @@ namespace OSDP.Net
             BiometricReadData biometricReadData, TimeSpan timeout,
             CancellationToken cancellationToken = default)
         {
-            var requestLock = GetRequestLock(connectionId, address);
-
-            if (!await requestLock.WaitAsync(timeout, cancellationToken))
-            {
-                throw new TimeoutException("Timeout waiting for another request to complete.");
-            }
-
-            try
-            {
-                return await WaitForBiometricRead(connectionId, address, biometricReadData, timeout,
-                    cancellationToken);
-            }
-            finally
-            {
-                requestLock.Release();
-            }
+            using var scope = await BeginCommandAsync(connectionId, address, timeout, cancellationToken);
+            return await WaitForBiometricRead(connectionId, address, biometricReadData, timeout, scope.Token);
         }
 
         private async Task<BiometricReadResult> WaitForBiometricRead(Guid connectionId, byte address,
@@ -895,21 +890,8 @@ namespace OSDP.Net
             BiometricTemplateData biometricTemplateData, TimeSpan timeout,
             CancellationToken cancellationToken = default)
         {
-            var requestLock = GetRequestLock(connectionId, address);
-            
-            if (!await requestLock.WaitAsync(timeout, cancellationToken))
-            {
-                throw new TimeoutException("Timeout waiting for another request to complete.");
-            }
-            
-            try
-            {
-                return await WaitForBiometricMatch(connectionId, address, biometricTemplateData, timeout, cancellationToken);
-            }
-            finally
-            {
-                requestLock.Release();
-            }
+            using var scope = await BeginCommandAsync(connectionId, address, timeout, cancellationToken);
+            return await WaitForBiometricMatch(connectionId, address, biometricTemplateData, timeout, scope.Token);
         }
 
         private async Task<BiometricMatchResult> WaitForBiometricMatch(Guid connectionId, byte address,
@@ -974,22 +956,9 @@ namespace OSDP.Net
             byte algorithm, byte key, byte[] challenge, ushort maximumFragmentSize, TimeSpan timeout,
             CancellationToken cancellationToken = default)
         {
-            var requestLock = GetRequestLock(connectionId, address);
-
-            if (!await requestLock.WaitAsync(timeout, cancellationToken))
-            {
-                throw new TimeoutException("Timeout waiting for another request to complete.");
-            }
-
-            try
-            {
-                return await WaitForChallengeResponse(connectionId, address, algorithm, key, challenge, maximumFragmentSize,
-                    timeout, cancellationToken);
-            }
-            finally
-            {
-                requestLock.Release();
-            }
+            using var scope = await BeginCommandAsync(connectionId, address, timeout, cancellationToken);
+            return await WaitForChallengeResponse(connectionId, address, algorithm, key, challenge, maximumFragmentSize,
+                timeout, scope.Token);
         }
 
         private async Task<byte[]> WaitForChallengeResponse(Guid connectionId, byte address, byte algorithm, byte key,
@@ -1178,11 +1147,14 @@ namespace OSDP.Net
         /// </summary>
         public async Task Shutdown()
         {
+            var shutdownCts = _shutdownCts;
+            shutdownCts.Cancel();
+
             foreach (var bus in _buses.Values)
             {
                 bus.ConnectionStatusChanged -= BusOnConnectionStatusChanged;
                 await bus.Close().ConfigureAwait(false);
-                
+
                 foreach (byte address in bus.ConfigureDeviceAddresses)
                 {
                     OnConnectionStatusChanged(bus.Id, address, false, false);
@@ -1191,11 +1163,19 @@ namespace OSDP.Net
             }
             _buses.Clear();
 
+            while (Volatile.Read(ref _inFlightCommands) > 0)
+            {
+                await Task.Delay(_timeToWaitToCheckOnData).ConfigureAwait(false);
+            }
+
             foreach (var requestLock in _requestLocks.Values)
             {
                 requestLock.Dispose();
             }
             _requestLocks.Clear();
+
+            _shutdownCts = new CancellationTokenSource();
+            shutdownCts.Dispose();
 
             OSDPFileCaptureTracer.CloseAllWriters();
         }
