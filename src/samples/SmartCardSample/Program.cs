@@ -16,6 +16,7 @@ internal class Program
     private static byte _deviceAddress;
     private static byte _readerNumber;
     private static bool _deviceOnline;
+    private static bool _modeConfigured;
     private static volatile bool _replActive;
     private static TaskCompletionSource _cardPresentSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private static System.Timers.Timer? _pollTimer;
@@ -33,9 +34,10 @@ internal class Program
 
         _panel = new ControlPanel(new NullLoggerFactory());
 
-        _panel.ConnectionStatusChanged += (_, eventArgs) =>
+        _panel.ConnectionStatusChanged += async (_, eventArgs) =>
         {
             _deviceOnline = eventArgs.IsConnected;
+            if (!eventArgs.IsConnected) _modeConfigured = false;
             Console.WriteLine();
             Console.WriteLine(
                 $"Device is {(eventArgs.IsConnected ? "Online" : "Offline")} in {(eventArgs.IsSecureChannelEstablished ? "Secure" : "Clear Text")} mode");
@@ -60,9 +62,9 @@ internal class Program
             new SerialPortOsdpConnection(portName, baudRate) { ReplyTimeout = TimeSpan.FromSeconds(2) },
             TimeSpan.FromMilliseconds(100),
             true);
-        _panel.AddDevice(_connectionId, _deviceAddress, true, true);
+        _panel.AddDevice(_connectionId, _deviceAddress, true, false);
 
-        _pollTimer = new System.Timers.Timer(TimeSpan.FromSeconds(5).TotalMilliseconds) { AutoReset = false };
+        _pollTimer = new System.Timers.Timer(TimeSpan.FromSeconds(1).TotalMilliseconds) { AutoReset = false };
         _pollTimer.Elapsed += async (_, _) => await PollMode();
         _pollTimer.Start();
 
@@ -138,11 +140,19 @@ internal class Program
         // Ignore replies that are responses to commands sent from the REPL —
         // only unsolicited "card present" notifications should drive the signal.
         if (_replActive) return;
-        if (reply is { Mode: 1, PReply: 1 })
+        if (IsCardPresent(reply))
         {
             _cardPresentSignal.TrySetResult();
         }
     }
+
+    // Card Present Notification (PR01PRES) per OSDP v2.2.2 §7.26.8 / Table 76:
+    // Mode=1, PReply=0, PData=[readerNumber, status] where status (Table 74)
+    // is 0x01 (unspecified), 0x02 (contactless), or 0x03 (contact).
+    private static bool IsCardPresent(ExtendedRead reply) =>
+        reply is { Mode: 1, PReply: 0 } &&
+        reply.PData.Length >= 2 &&
+        reply.PData[1] is >= 0x01 and <= 0x03;
 
     private static async Task PollMode()
     {
@@ -150,10 +160,31 @@ internal class Program
         {
             if (!_deviceOnline || _replActive) return;
 
-            var reply = await _panel.ExtendedWriteData(_connectionId, _deviceAddress,
+            // Unconditional one-shot at startup: send osdp_PR00SET (Mode-0 Set Mode = Mode 1
+            // configuration) before doing any Mode-1 traffic. Some PDs gate Mode-1 commands
+            // on having received an explicit Mode-1 configuration even if they self-report
+            // currentMode=1 already.
+            if (!_modeConfigured)
+            {
+                Console.WriteLine();
+                Console.WriteLine("Setting transparent mode (osdp_PR00SET → Mode 1).");
+                try
+                {
+                    await _panel.ExtendedWriteData(_connectionId, _deviceAddress,
+                        ExtendedWrite.ModeOneConfiguration());
+                    _modeConfigured = true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"osdp_PR00SET failed: {ex.Message} — will retry next poll.");
+                    return;
+                }
+            }
+
+            var modeReply = await _panel.ExtendedWriteData(_connectionId, _deviceAddress,
                 ExtendedWrite.ReadModeSetting());
 
-            if (reply.ReplyData == null)
+            if (modeReply.ReplyData == null)
             {
                 Console.WriteLine();
                 Console.WriteLine("No reply to ReadModeSetting — resetting device.");
@@ -161,14 +192,26 @@ internal class Program
                 return;
             }
 
-            var pData = reply.ReplyData.PData.ToArray();
-            if (reply.ReplyData.Mode == 0 && reply.ReplyData.PReply == 1 &&
-                pData.Length > 0 && pData[0] == 0)
+            var modePData = modeReply.ReplyData.PData.ToArray();
+            if (modeReply.ReplyData.Mode == 0 && modeReply.ReplyData.PReply == 1 &&
+                modePData.Length > 0 && modePData[0] == 0)
             {
                 Console.WriteLine();
-                Console.WriteLine("PD is in Mode 0 — switching to Mode 1.");
-                await _panel.ExtendedWriteData(_connectionId, _deviceAddress,
-                    ExtendedWrite.ModeOneConfiguration());
+                Console.WriteLine("PD is in Mode 0 — re-issuing Mode 1 configuration.");
+                _modeConfigured = false;
+                return;
+            }
+
+            // Actively probe for a smart card. Some PDs do not push unsolicited
+            // PR01PRES notifications, so we have to ask each poll cycle.
+            if (_replActive) return;
+
+            var scanReply = await _panel.ExtendedWriteData(_connectionId, _deviceAddress,
+                ExtendedWrite.ModeOneSmartCardScan(0));
+
+            if (scanReply.ReplyData != null && IsCardPresent(scanReply.ReplyData))
+            {
+                _cardPresentSignal.TrySetResult();
             }
         }
         catch (Exception ex)
@@ -188,9 +231,9 @@ internal class Program
         try
         {
             var scanReply = await _panel.ExtendedWriteData(_connectionId, _deviceAddress,
-                ExtendedWrite.ModeOneSmartCardScan(_readerNumber));
+                ExtendedWrite.ModeOneSmartCardScan(0));
 
-            if (scanReply.ReplyData is not { Mode: 1, PReply: 1 })
+            if (scanReply.ReplyData == null || !IsCardPresent(scanReply.ReplyData))
             {
                 Console.WriteLine();
                 Console.WriteLine("Smart card scan did not confirm card presence — aborting REPL.");
