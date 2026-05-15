@@ -1,4 +1,5 @@
 using System;
+using System.Security.Cryptography;
 using ACUConsole.Configuration;
 using ACUConsole.Model.DialogInputs;
 using Terminal.Gui;
@@ -69,12 +70,19 @@ namespace ACUConsole.Dialogs
                 Application.RequestStop();
             }
 
+            void RandomKeyButtonClicked()
+            {
+                keyTextField.Text = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+            }
+
             var sendButton = new Button("Next", true);
             sendButton.Clicked += NextButtonClicked;
             var cancelButton = new Button("Cancel");
             cancelButton.Clicked += CancelButtonClicked;
+            var randomButton = new Button("Random Key");
+            randomButton.Clicked += RandomKeyButtonClicked;
 
-            var dialog = new Dialog("Encryption Key Set", 60, 12, cancelButton, sendButton);
+            var dialog = new Dialog("Encryption Key Set", 60, 12, cancelButton, randomButton, sendButton);
             dialog.Add(new Label(1, 1, "Encryption Key (16 bytes hex):"), keyTextField,
                       new Label(1, 5, "Example: '0102030405060708090A0B0C0D0E0F10'"));
             keyTextField.SetFocus();
