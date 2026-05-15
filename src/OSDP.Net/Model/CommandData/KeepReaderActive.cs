@@ -25,7 +25,7 @@ public class KeepReaderActive : CommandData
     public ushort KeepAliveTimeInMilliseconds { get; }
     
     /// <inheritdoc />
-    public override CommandType CommandType => CommandType.MaxReplySize;
+    public override CommandType CommandType => CommandType.KeepActive;
 
     /// <inheritdoc />
     public override byte Code => (byte)CommandType;
