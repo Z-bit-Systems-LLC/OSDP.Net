@@ -570,11 +570,17 @@ namespace ACUConsole
                 () => _controlPanel.ReaderBuzzerControl(_connectionId, input.DeviceAddress, buzzerControl));
         }
 
-        public async Task SendReaderTextOutput(byte address, byte readerNumber, string text)
+        public async Task SendReaderTextOutput(Model.DialogInputs.ReaderTextOutputInput input)
         {
-            var textOutput = new ReaderTextOutput(readerNumber, TextCommand.PermanentTextNoWrap, 0, 1, 1, text);
-            await ExecuteCommand("Reader Text Output Command", address, 
-                () => _controlPanel.ReaderTextOutput(_connectionId, address, textOutput));
+            var textOutput = new ReaderTextOutput(
+                input.ReaderNumber,
+                input.TextCommand,
+                input.TemporaryTextTime,
+                input.Row,
+                input.Column,
+                input.Text);
+            await ExecuteCommand("Reader Text Output Command", input.DeviceAddress,
+                () => _controlPanel.ReaderTextOutput(_connectionId, input.DeviceAddress, textOutput));
         }
 
         public async Task SendManufacturerSpecific(byte address, byte[] vendorCode, byte[] data)

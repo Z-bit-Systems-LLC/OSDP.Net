@@ -749,19 +749,54 @@ namespace ACUConsole
                 return;
             }
 
+            // First show device selection dialog
             var deviceList = _presenter.GetDeviceList();
-            var input = ReaderTextOutputDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
-            
-            if (!input.WasCancelled)
+            var deviceSelection = DeviceSelectionDialog.Show("Reader Text Output", _presenter.Settings.Devices.ToArray(), deviceList);
+
+            if (deviceSelection.WasCancelled)
             {
-                try
+                return;
+            }
+
+            try
+            {
+                // Query device capabilities
+                var caps = await _presenter.SendDeviceCapabilities(deviceSelection.SelectedDeviceAddress);
+                var textCapability = caps.Get(CapabilityFunction.ReaderTextOutput);
+
+                // Build capability notice message
+                string capabilityMessage;
+                if (textCapability == null)
                 {
-                    await _presenter.SendReaderTextOutput(input.DeviceAddress, input.ReaderNumber, input.Text);
+                    capabilityMessage = "Device does not report text output capability.\n\n" +
+                                        "Text output may not be supported.";
                 }
-                catch (Exception ex)
+                else
                 {
-                    ShowError("Error", ex.Message);
+                    var complianceLevel = textCapability.Compliance;
+                    var textOutputsPerReader = textCapability.NumberOf;
+                    var description = ReaderTextOutputDialog.GetComplianceLevelDescription(complianceLevel);
+
+                    capabilityMessage = $"  Compliance Level: {complianceLevel}\n" +
+                                        $"Outputs per Reader: {textOutputsPerReader}\n\n" +
+                                        description;
                 }
+
+                // Show capability notice dialog (informational only)
+                MessageBox.Query(70, 12, "Text Output Capability", capabilityMessage, "Continue");
+
+                // Show text output settings dialog
+                var input = ReaderTextOutputDialog.Show();
+
+                if (!input.WasCancelled)
+                {
+                    input.DeviceAddress = deviceSelection.SelectedDeviceAddress;
+                    await _presenter.SendReaderTextOutput(input);
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError("Error", ex.Message);
             }
         }
 

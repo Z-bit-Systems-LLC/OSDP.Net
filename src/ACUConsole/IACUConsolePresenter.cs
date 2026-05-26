@@ -51,7 +51,7 @@ namespace ACUConsole
         Task SendOutputControl(byte address, byte outputNumber, bool activate);
         Task SendReaderLedControl(Model.DialogInputs.ReaderLedControlInput input);
         Task SendReaderBuzzerControl(Model.DialogInputs.ReaderBuzzerControlInput input);
-        Task SendReaderTextOutput(byte address, byte readerNumber, string text);
+        Task SendReaderTextOutput(Model.DialogInputs.ReaderTextOutputInput input);
         Task SendManufacturerSpecific(byte address, byte[] vendorCode, byte[] data);
         Task SendEncryptionKeySet(byte address, byte[] key);
         Task SendBiometricRead(byte address, byte readerNumber, byte type, byte format, byte quality);
