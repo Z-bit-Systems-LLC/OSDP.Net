@@ -317,7 +317,7 @@ namespace OSDP.Net
                                 break;
                             default:
                                 _logger?.LogDebug($"[{Connection}] Retrying command {commandMessage} on connection {Id} because \"{exception.Message}\".");
-                                device.RetryCommand(commandMessage.PayloadData as CommandData);
+                                device.RetryCommand(commandMessage.PayloadData as CommandData, isBusyRetry: false);
                                 break;
                         }
 
@@ -336,7 +336,15 @@ namespace OSDP.Net
 
                     try
                     {
-                        ProcessReply(reply, device);
+                        if (reply.ReplyMessage.Type == (byte)ReplyType.Busy)
+                        {
+                            _logger?.LogDebug($"[{Connection}] Retrying command {commandMessage} on connection {Id} because the device is busy.");
+                            device.RetryCommand(commandMessage.PayloadData as CommandData, isBusyRetry: true);
+                        }
+                        else
+                        {
+                            ProcessReply(reply, device);
+                        }
                     }
                     catch (Exception exception)
                     {
