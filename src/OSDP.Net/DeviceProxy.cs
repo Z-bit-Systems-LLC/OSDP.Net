@@ -12,7 +12,7 @@ namespace OSDP.Net;
 internal class DeviceProxy : IComparable<DeviceProxy>
 {
     private const int RetryAmount = 2;
-    private const int BusyRetryAmount = 10;
+    private const int BusyRetryAmount = 20;
 
     private readonly ConcurrentQueue<CommandData> _commands = new();
     private readonly bool _useSecureChannel;
