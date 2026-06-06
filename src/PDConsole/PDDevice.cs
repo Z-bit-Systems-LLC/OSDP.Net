@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Extensions.Logging;
 using OSDP.Net;
 using OSDP.Net.Model;
@@ -123,25 +124,44 @@ namespace PDConsole
         protected override PayloadData HandleLocalStatusReport()
         {
             LogCommand("Local Status Report");
-            return new Ack(); // Simplified - just return ACK
+            // osdp_LSTAT must be answered with osdp_LSTATR; report no tamper and no power failure.
+            return new LocalStatus(tamper: false, powerFailure: false);
         }
-        
+
         protected override PayloadData HandleInputStatusReport()
         {
             LogCommand("Input Status Report");
-            return new Ack(); // Simplified - just return ACK
+            // osdp_ISTAT must be answered with osdp_ISTATR; report all declared inputs inactive.
+            var statuses = Enumerable
+                .Repeat(InputStatusValue.Inactive, CapabilityCount(CapabilityFunction.ContactStatusMonitoring))
+                .ToArray();
+            return new InputStatus(statuses);
         }
-        
+
         protected override PayloadData HandleOutputStatusReport()
         {
             LogCommand("Output Status Report");
-            return new Ack(); // Simplified - just return ACK
+            // osdp_OSTAT must be answered with osdp_OSTATR; report all declared outputs inactive.
+            var statuses = new bool[CapabilityCount(CapabilityFunction.OutputControl)];
+            return new OutputStatus(statuses);
         }
-        
+
         protected override PayloadData HandleReaderStatusReport()
         {
             LogCommand("Reader Status Report");
-            return new Ack(); // Simplified - just return ACK
+            // osdp_RSTAT must be answered with osdp_RSTATR; report all declared readers normal.
+            var statuses = Enumerable
+                .Repeat(ReaderTamperStatus.Normal, CapabilityCount(CapabilityFunction.Readers))
+                .ToArray();
+            return new ReaderStatus(statuses);
+        }
+
+        // Returns the declared count for a capability (e.g. number of inputs/outputs/readers),
+        // defaulting to 1 when the capability is not present in the configuration.
+        private int CapabilityCount(CapabilityFunction function)
+        {
+            var capability = settings.Capabilities?.FirstOrDefault(c => c.Function == function);
+            return capability?.NumberOf ?? 1;
         }
         
         protected override PayloadData HandleReaderLEDControl(ReaderLedControls commandPayload)

@@ -476,6 +476,29 @@ public class MessageSpyTest
     }
 
     [TestFixture]
+    public class SecureCryptogramAcceptanceTest
+    {
+        // osdp_RMAC_I (SCS_14) reply; the byte after the SCS type (index 7) is the accept/reject marker.
+        private const string RMacTemplate = "53-80-1B-00-0F-03-14-{0}-78-11-11-11-11-11-11-11-11-11-11-11-11-11-11-11-11-00-00";
+
+        [TestCase("01", true)]   // success per OSDP spec D.1.3.4
+        [TestCase("00", false)]  // not the success value
+        [TestCase("FF", false)]  // explicit failure marker
+        public void SecureCryptogramHasBeenAccepted_IsTrueOnlyForSuccessValue(string dataByte, bool expected)
+        {
+            // Arrange
+            var spy = new MessageSpy();
+            var data = BinaryUtils.HexToBytes(string.Format(RMacTemplate, dataByte)).ToArray();
+
+            // Act
+            var message = spy.ParseReply(data);
+
+            // Assert
+            Assert.That(message.SecureCryptogramHasBeenAccepted(), Is.EqualTo(expected));
+        }
+    }
+
+    [TestFixture]
     public class MarkBytePrefixTest
     {
         [Test]
