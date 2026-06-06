@@ -199,6 +199,10 @@ namespace OSDP.Net.Messages
         /// <summary>
         /// Checks whether the secure cryptogram has been accepted.
         /// </summary>
+        /// <remarks>
+        /// Per the OSDP spec (section D.1.3.4), the osdp_RMAC_I (SCS_14) security block data byte is 0x01
+        /// when the PD accepted the ACU's server cryptogram and the secure channel is established.
+        /// </remarks>
         /// <returns>Returns true if the secure cryptogram has been accepted; otherwise, false.</returns>
         public bool SecureCryptogramHasBeenAccepted() => SecureBlockData[0] == 0x01;
     }
