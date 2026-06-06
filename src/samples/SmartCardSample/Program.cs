@@ -34,7 +34,7 @@ internal class Program
 
         _panel = new ControlPanel(new NullLoggerFactory());
 
-        _panel.ConnectionStatusChanged += async (_, eventArgs) =>
+        _panel.ConnectionStatusChanged += (_, eventArgs) =>
         {
             _deviceOnline = eventArgs.IsConnected;
             if (!eventArgs.IsConnected) _modeConfigured = false;
