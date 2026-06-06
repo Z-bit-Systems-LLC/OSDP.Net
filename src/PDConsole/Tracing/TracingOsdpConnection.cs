@@ -15,6 +15,7 @@ namespace PDConsole.Tracing
     internal sealed class TracingOsdpConnection(IOsdpConnection inner, Action<TraceEntry> tracer) : IOsdpConnection
     {
         private const byte StartOfMessage = 0x53;
+        private const byte DriverByte = 0xFF;
 
         // OSDP packet length bounds used to validate the framing length field while resyncing.
         private const int MinPacketLength = 5;
@@ -40,10 +41,16 @@ namespace PDConsole.Tracing
 
         public async Task WriteAsync(byte[] buffer)
         {
-            // A reply is written as a single complete packet, so it can be traced directly.
+            // A reply is written as a single complete packet. Strip any leading 0xFF driver
+            // byte(s) the library prepends (see OutgoingMessage.BuildMessage) so the traced
+            // packet begins at the SOM (0x53), matching the .osdpcap format the ACU produces.
             if (buffer is { Length: > 0 })
             {
-                tracer(new TraceEntry(TraceDirection.Output, ConnectionId, buffer));
+                var packet = StripDriverBytes(buffer);
+                if (packet.Length > 0)
+                {
+                    tracer(new TraceEntry(TraceDirection.Output, ConnectionId, packet));
+                }
             }
 
             await inner.WriteAsync(buffer);
@@ -65,6 +72,21 @@ namespace PDConsole.Tracing
         }
 
         public void Dispose() => inner.Dispose();
+
+        /// <summary>
+        /// Returns the packet with any leading 0xFF driver/idle bytes removed so it begins at the
+        /// SOM marker. The library prepends a single driver byte to every outgoing message.
+        /// </summary>
+        private static byte[] StripDriverBytes(byte[] buffer)
+        {
+            int start = 0;
+            while (start < buffer.Length && buffer[start] == DriverByte)
+            {
+                start++;
+            }
+
+            return start == 0 ? buffer : buffer[start..];
+        }
 
         /// <summary>
         /// Appends newly read bytes to the rolling buffer and yields any complete OSDP frames,

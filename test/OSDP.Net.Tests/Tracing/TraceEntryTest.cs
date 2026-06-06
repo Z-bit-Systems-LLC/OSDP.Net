@@ -317,8 +317,8 @@ public class TraceEntryTest
         [Test]
         public void Address_WithCommandPacket_ShouldExtractCorrectAddress()
         {
-            // Arrange - Command packet for address 0
-            var data = new byte[] { 0x00, 0x0D, 0x00, 0x06, 0x60 }; // Address byte is 0x00
+            // Arrange - Command packet for address 0 (data begins at SOM byte 0x53)
+            var data = new byte[] { 0x53, 0x00, 0x0D, 0x00, 0x06, 0x60 }; // Address byte (index 1) is 0x00
 
             // Act
             var entry = new TraceEntry(TraceDirection.Output, Guid.NewGuid(), data);
@@ -331,7 +331,7 @@ public class TraceEntryTest
         public void Address_WithReplyPacket_ShouldMaskReplyBit()
         {
             // Arrange - Reply packet for address 0 (0x80 has reply bit set)
-            var data = new byte[] { 0x80, 0x14, 0x00, 0x06, 0x45 }; // Address byte is 0x80 (address 0 with reply bit)
+            var data = new byte[] { 0x53, 0x80, 0x14, 0x00, 0x06, 0x45 }; // Address byte (index 1) is 0x80 (address 0 with reply bit)
 
             // Act
             var entry = new TraceEntry(TraceDirection.Input, Guid.NewGuid(), data);
@@ -343,8 +343,8 @@ public class TraceEntryTest
         [Test]
         public void Address_WithNonZeroAddress_ShouldExtractCorrectly()
         {
-            // Arrange - Command packet for address 5
-            var data = new byte[] { 0x05, 0x0D, 0x00, 0x06, 0x60 };
+            // Arrange - Command packet for address 5 (data begins at SOM byte 0x53)
+            var data = new byte[] { 0x53, 0x05, 0x0D, 0x00, 0x06, 0x60 };
 
             // Act
             var entry = new TraceEntry(TraceDirection.Output, Guid.NewGuid(), data);
@@ -357,7 +357,7 @@ public class TraceEntryTest
         public void Address_WithNonZeroAddressReply_ShouldMaskReplyBit()
         {
             // Arrange - Reply packet for address 5 (0x85 = 0x80 | 0x05)
-            var data = new byte[] { 0x85, 0x14, 0x00, 0x06, 0x45 };
+            var data = new byte[] { 0x53, 0x85, 0x14, 0x00, 0x06, 0x45 };
 
             // Act
             var entry = new TraceEntry(TraceDirection.Input, Guid.NewGuid(), data);
@@ -370,7 +370,7 @@ public class TraceEntryTest
         public void Address_WithMaxAddress_ShouldExtractCorrectly()
         {
             // Arrange - Command packet for max address (127 = 0x7F)
-            var data = new byte[] { 0x7F, 0x0D, 0x00, 0x06, 0x60 };
+            var data = new byte[] { 0x53, 0x7F, 0x0D, 0x00, 0x06, 0x60 };
 
             // Act
             var entry = new TraceEntry(TraceDirection.Output, Guid.NewGuid(), data);
@@ -383,7 +383,7 @@ public class TraceEntryTest
         public void Address_WithMaxAddressReply_ShouldMaskReplyBit()
         {
             // Arrange - Reply packet for max address (0xFF = 0x80 | 0x7F)
-            var data = new byte[] { 0xFF, 0x14, 0x00, 0x06, 0x45 };
+            var data = new byte[] { 0x53, 0xFF, 0x14, 0x00, 0x06, 0x45 };
 
             // Act
             var entry = new TraceEntry(TraceDirection.Input, Guid.NewGuid(), data);
@@ -416,24 +416,23 @@ public class TraceEntryTest
         }
 
         [Test]
-        public void Address_WithSingleByteData_ShouldExtractAddress()
+        public void Address_WithOnlySomByte_ShouldReturnNull()
         {
-            // Arrange
-            var data = new byte[] { 0x03 };
+            // Arrange - Only the SOM byte is present, so no address byte exists yet
+            var data = new byte[] { 0x53 };
 
             // Act
             var entry = new TraceEntry(TraceDirection.Output, Guid.NewGuid(), data);
 
             // Assert
-            Assert.That(entry.Address, Is.EqualTo(3));
+            Assert.That(entry.Address, Is.Null);
         }
 
         [Test]
         public void Address_WithTypicalOsdpPacket_ShouldExtractCorrectly()
         {
-            // Arrange - Typical OSDP poll command for address 0
-            // Data starts after SOM byte (0x53 is skipped in Bus.cs)
-            var data = new byte[] { 0x00, 0x08, 0x00, 0x04, 0x60, 0x3D, 0x57 };
+            // Arrange - Typical OSDP poll command for address 0 (data begins at SOM byte 0x53)
+            var data = new byte[] { 0x53, 0x00, 0x08, 0x00, 0x04, 0x60, 0x3D, 0x57 };
 
             // Act
             var entry = new TraceEntry(TraceDirection.Output, Guid.NewGuid(), data);
@@ -445,9 +444,8 @@ public class TraceEntryTest
         [Test]
         public void Address_WithTypicalOsdpReply_ShouldMaskReplyBit()
         {
-            // Arrange - Typical OSDP ACK reply for address 0
-            // Data starts after SOM byte (0x53 is skipped in Bus.cs)
-            var data = new byte[] { 0x80, 0x07, 0x00, 0x05, 0x40, 0xFE, 0x9C };
+            // Arrange - Typical OSDP ACK reply for address 0 (data begins at SOM byte 0x53)
+            var data = new byte[] { 0x53, 0x80, 0x07, 0x00, 0x05, 0x40, 0xFE, 0x9C };
 
             // Act
             var entry = new TraceEntry(TraceDirection.Input, Guid.NewGuid(), data);

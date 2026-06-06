@@ -87,7 +87,7 @@ var connectionId = controlPanel.StartConnection(connection,
 |----------------|------------------|----------------------------------------------|
 | `Direction`    | `TraceDirection` | `Input`, `Output`, or `Trace`                |
 | `ConnectionId` | `Guid`           | Identifies the connection/bus                |
-| `Data`         | `byte[]`         | Raw packet bytes (without SOM byte)          |
+| `Data`         | `byte[]`         | Raw packet bytes, starting at the SOM byte (0x53) |
 | `Address`      | `byte?`          | Device address extracted from packet (0-127) |
 
 ### Using the Address Property
