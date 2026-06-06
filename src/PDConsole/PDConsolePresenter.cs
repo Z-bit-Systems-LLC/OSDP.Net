@@ -1,14 +1,19 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using log4net;
+using log4net.Config;
+using Microsoft.Extensions.Logging;
 using OSDP.Net;
 using OSDP.Net.Connections;
 using OSDP.Net.Model;
 using PDConsole.Configuration;
+using PDConsole.Tracing;
 
 namespace PDConsole
 {
@@ -24,6 +29,8 @@ namespace PDConsole
         private IOsdpConnectionListener _connectionListener;
         private CancellationTokenSource _cancellationTokenSource;
         private string _currentSettingsFilePath;
+        private ILoggerFactory _loggerFactory;
+        private PDPacketCaptureTracer _packetCaptureTracer;
 
         // Events
         public event EventHandler<CommandEvent> CommandReceived;
@@ -60,13 +67,27 @@ namespace PDConsole
                     SecurityKey = securityKey
                 };
 
+                // Wire up logging if enabled
+                ILoggerFactory loggerFactory = null;
+                if (_settings.EnableLogging)
+                {
+                    EnsureLoggerFactory();
+                    loggerFactory = _loggerFactory;
+                }
+
                 // Create the device
-                _device = new PDDevice(deviceConfig, _settings.Device);
+                _device = new PDDevice(deviceConfig, _settings.Device, loggerFactory);
                 _device.CommandReceived += OnDeviceCommandReceived;
                 _device.EncryptionKeyChanged += OnEncryptionKeyChanged;
 
-                // Create a connection listener based on type
-                _connectionListener = CreateConnectionListener();
+                // Create a connection listener based on type, optionally wrapped with packet capture
+                var listener = CreateConnectionListener();
+                if (_settings.EnableTracing)
+                {
+                    _packetCaptureTracer = new PDPacketCaptureTracer();
+                    listener = new TracingConnectionListener(listener, _packetCaptureTracer);
+                }
+                _connectionListener = listener;
 
                 // Start listening
                 await _device.StartListening(_connectionListener);
@@ -106,6 +127,8 @@ namespace PDConsole
             }
             finally
             {
+                _packetCaptureTracer?.Dispose();
+                _packetCaptureTracer = null;
                 _device = null;
                 _connectionListener = null;
                 _cancellationTokenSource = null;
@@ -396,6 +419,32 @@ namespace PDConsole
         {
             _ = StopDevice();
             _cancellationTokenSource?.Dispose();
+            _loggerFactory?.Dispose();
+        }
+
+        /// <summary>
+        /// Lazily creates the log4net-backed logger factory used by the device, configuring
+        /// log4net from log4net.config the first time it is needed.
+        /// </summary>
+        private void EnsureLoggerFactory()
+        {
+            if (_loggerFactory != null) return;
+
+            ConfigureLog4Net();
+            _loggerFactory = new LoggerFactory();
+            _loggerFactory.AddLog4Net();
+        }
+
+        private static void ConfigureLog4Net()
+        {
+            var repository = LogManager.GetRepository(
+                Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly());
+
+            var configFile = new FileInfo("log4net.config");
+            if (configFile.Exists)
+            {
+                XmlConfigurator.Configure(repository, configFile);
+            }
         }
     }
 }
