@@ -206,6 +206,7 @@ For more information, see the [Terminal.Gui PuTTY discussion](https://github.com
 - [Supported Commands and Replies](docs/supported_commands.md)
 - [Tracing Guide](docs/tracing-guide.md)
 - [Transparent Mode Guide](docs/transparent-mode-guide.md)
+- [PDConsole Settings](docs/pdconsole-settings.md)
 
 ## Contributing
 
