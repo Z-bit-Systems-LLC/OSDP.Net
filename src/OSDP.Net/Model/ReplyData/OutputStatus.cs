@@ -39,7 +39,7 @@ namespace OSDP.Net.Model.ReplyData
         }
 
         /// <inheritdoc />
-        public override byte[] BuildData() => OutputStatuses.Select(x => x ? (byte)0x00 : (byte)0x01).ToArray();
+        public override byte[] BuildData() => OutputStatuses.Select(x => x ? (byte)0x01 : (byte)0x00).ToArray();
 
         /// <inheritdoc />
         public override string ToString()
