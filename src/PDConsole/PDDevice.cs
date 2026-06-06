@@ -23,6 +23,12 @@ namespace PDConsole
         private bool _smartCardSessionActive;
 
         public event EventHandler<CommandEvent> CommandReceived;
+
+        /// <summary>
+        /// Raised when the ACU successfully sets a new secure channel key via osdp_KEYSET.
+        /// The event argument carries the new 16-byte key.
+        /// </summary>
+        public event EventHandler<byte[]> EncryptionKeyChanged;
         
         protected override PayloadData HandleIdReport()
         {
@@ -106,6 +112,10 @@ namespace PDConsole
         protected override PayloadData HandleKeySettings(EncryptionKeyConfiguration commandPayload)
         {
             LogCommand("Key Settings", commandPayload);
+
+            // Accept the new key. The base Device picks it up for future connections; notify
+            // listeners so the new key can be persisted to the settings file.
+            EncryptionKeyChanged?.Invoke(this, commandPayload.KeyData);
             return new Ack();
         }
         

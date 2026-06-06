@@ -99,14 +99,39 @@ namespace PDConsole.Configuration
         public List<string> AdditionalFirmwareVersions { get; set; } = new();
     }
     
+    /// <summary>
+    /// Secure channel operating mode for the PD.
+    /// </summary>
+    public enum SecureChannelMode
+    {
+        /// <summary>Secure channel disabled; all communication is in the clear.</summary>
+        ClearText,
+
+        /// <summary>Secure channel using the well-known default key (SCBK-D) for first-time keying.</summary>
+        Install,
+
+        /// <summary>Secure channel using the configured per-installation key (SCBK).</summary>
+        Secure
+    }
+
     public class SecuritySettings
     {
+        /// <summary>
+        /// The well-known default secure channel key (SCBK-D) used during install mode.
+        /// </summary>
         public static readonly byte[] DefaultKey =
             [0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F];
 
-        public bool RequireSecureChannel { get; set; } = false;
+        /// <summary>
+        /// The secure channel operating mode.
+        /// </summary>
+        public SecureChannelMode SecureChannelMode { get; set; } = SecureChannelMode.ClearText;
 
-        public byte[] SecureChannelKey { get; set; } = DefaultKey;
+        /// <summary>
+        /// The secure channel base key (SCBK) as a hex string. Only used when
+        /// <see cref="SecureChannelMode"/> is <see cref="SecureChannelMode.Secure"/>.
+        /// </summary>
+        public string SecureChannelKey { get; set; } = "303132333435363738393A3B3C3D3E3F";
     }
 
     public class SimulationSettings

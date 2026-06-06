@@ -52,16 +52,18 @@ namespace PDConsole
                 // Create device configuration
                 var vendorCode = ConvertHexStringToBytes(_settings.Device.VendorCode, 3);
                 var serialNumber = ParseSerialNumber(_settings.Device.SerialNumber);
+                var (requireSecurity, securityKey) = ResolveSecurity(_settings.Security);
                 var deviceConfig = new DeviceConfiguration(new ClientIdentification(vendorCode, serialNumber))
                 {
                     Address = _settings.Device.Address,
-                    RequireSecurity = _settings.Security.RequireSecureChannel,
-                    SecurityKey = _settings.Security.SecureChannelKey
+                    RequireSecurity = requireSecurity,
+                    SecurityKey = securityKey
                 };
 
                 // Create the device
                 _device = new PDDevice(deviceConfig, _settings.Device);
                 _device.CommandReceived += OnDeviceCommandReceived;
+                _device.EncryptionKeyChanged += OnEncryptionKeyChanged;
 
                 // Create a connection listener based on type
                 _connectionListener = CreateConnectionListener();
@@ -91,6 +93,7 @@ namespace PDConsole
                 if (_device != null)
                 {
                     _device.CommandReceived -= OnDeviceCommandReceived;
+                    _device.EncryptionKeyChanged -= OnEncryptionKeyChanged;
                     await _device.StopListening();
                 }
 
@@ -147,7 +150,7 @@ namespace PDConsole
 
         public string GetDeviceStatusText()
         {
-            return $"Address: {_settings.Device.Address} | Security: {(_settings.Security.RequireSecureChannel ? "Enabled" : "Disabled")}";
+            return $"Address: {_settings.Device.Address} | Security: {_settings.Security.SecureChannelMode}";
         }
 
         // Settings Management Methods
@@ -277,6 +280,81 @@ namespace PDConsole
             }
 
             CommandReceived?.Invoke(this, e);
+        }
+
+        /// <summary>
+        /// Persists a new secure channel key set by the ACU via osdp_KEYSET and switches the
+        /// stored mode to Secure so subsequent runs use the new key.
+        /// </summary>
+        private void OnEncryptionKeyChanged(object sender, byte[] newKey)
+        {
+            // A KEYSET only completes over an established secure channel (install or secure mode).
+            if (_settings.Security.SecureChannelMode == SecureChannelMode.ClearText)
+            {
+                return;
+            }
+
+            _settings.Security.SecureChannelKey = Convert.ToHexString(newKey);
+            _settings.Security.SecureChannelMode = SecureChannelMode.Secure;
+
+            StatusChanged?.Invoke(this, "Secure channel key updated by ACU");
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(_currentSettingsFilePath))
+                {
+                    SaveSettings(_currentSettingsFilePath);
+                }
+            }
+            catch
+            {
+                // SaveSettings already surfaced the failure via ErrorOccurred; swallow here so the
+                // KEYSET reply is still sent to the ACU.
+            }
+        }
+
+        /// <summary>
+        /// Maps the configured <see cref="SecureChannelMode"/> to the library's
+        /// RequireSecurity/SecurityKey pair. Install mode keys with the well-known default key,
+        /// Secure mode uses the configured key, and ClearText disables the secure channel.
+        /// </summary>
+        private static (bool RequireSecurity, byte[] SecurityKey) ResolveSecurity(SecuritySettings security)
+        {
+            switch (security.SecureChannelMode)
+            {
+                case SecureChannelMode.Install:
+                    return (true, SecuritySettings.DefaultKey);
+
+                case SecureChannelMode.Secure:
+                    return (true, ParseSecureChannelKey(security.SecureChannelKey));
+
+                case SecureChannelMode.ClearText:
+                default:
+                    return (false, SecuritySettings.DefaultKey);
+            }
+        }
+
+        private static byte[] ParseSecureChannelKey(string hexKey)
+        {
+            var cleaned = (hexKey ?? string.Empty).Replace(" ", "").Replace("-", "");
+
+            byte[] key;
+            try
+            {
+                key = Convert.FromHexString(cleaned);
+            }
+            catch (FormatException)
+            {
+                throw new InvalidOperationException("Secure channel key must be a valid hex string.");
+            }
+
+            if (key.Length != 16)
+            {
+                throw new InvalidOperationException(
+                    $"Secure channel key must be 16 bytes (32 hex characters), but was {key.Length} bytes.");
+            }
+
+            return key;
         }
 
         private static byte[] ConvertHexStringToBytes(string hex, int expectedLength)
