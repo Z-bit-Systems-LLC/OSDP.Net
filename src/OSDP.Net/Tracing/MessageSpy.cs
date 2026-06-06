@@ -18,6 +18,8 @@ namespace OSDP.Net.Tracing;
 /// </summary>
 public class MessageSpy
 {
+    private const byte MarkByte = 0xFF;
+
     private readonly SecurityContext _context;
     private readonly MessageSecureChannel _commandSpyChannel;
     private readonly MessageSecureChannel _replySpyChannel;
@@ -36,21 +38,38 @@ public class MessageSpy
     /// <summary>
     /// Retrieves the address byte from raw OSDP data without parsing the entire message.
     /// </summary>
-    /// <param name="data">Raw OSDP message data starting with SOM byte.</param>
+    /// <param name="data">Raw OSDP message data, optionally prefixed with one or more 0xFF mark bytes, followed by the SOM byte.</param>
     /// <returns>The address byte from the message.</returns>
     public byte PeekAddressByte(ReadOnlySpan<byte> data)
     {
-        return data[1];
+        return SkipMarkBytes(data)[1];
+    }
+
+    /// <summary>
+    /// Skips any leading 0xFF mark/line-driver bytes that a device may transmit before the SOM byte,
+    /// returning a span that begins at the start of the OSDP message.
+    /// </summary>
+    /// <param name="data">Raw OSDP message data, optionally prefixed with 0xFF mark bytes.</param>
+    /// <returns>The data with any leading 0xFF mark bytes removed.</returns>
+    private static ReadOnlySpan<byte> SkipMarkBytes(ReadOnlySpan<byte> data)
+    {
+        int index = 0;
+        while (index < data.Length && data[index] == MarkByte)
+        {
+            index++;
+        }
+
+        return data.Slice(index);
     }
 
     /// <summary>
     /// Parses raw OSDP command data into an IncomingMessage, handling the secure channel establishment.
     /// </summary>
-    /// <param name="data">Raw OSDP command data starting with SOM byte.</param>
+    /// <param name="data">Raw OSDP command data, optionally prefixed with one or more 0xFF mark bytes, followed by the SOM byte.</param>
     /// <returns>Parsed IncomingMessage containing the command details.</returns>
     public IncomingMessage ParseCommand(byte[] data)
     {
-        var command = new IncomingMessage(data, _commandSpyChannel);
+        var command = new IncomingMessage(SkipMarkBytes(data), _commandSpyChannel);
 
         return (CommandType)command.Type switch
         {
@@ -63,11 +82,11 @@ public class MessageSpy
     /// <summary>
     /// Parses raw OSDP reply data into an IncomingMessage, handling the secure channel establishment.
     /// </summary>
-    /// <param name="data">Raw OSDP reply data starting with SOM byte.</param>
+    /// <param name="data">Raw OSDP reply data, optionally prefixed with one or more 0xFF mark bytes, followed by the SOM byte.</param>
     /// <returns>Parsed IncomingMessage containing the reply details.</returns>
     public IncomingMessage ParseReply(byte[] data)
     {
-        var reply = new IncomingMessage(data, _replySpyChannel);
+        var reply = new IncomingMessage(SkipMarkBytes(data), _replySpyChannel);
 
         return (ReplyType)reply.Type switch
         {
