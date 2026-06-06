@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.IO;
-using OSDP.Net.Model;
 using OSDP.Net.Tracing;
 
 namespace ACUConsole.Tracing
@@ -78,8 +77,6 @@ namespace ACUConsole.Tracing
 
         private sealed class CaptureWriters : IDisposable
         {
-            private const byte ReplyAddressMask = 0x80;
-
             public OSDPCaptureFileWriter CaptureWriter { get; }
             private readonly StreamWriter _textWriter;
             private readonly MessageSpy _messageSpy;
@@ -103,7 +100,7 @@ namespace ACUConsole.Tracing
 
                 try
                 {
-                    var packet = ParsePacket(packetData);
+                    var packet = _messageSpy.ParsePacket(packetData);
                     _textWriter.Write(_formatter.FormatPacket(packet, timestamp, delta));
                     _textWriter.Flush();
                 }
@@ -112,18 +109,6 @@ namespace ACUConsole.Tracing
                     _textWriter.Write(_formatter.FormatError(packetData, timestamp, delta, ex.Message));
                     _textWriter.Flush();
                 }
-            }
-
-            private Packet ParsePacket(byte[] packetData)
-            {
-                byte addressByte = packetData.Length > 1 ? packetData[1] : (byte)0;
-                bool isReply = (addressByte & ReplyAddressMask) != 0;
-
-                var message = isReply
-                    ? _messageSpy.ParseReply(packetData)
-                    : _messageSpy.ParseCommand(packetData);
-
-                return new Packet(message);
             }
 
             public void Dispose()
