@@ -1,5 +1,4 @@
 using NUnit.Framework;
-using OSDP.Net;
 using OSDP.Net.Messages;
 using OSDP.Net.Model;
 using OSDP.Net.Model.ReplyData;
