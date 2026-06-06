@@ -129,6 +129,16 @@ namespace OSDP.Net.Messages.SecureChannel
         {
             if (command.Address != Address && command.Address != ControlPanel.ConfigurationAddress) return true;
 
+            // A clear-text command with sequence number 0 means the ACU is (re)starting the
+            // connection, so any existing secure channel session is stale and must be dropped. This
+            // lets the ACU drive re-establishment (e.g. after osdp_KEYSET) - discovery commands like
+            // osdp_CAP are then answered in the clear until the new secure channel is set up, rather
+            // than the PD resetting the session off the back of the osdp_KEYSET itself.
+            if (command.Sequence == 0 && !command.IsSecureMessage && IsSecurityEstablished)
+            {
+                ResetSecureChannelSession();
+            }
+
             var reply = (command.IsValidMac, (CommandType)command.Type) switch
             {
                 (false, _) => HandleInvalidMac(),
