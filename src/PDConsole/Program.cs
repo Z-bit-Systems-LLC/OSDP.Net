@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using PDConsole.Configuration;
 using Terminal.Gui;
 
@@ -59,7 +60,8 @@ namespace PDConsole
                     var json = File.ReadAllText(settingsFile);
                     var settings = JsonSerializer.Deserialize<Settings>(json, new JsonSerializerOptions
                     {
-                        PropertyNameCaseInsensitive = true
+                        PropertyNameCaseInsensitive = true,
+                        Converters = { new JsonStringEnumConverter() }
                     }) ?? new Settings();
                     return (settings, Path.GetFullPath(settingsFile));
                 }
@@ -83,7 +85,8 @@ namespace PDConsole
             {
                 var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions
                 {
-                    WriteIndented = true
+                    WriteIndented = true,
+                    Converters = { new JsonStringEnumConverter() }
                 });
                 File.WriteAllText(filePath, json);
             }

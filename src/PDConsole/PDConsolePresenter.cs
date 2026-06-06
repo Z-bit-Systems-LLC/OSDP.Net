@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using OSDP.Net;
@@ -172,7 +173,8 @@ namespace PDConsole
                 var json = File.ReadAllText(filePath);
                 _settings = JsonSerializer.Deserialize<Settings>(json, new JsonSerializerOptions
                 {
-                    PropertyNameCaseInsensitive = true
+                    PropertyNameCaseInsensitive = true,
+                    Converters = { new JsonStringEnumConverter() }
                 }) ?? new Settings();
 
                 _currentSettingsFilePath = filePath;
@@ -196,7 +198,8 @@ namespace PDConsole
 
                 var json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions
                 {
-                    WriteIndented = true
+                    WriteIndented = true,
+                    Converters = { new JsonStringEnumConverter() }
                 });
 
                 File.WriteAllText(filePath, json);
