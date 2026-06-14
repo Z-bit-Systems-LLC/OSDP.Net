@@ -38,6 +38,9 @@ namespace OSDP.Net.Model.ReplyData
         /// <inheritdoc />
         public override ReadOnlySpan<byte> SecurityControlBlock()
         {
+            // osdp_RMAC_I carries SCS_14. Per the OSDP spec (section D.1.3.4) the data byte is 0x01
+            // when the server cryptogram was accepted (secure channel established); 0xFF signals rejection.
+            // SC2 (empty RMAC payload) uses 0x02 to identify the SC2 secure channel.
             byte scbData = RMac.Length == 0
                 ? (byte)0x02
                 : (byte)(ServerCryptogramAccepted ? 0x01 : 0xff);

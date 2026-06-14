@@ -129,6 +129,8 @@ namespace OSDP.Net.Messages.SecureChannel
         {
             if (command.Address != Address && command.Address != ControlPanel.ConfigurationAddress) return true;
 
+            DropStaleSecureSessionOnConnectionRestart(command);
+
             var reply = (command.IsValidMac, (CommandType)command.Type) switch
             {
                 (false, _) => HandleInvalidMac(),
@@ -150,6 +152,21 @@ namespace OSDP.Net.Messages.SecureChannel
 
             return true;
         }
+        /// <summary>
+        /// A clear-text command with sequence number 0 means the ACU is (re)starting the connection,
+        /// so any established secure channel session is stale and must be dropped. This lets the ACU
+        /// drive re-establishment (e.g. after osdp_KEYSET) - discovery commands like osdp_CAP are then
+        /// answered in the clear until the new secure channel is set up, rather than the PD resetting
+        /// the session off the back of the osdp_KEYSET itself.
+        /// </summary>
+        internal void DropStaleSecureSessionOnConnectionRestart(IncomingMessage command)
+        {
+            if (command.Sequence == 0 && !command.IsSecureMessage && IsSecurityEstablished)
+            {
+                ResetSecureChannelSession();
+            }
+        }
+
         private PayloadData HandleInvalidMac()
         {
             return new Nak(ErrorCode.CommunicationSecurityNotMet);

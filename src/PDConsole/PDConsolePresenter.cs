@@ -1,15 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using log4net;
+using log4net.Config;
+using Microsoft.Extensions.Logging;
 using OSDP.Net;
 using OSDP.Net.Connections;
 using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model;
 using PDConsole.Configuration;
+using PDConsole.Tracing;
 
 namespace PDConsole
 {
@@ -25,6 +30,8 @@ namespace PDConsole
         private IOsdpConnectionListener _connectionListener;
         private CancellationTokenSource _cancellationTokenSource;
         private string _currentSettingsFilePath;
+        private ILoggerFactory _loggerFactory;
+        private PDPacketCaptureTracer _packetCaptureTracer;
 
         // Events
         public event EventHandler<CommandEvent> CommandReceived;
@@ -53,25 +60,36 @@ namespace PDConsole
                 // Create device configuration
                 var vendorCode = ConvertHexStringToBytes(_settings.Device.VendorCode, 3);
                 var serialNumber = ParseSerialNumber(_settings.Device.SerialNumber);
-                var securityKey = _settings.Security.SecureChannelVersion == SecureChannelVersion.V2
-                    && _settings.Security.SecureChannelKey.Length == SecuritySettings.DefaultKey.Length
-                        ? SecuritySettings.DefaultSC2Key
-                        : _settings.Security.SecureChannelKey;
-
+                var (requireSecurity, securityKey) = ResolveSecurity(_settings.Security);
                 var deviceConfig = new DeviceConfiguration(new ClientIdentification(vendorCode, serialNumber))
                 {
                     Address = _settings.Device.Address,
-                    RequireSecurity = _settings.Security.RequireSecureChannel,
+                    RequireSecurity = requireSecurity,
                     SecurityKey = securityKey,
                     SecureChannelVersion = _settings.Security.SecureChannelVersion
                 };
 
-                // Create the device
-                _device = new PDDevice(deviceConfig, _settings.Device);
-                _device.CommandReceived += OnDeviceCommandReceived;
+                // Wire up logging if enabled
+                ILoggerFactory loggerFactory = null;
+                if (_settings.EnableLogging)
+                {
+                    EnsureLoggerFactory();
+                    loggerFactory = _loggerFactory;
+                }
 
-                // Create a connection listener based on type
-                _connectionListener = CreateConnectionListener();
+                // Create the device
+                _device = new PDDevice(deviceConfig, _settings.Device, loggerFactory);
+                _device.CommandReceived += OnDeviceCommandReceived;
+                _device.EncryptionKeyChanged += OnEncryptionKeyChanged;
+
+                // Create a connection listener based on type, optionally wrapped with packet capture
+                var listener = CreateConnectionListener();
+                if (_settings.EnableTracing)
+                {
+                    _packetCaptureTracer = new PDPacketCaptureTracer();
+                    listener = new TracingConnectionListener(listener, _packetCaptureTracer);
+                }
+                _connectionListener = listener;
 
                 // Start listening
                 await _device.StartListening(_connectionListener);
@@ -98,6 +116,7 @@ namespace PDConsole
                 if (_device != null)
                 {
                     _device.CommandReceived -= OnDeviceCommandReceived;
+                    _device.EncryptionKeyChanged -= OnEncryptionKeyChanged;
                     await _device.StopListening();
                 }
 
@@ -110,6 +129,8 @@ namespace PDConsole
             }
             finally
             {
+                _packetCaptureTracer?.Dispose();
+                _packetCaptureTracer = null;
                 _device = null;
                 _connectionListener = null;
                 _cancellationTokenSource = null;
@@ -154,7 +175,7 @@ namespace PDConsole
 
         public string GetDeviceStatusText()
         {
-            return $"Address: {_settings.Device.Address} | Security: {(_settings.Security.RequireSecureChannel ? "Enabled" : "Disabled")}";
+            return $"Address: {_settings.Device.Address} | Security: {_settings.Security.SecureChannelMode}";
         }
 
         // Settings Management Methods
@@ -286,6 +307,85 @@ namespace PDConsole
             CommandReceived?.Invoke(this, e);
         }
 
+        /// <summary>
+        /// Persists a new secure channel key set by the ACU via osdp_KEYSET and switches the
+        /// stored mode to Secure so subsequent runs use the new key.
+        /// </summary>
+        private void OnEncryptionKeyChanged(object sender, byte[] newKey)
+        {
+            // A KEYSET only completes over an established secure channel (install or secure mode).
+            if (_settings.Security.SecureChannelMode == SecureChannelMode.ClearText)
+            {
+                return;
+            }
+
+            _settings.Security.SecureChannelKey = Convert.ToHexString(newKey);
+            _settings.Security.SecureChannelMode = SecureChannelMode.Secure;
+
+            StatusChanged?.Invoke(this, "Secure channel key updated by ACU");
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(_currentSettingsFilePath))
+                {
+                    SaveSettings(_currentSettingsFilePath);
+                }
+            }
+            catch
+            {
+                // SaveSettings already surfaced the failure via ErrorOccurred; swallow here so the
+                // KEYSET reply is still sent to the ACU.
+            }
+        }
+
+        /// <summary>
+        /// Maps the configured <see cref="SecureChannelMode"/> to the library's
+        /// RequireSecurity/SecurityKey pair. Install mode keys with the well-known default key,
+        /// Secure mode uses the configured key, and ClearText disables the secure channel.
+        /// </summary>
+        private static (bool RequireSecurity, byte[] SecurityKey) ResolveSecurity(SecuritySettings security)
+        {
+            bool isV2 = security.SecureChannelVersion == SecureChannelVersion.V2;
+            byte[] defaultKey = isV2 ? SecuritySettings.DefaultSC2Key : SecuritySettings.DefaultKey;
+
+            switch (security.SecureChannelMode)
+            {
+                case SecureChannelMode.Install:
+                    return (true, defaultKey);
+
+                case SecureChannelMode.Secure:
+                    return (true, ParseSecureChannelKey(security.SecureChannelKey, isV2));
+
+                case SecureChannelMode.ClearText:
+                default:
+                    return (false, defaultKey);
+            }
+        }
+
+        private static byte[] ParseSecureChannelKey(string hexKey, bool isV2)
+        {
+            var cleaned = (hexKey ?? string.Empty).Replace(" ", "").Replace("-", "");
+
+            byte[] key;
+            try
+            {
+                key = Convert.FromHexString(cleaned);
+            }
+            catch (FormatException)
+            {
+                throw new InvalidOperationException("Secure channel key must be a valid hex string.");
+            }
+
+            int expectedLength = isV2 ? 32 : 16;
+            if (key.Length != expectedLength)
+            {
+                throw new InvalidOperationException(
+                    $"Secure channel key must be {expectedLength} bytes ({expectedLength * 2} hex characters), but was {key.Length} bytes.");
+            }
+
+            return key;
+        }
+
         private static byte[] ConvertHexStringToBytes(string hex, int expectedLength)
         {
             hex = hex.Replace(" ", "").Replace("-", "");
@@ -325,6 +425,32 @@ namespace PDConsole
         {
             _ = StopDevice();
             _cancellationTokenSource?.Dispose();
+            _loggerFactory?.Dispose();
+        }
+
+        /// <summary>
+        /// Lazily creates the log4net-backed logger factory used by the device, configuring
+        /// log4net from log4net.config the first time it is needed.
+        /// </summary>
+        private void EnsureLoggerFactory()
+        {
+            if (_loggerFactory != null) return;
+
+            ConfigureLog4Net();
+            _loggerFactory = new LoggerFactory();
+            _loggerFactory.AddLog4Net();
+        }
+
+        private static void ConfigureLog4Net()
+        {
+            var repository = LogManager.GetRepository(
+                Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly());
+
+            var configFile = new FileInfo("log4net.config");
+            if (configFile.Exists)
+            {
+                XmlConfigurator.Configure(repository, configFile);
+            }
         }
     }
 }

@@ -55,8 +55,8 @@ public struct TraceEntry
         Direction = direction;
         ConnectionId = connectionId;
         Data = data;
-        // Extract address from data[0] if available (0x7F mask removes reply bit)
-        // The address byte is at position 0 in the trace data (after driver byte is skipped in Bus.cs)
-        Address = data is { Length: > 0 } ? (byte)(data[0] & 0x7F) : null;
+        // The trace data begins at the SOM byte (0x53); the address byte is at index 1.
+        // Mask off the reply bit (0x80) so commands and replies report the same address.
+        Address = data is { Length: > 1 } ? (byte)(data[1] & 0x7F) : null;
     }
 }

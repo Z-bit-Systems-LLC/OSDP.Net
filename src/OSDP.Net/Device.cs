@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -205,7 +206,8 @@ public class Device : IDisposable
         if (command.IsDataCorrect && Enum.IsDefined(typeof(CommandType), command.Type))
             _lastValidReceivedCommand = DateTime.UtcNow;
 
-        return new OutgoingReply(command, (CommandType)command.Type switch
+        var commandType = (CommandType)command.Type;
+        var reply = commandType switch
         {
             CommandType.Poll => HandlePoll(),
             CommandType.IdReport => DispatchIdReport(command.Payload),
@@ -225,11 +227,56 @@ public class Device : IDisposable
             CommandType.MaxReplySize => HandleMaxReplySize(ACUReceiveSize.ParseData(command.Payload)),
             CommandType.FileTransfer => HandleFileTransfer(FileTransferFragment.ParseData(command.Payload)),
             CommandType.ManufacturerSpecific => HandleManufacturerCommand(ManufacturerSpecific.ParseData(command.Payload)),
+            CommandType.ExtendedWrite => HandleExtendedWrite(ExtendedWrite.ParseData(command.Payload)),
             CommandType.Abort => HandleAbortRequest(),
             CommandType.PivData => HandlePivData(GetPIVData.ParseData(command.Payload)),
             CommandType.KeepActive => HandleKeepActive(KeepReaderActive.ParseData(command.Payload)),
             _ => HandleUnknownCommand(command)
-        });
+        };
+
+        return new OutgoingReply(command, EnsureValidReply(commandType, reply));
+    }
+
+    /// <summary>
+    /// Commands that the OSDP spec requires to be answered with a specific report reply. A handler
+    /// that returns something else (e.g. an Ack) is a protocol violation, so the reply is replaced
+    /// with a NAK to avoid putting an invalid message on the wire.
+    /// </summary>
+    private static readonly Dictionary<CommandType, ReplyType[]> MandatoryReportReplies = new()
+    {
+        [CommandType.IdReport] = new[] { ReplyType.PdIdReport, ReplyType.ExtendedPdIdReport },
+        [CommandType.DeviceCapabilities] = new[] { ReplyType.PdCapabilitiesReport },
+        [CommandType.LocalStatus] = new[] { ReplyType.LocalStatusReport },
+        [CommandType.InputStatus] = new[] { ReplyType.InputStatusReport },
+        [CommandType.OutputStatus] = new[] { ReplyType.OutputStatusReport },
+        [CommandType.ReaderStatus] = new[] { ReplyType.ReaderStatusReport }
+    };
+
+    /// <summary>
+    /// Validates that a handler's reply is permitted for the given command. For commands that mandate
+    /// a specific report, only that report (or a NAK/BUSY) is allowed; any other reply is replaced with
+    /// a NAK and logged. Other commands are returned unchanged.
+    /// </summary>
+    internal PayloadData EnsureValidReply(CommandType commandType, PayloadData reply)
+    {
+        if (!MandatoryReportReplies.TryGetValue(commandType, out var validReplies))
+        {
+            return reply;
+        }
+
+        var replyType = (ReplyType)reply.Code;
+        if (replyType == ReplyType.Nak || replyType == ReplyType.Busy ||
+            Array.IndexOf(validReplies, replyType) >= 0)
+        {
+            return reply;
+        }
+
+        _logger?.LogError(
+            "Handler for {CommandType} returned an invalid reply ({ReplyType}); substituting NAK. " +
+            "A spec-compliant PD must answer with one of [{ValidReplies}], or NAK/BUSY.",
+            commandType, replyType, string.Join(", ", validReplies));
+
+        return new Nak(ErrorCode.UnknownCommandCode);
     }
 
     private PayloadData HandlePoll()
@@ -327,6 +374,25 @@ public class Device : IDisposable
     protected virtual PayloadData HandleManufacturerCommand(ManufacturerSpecific commandPayload)
     {
         return HandleUnknownCommand(CommandType.ManufacturerSpecific);
+    }
+
+    /// <summary>
+    /// Handles the extended write (transparent mode) command received from the ACU.
+    /// </summary>
+    /// <param name="commandPayload">The incoming extended write command payload.</param>
+    /// <returns>
+    /// A payload data response. Typically an <see cref="ExtendedRead"/> reply, an Ack, or a Nak.
+    /// </returns>
+    /// <remarks>
+    /// Transparent mode tunnels ISO 7816-4 smart-card APDUs through a PD reader over the OSDP
+    /// link. The default implementation NAKs with <c>UnknownCommandCode</c>; PDs that support
+    /// transparent mode should override and return an <see cref="ExtendedRead"/> payload.
+    /// To push an unsolicited XRD (e.g., card-present notification) call
+    /// <see cref="EnqueuePollReply"/> with an <see cref="ExtendedRead"/> instance.
+    /// </remarks>
+    protected virtual PayloadData HandleExtendedWrite(ExtendedWrite commandPayload)
+    {
+        return HandleUnknownCommand(CommandType.ExtendedWrite);
     }
 
     /// <summary>

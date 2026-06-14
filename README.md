@@ -154,6 +154,10 @@ catch (Exception ex)
 }
 ```
 
+## Related Projects
+
+- **OSDP PD Simulator** — A peripheral device simulator for testing ACU implementations: [GitHub](https://github.com/z9security/osdp-net-pd-sim)
+
 ## Custom Communication Implementations
 
 OSDP.Net is able to plug in different methods of communications beyond what is included with the default package. 
@@ -166,7 +170,7 @@ It simply requires the installation of a new NuGet package. The code needs to be
 
 ## Test Console
 
-**Current Version 5.0.42 released February 3th, 2026**
+**Current Version 5.0.49 released June 6th, 2026**
 
 There are compiled versions of the test console applications for all the major platforms available for download. 
 They have all the required assemblies included to run as a self-contained executable. 
@@ -223,6 +227,8 @@ panel.AddDevice(connectionId, address, useCrc: true, useSecureChannel: true,
 - [PowerShell Support](docs/powershell.md)
 - [Supported Commands and Replies](docs/supported_commands.md)
 - [Tracing Guide](docs/tracing-guide.md)
+- [Transparent Mode Guide](docs/transparent-mode-guide.md)
+- [PDConsole Settings](docs/pdconsole-settings.md)
 
 ## Contributing
 

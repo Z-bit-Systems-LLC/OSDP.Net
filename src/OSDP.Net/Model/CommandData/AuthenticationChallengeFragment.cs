@@ -34,6 +34,6 @@ public class AuthenticationChallengeFragment(MessageDataFragment fragment) : Com
     /// <returns>An instance of AuthenticationChallengeFragment representing the message payload</returns>
     public static AuthenticationChallengeFragment ParseData(ReadOnlySpan<byte> data)
     {
-        return new AuthenticationChallengeFragment(MessageDataFragment.ParseData(data));
+        return new AuthenticationChallengeFragment(MessageDataFragment.ParseData(data, MessageDataFragmentFieldSize.TwoBytes));
     }
 }

@@ -100,11 +100,33 @@ namespace PDConsole.Configuration
         public List<string> AdditionalFirmwareVersions { get; set; } = new();
     }
     
+    /// <summary>
+    /// Secure channel operating mode for the PD.
+    /// </summary>
+    public enum SecureChannelMode
+    {
+        /// <summary>Secure channel disabled; all communication is in the clear.</summary>
+        ClearText,
+
+        /// <summary>Secure channel using the well-known default key (SCBK-D) for first-time keying.</summary>
+        Install,
+
+        /// <summary>Secure channel using the configured per-installation key (SCBK).</summary>
+        Secure
+    }
+
     public class SecuritySettings
     {
+        /// <summary>
+        /// The well-known default secure channel key (SCBK-D) used during install mode.
+        /// </summary>
         public static readonly byte[] DefaultKey =
             [0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F];
 
+        /// <summary>
+        /// The well-known default SC2 secure channel key (32 bytes) used during install mode when
+        /// <see cref="SecureChannelVersion"/> is <see cref="SecureChannelVersion.V2"/>.
+        /// </summary>
         public static readonly byte[] DefaultSC2Key =
         [
             0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
@@ -113,10 +135,21 @@ namespace PDConsole.Configuration
             0x58, 0x59, 0x5A, 0x5B, 0x5C, 0x5D, 0x5E, 0x5F
         ];
 
-        public bool RequireSecureChannel { get; set; } = false;
+        /// <summary>
+        /// The secure channel operating mode.
+        /// </summary>
+        public SecureChannelMode SecureChannelMode { get; set; } = SecureChannelMode.ClearText;
 
-        public byte[] SecureChannelKey { get; set; } = DefaultKey;
+        /// <summary>
+        /// The secure channel base key (SCBK) as a hex string. Only used when
+        /// <see cref="SecureChannelMode"/> is <see cref="SecureChannelMode.Secure"/>.
+        /// 16 bytes (32 hex chars) for SC1, 32 bytes (64 hex chars) for SC2.
+        /// </summary>
+        public string SecureChannelKey { get; set; } = "303132333435363738393A3B3C3D3E3F";
 
+        /// <summary>
+        /// The secure channel protocol version (V1 = AES-128 CBC, V2 = AES-256 GCM).
+        /// </summary>
         public SecureChannelVersion SecureChannelVersion { get; set; } = SecureChannelVersion.V1;
     }
 

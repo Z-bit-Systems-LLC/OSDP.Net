@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Extensions.Logging;
 using OSDP.Net;
 using OSDP.Net.Model;
@@ -16,8 +17,19 @@ namespace PDConsole
         : Device(config, loggerFactory)
     {
         private readonly List<CommandEvent> _commandHistory = new();
-        
+
+        // Transparent-mode (osdp_XWR/XRD) state. Tracks whether Mode 1 (APDU passthrough)
+        // has been enabled by the ACU and whether a virtual smart-card session is active.
+        private byte _transparentMode;
+        private bool _smartCardSessionActive;
+
         public event EventHandler<CommandEvent> CommandReceived;
+
+        /// <summary>
+        /// Raised when the ACU successfully sets a new secure channel key via osdp_KEYSET.
+        /// The event argument carries the new 16-byte key.
+        /// </summary>
+        public event EventHandler<byte[]> EncryptionKeyChanged;
         
         protected override PayloadData HandleIdReport()
         {
@@ -101,6 +113,10 @@ namespace PDConsole
         protected override PayloadData HandleKeySettings(EncryptionKeyConfiguration commandPayload)
         {
             LogCommand("Key Settings", commandPayload);
+
+            // Accept the new key. The base Device picks it up for future connections; notify
+            // listeners so the new key can be persisted to the settings file.
+            EncryptionKeyChanged?.Invoke(this, commandPayload.KeyData);
             return new Ack();
         }
         
@@ -108,25 +124,44 @@ namespace PDConsole
         protected override PayloadData HandleLocalStatusReport()
         {
             LogCommand("Local Status Report");
-            return new Ack(); // Simplified - just return ACK
+            // osdp_LSTAT must be answered with osdp_LSTATR; report no tamper and no power failure.
+            return new LocalStatus(tamper: false, powerFailure: false);
         }
-        
+
         protected override PayloadData HandleInputStatusReport()
         {
             LogCommand("Input Status Report");
-            return new Ack(); // Simplified - just return ACK
+            // osdp_ISTAT must be answered with osdp_ISTATR; report all declared inputs inactive.
+            var statuses = Enumerable
+                .Repeat(InputStatusValue.Inactive, CapabilityCount(CapabilityFunction.ContactStatusMonitoring))
+                .ToArray();
+            return new InputStatus(statuses);
         }
-        
+
         protected override PayloadData HandleOutputStatusReport()
         {
             LogCommand("Output Status Report");
-            return new Ack(); // Simplified - just return ACK
+            // osdp_OSTAT must be answered with osdp_OSTATR; report all declared outputs inactive.
+            var statuses = new bool[CapabilityCount(CapabilityFunction.OutputControl)];
+            return new OutputStatus(statuses);
         }
-        
+
         protected override PayloadData HandleReaderStatusReport()
         {
             LogCommand("Reader Status Report");
-            return new Ack(); // Simplified - just return ACK
+            // osdp_RSTAT must be answered with osdp_RSTATR; report all declared readers normal.
+            var statuses = Enumerable
+                .Repeat(ReaderTamperStatus.Normal, CapabilityCount(CapabilityFunction.Readers))
+                .ToArray();
+            return new ReaderStatus(statuses);
+        }
+
+        // Returns the declared count for a capability (e.g. number of inputs/outputs/readers),
+        // defaulting to 1 when the capability is not present in the configuration.
+        private int CapabilityCount(CapabilityFunction function)
+        {
+            var capability = settings.Capabilities?.FirstOrDefault(c => c.Function == function);
+            return capability?.NumberOf ?? 1;
         }
         
         protected override PayloadData HandleReaderLEDControl(ReaderLedControls commandPayload)
@@ -163,6 +198,72 @@ namespace PDConsole
         {
             LogCommand("Manufacturer Specific", commandPayload);
             return new Ack();
+        }
+
+        protected override PayloadData HandleExtendedWrite(ExtendedWrite commandPayload)
+        {
+            LogCommand("Extended Write (Transparent Mode)", commandPayload);
+
+            switch (commandPayload.Mode)
+            {
+                // Mode 0 - Configuration
+                case 0:
+                    switch (commandPayload.PCommand)
+                    {
+                        case 1: // Read mode setting
+                            return ExtendedRead.ModeZeroSettingReport(_transparentMode, _transparentMode == 1);
+
+                        case 2: // Set mode (pData[0] = new mode, pData[1] = enable)
+                            if (commandPayload.PData.Length >= 2)
+                            {
+                                _transparentMode = commandPayload.PData[0];
+                                _smartCardSessionActive = false;
+                            }
+                            return new Ack();
+
+                        default:
+                            return new Nak(ErrorCode.UnableToProcessCommand);
+                    }
+
+                // Mode 1 - Transparent APDU
+                case 1:
+                    if (commandPayload.PData.Length < 1)
+                        return new Nak(ErrorCode.UnableToProcessCommand);
+
+                    var readerNumber = commandPayload.PData[0];
+                    switch (commandPayload.PCommand)
+                    {
+                        case 1: // Pass APDU — echo success status word (90 00) as a canned response
+                            _smartCardSessionActive = true;
+                            return ExtendedRead.ApduResponse(readerNumber, [0x90, 0x00]);
+
+                        case 2: // Terminate smart-card session
+                            _smartCardSessionActive = false;
+                            return ExtendedRead.SessionTerminated(readerNumber);
+
+                        case 4: // Scan for smart card
+                            return _smartCardSessionActive
+                                ? ExtendedRead.CardPresent(readerNumber)
+                                : new Ack();
+
+                        default:
+                            return new Nak(ErrorCode.UnableToProcessCommand);
+                    }
+
+                default:
+                    return new Nak(ErrorCode.UnableToProcessCommand);
+            }
+        }
+
+        /// <summary>
+        /// Enqueues an unsolicited card-present transparent-mode reply to be delivered
+        /// on the next ACU poll. Used by the simulation UI to mimic a smart card tap.
+        /// </summary>
+        public void SimulateSmartCardPresent(byte readerNumber)
+        {
+            _smartCardSessionActive = true;
+            EnqueuePollReply(ExtendedRead.CardPresent(readerNumber));
+            LogCommand("Simulated Smart Card Present", new { ReaderNumber = readerNumber });
         }
         
         protected override PayloadData HandlePivData(GetPIVData commandPayload)

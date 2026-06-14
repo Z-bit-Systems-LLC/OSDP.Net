@@ -16,6 +16,7 @@ using OSDP.Net.PanelCommands.DeviceDiscover;
 using OSDP.Net.Tracing;
 using CommunicationConfiguration = OSDP.Net.Model.CommandData.CommunicationConfiguration;
 using DeviceCapabilities = OSDP.Net.Model.ReplyData.DeviceCapabilities;
+using ExtendedRead = OSDP.Net.Model.ReplyData.ExtendedRead;
 using ManufacturerSpecific = OSDP.Net.Model.ReplyData.ManufacturerSpecific;
 
 namespace OSDP.Net
@@ -36,6 +37,8 @@ namespace OSDP.Net
         private readonly ConcurrentDictionary<int, SemaphoreSlim> _requestLocks = new();
         private readonly TimeSpan _timeToWaitToCheckOnData = TimeSpan.FromMilliseconds(10);
         private readonly IDeviceProxyFactory _deviceProxyFactory;
+        private CancellationTokenSource _shutdownCts = new();
+        private int _inFlightCommands;
 
         /// <summary>Initializes a new instance of the <see cref="T:OSDP.Net.ControlPanel" /> class.</summary>
         /// <param name="logger">The logger definition used for logging.</param>
@@ -187,11 +190,27 @@ namespace OSDP.Net
             await SendCommand(connectionId, address, command).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Enqueue a custom command to be sent without waiting for a response.
+        /// </summary>
+        /// <param name="connectionId">Identify the connection for communicating to the device.</param>
+        /// <param name="address">Address assigned to the device.</param>
+        /// <param name="command">The custom command to send.</param>
+        public void EnqueueCustomCommand(Guid connectionId, byte address, CommandData command)
+        {
+            if (!_buses.TryGetValue(connectionId, out var bus))
+            {
+                throw new ArgumentException("Connection could not be found", nameof(connectionId));
+            }
+
+            bus.SendCommand(address, command);
+        }
+
         /// <summary>Request to get an ID Report from the PD.</summary>
         /// <param name="connectionId">Identify the connection for communicating to the device.</param>
         /// <param name="address">Address assigned to the device.</param>
         /// <returns>ID report reply data that was requested.</returns>
-        public async Task<DeviceIdentification> IdReport(Guid connectionId, byte address) => 
+        public async Task<DeviceIdentification> IdReport(Guid connectionId, byte address) =>
             await IdReport(connectionId, address, CancellationToken.None).ConfigureAwait(false);
 
         /// <summary>Request to get an ID Report from the PD.</summary>
@@ -220,21 +239,8 @@ namespace OSDP.Net
         public async Task<ExtendedDeviceIdentification> ExtendedIdReport(Guid connectionId, byte address,
             TimeSpan timeout, CancellationToken cancellationToken = default)
         {
-            var requestLock = GetRequestLock(connectionId, address);
-
-            if (!await requestLock.WaitAsync(timeout, cancellationToken))
-            {
-                throw new TimeoutException("Timeout waiting for another request to complete.");
-            }
-
-            try
-            {
-                return await WaitForExtendedIdData(connectionId, address, timeout, cancellationToken);
-            }
-            finally
-            {
-                requestLock.Release();
-            }
+            using var scope = await BeginCommandAsync(connectionId, address, timeout, cancellationToken);
+            return await WaitForExtendedIdData(connectionId, address, timeout, scope.Token);
         }
 
         private async Task<T> WaitForMultiPartData<T>(
@@ -371,27 +377,14 @@ namespace OSDP.Net
         public async Task<byte[]> GetPIVData(Guid connectionId, byte address, GetPIVData getPIVData, TimeSpan timeout,
             CancellationToken cancellationToken = default)
         {
-            var requestLock = GetRequestLock(connectionId, address);
-            
-            if (!await requestLock.WaitAsync(timeout, cancellationToken))
-            {
-                throw new TimeoutException("Timeout waiting for another request to complete.");
-            }
-            
-            try
-            {
-                return await WaitForPIVData(connectionId, address, getPIVData, timeout, cancellationToken);
-            }
-            finally
-            {
-                requestLock.Release();
-            }
+            using var scope = await BeginCommandAsync(connectionId, address, timeout, cancellationToken);
+            return await WaitForPIVData(connectionId, address, getPIVData, timeout, scope.Token);
         }
 
         private SemaphoreSlim GetRequestLock(Guid connectionId, byte address)
         {
             int hash = new { connectionId, address }.GetHashCode();
-            
+
             if (_requestLocks.TryGetValue(hash, out var requestLock))
             {
                 return requestLock;
@@ -400,6 +393,52 @@ namespace OSDP.Net
             var newRequestLock = new SemaphoreSlim(1, 1);
             _requestLocks[hash] = newRequestLock;
             return newRequestLock;
+        }
+
+        private async Task<CommandScope> BeginCommandAsync(Guid connectionId, byte address, TimeSpan timeout,
+            CancellationToken cancellationToken)
+        {
+            var linkedCts =
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownCts.Token);
+            Interlocked.Increment(ref _inFlightCommands);
+            try
+            {
+                var requestLock = GetRequestLock(connectionId, address);
+                if (!await requestLock.WaitAsync(timeout, linkedCts.Token).ConfigureAwait(false))
+                {
+                    throw new TimeoutException("Timeout waiting for another request to complete.");
+                }
+                return new CommandScope(this, requestLock, linkedCts);
+            }
+            catch
+            {
+                linkedCts.Dispose();
+                Interlocked.Decrement(ref _inFlightCommands);
+                throw;
+            }
+        }
+
+        private sealed class CommandScope : IDisposable
+        {
+            private readonly ControlPanel _owner;
+            private readonly SemaphoreSlim _requestLock;
+            private readonly CancellationTokenSource _linkedCts;
+
+            public CommandScope(ControlPanel owner, SemaphoreSlim requestLock, CancellationTokenSource linkedCts)
+            {
+                _owner = owner;
+                _requestLock = requestLock;
+                _linkedCts = linkedCts;
+            }
+
+            public CancellationToken Token => _linkedCts.Token;
+
+            public void Dispose()
+            {
+                _requestLock.Release();
+                _linkedCts.Dispose();
+                Interlocked.Decrement(ref _owner._inFlightCommands);
+            }
         }
 
         private async Task<byte[]> WaitForPIVData(Guid connectionId, byte address, GetPIVData getPIVData, TimeSpan timeout,
@@ -451,6 +490,28 @@ namespace OSDP.Net
         }
 
         /// <summary>
+        /// Sends an extended write (transparent mode) command to a PD to facilitate
+        /// communications with an ISO 7816-4 based credential through the PD's reader.
+        /// </summary>
+        /// <param name="connectionId">Identify the connection for communicating to the device.</param>
+        /// <param name="address">Address assigned to the device.</param>
+        /// <param name="extendedWrite">The extended write command data.</param>
+        /// <returns>Reply data that is returned after sending the command. There is the possibility of different replies can be returned from PD.</returns>
+        public async Task<ReturnReplyData<ExtendedRead>> ExtendedWriteData(Guid connectionId, byte address,
+            ExtendedWrite extendedWrite)
+        {
+            var reply = await SendCommand(connectionId, address, extendedWrite).ConfigureAwait(false);
+
+            return new ReturnReplyData<ExtendedRead>
+            {
+                Ack = reply.Type == (byte)ReplyType.Ack,
+                ReplyData = reply.Type == (byte)ReplyType.ExtendedRead
+                    ? ExtendedRead.ParseData(reply.Payload)
+                    : null
+            };
+        }
+
+        /// <summary>
         /// Sends a manufacturer specific multi-part command to a PD.
         /// </summary>
         /// <param name="connectionId">Identify the connection for communicating to the device.</param>
@@ -464,22 +525,9 @@ namespace OSDP.Net
             Model.CommandData.ManufacturerSpecific manufacturerSpecific, ushort maximumFragmentSize, TimeSpan timeout,
             CancellationToken cancellationToken = default)
         {
-            var requestLock = GetRequestLock(connectionId, address);
-
-            if (!await requestLock.WaitAsync(timeout, cancellationToken))
-            {
-                throw new TimeoutException("Timeout waiting for another request to complete.");
-            }
-
-            try
-            {
-                return await WaitForManufactureResponse(connectionId, address, manufacturerSpecific, maximumFragmentSize,
-                    cancellationToken);
-            }
-            finally
-            {
-                requestLock.Release();
-            }
+            using var scope = await BeginCommandAsync(connectionId, address, timeout, cancellationToken);
+            return await WaitForManufactureResponse(connectionId, address, manufacturerSpecific, maximumFragmentSize,
+                scope.Token);
         }
 
         private async Task<ReturnReplyData<ManufacturerSpecific>> WaitForManufactureResponse(Guid connectionId, byte address,
@@ -502,7 +550,8 @@ namespace OSDP.Net
                     reply = await SendCommand(connectionId, address, new Model.CommandData.ManufacturerSpecific(
                             manufacturerSpecific.VendorCode, manufactureCommandCode.Concat(
                                 new MessageDataFragment(totalSize, offset, fragmentSize,
-                                        manufactureCommandData.Skip(offset).Take(fragmentSize).ToArray()).BuildData()
+                                        manufactureCommandData.Skip(offset).Take(fragmentSize).ToArray(), 
+                                        MessageDataFragmentFieldSize.FourBytes).BuildData()
                                     .ToArray()).ToArray()), cancellationToken)
                         .ConfigureAwait(false);
 
@@ -688,7 +737,8 @@ namespace OSDP.Net
                 var reply = await SendCommand(connectionId, address,
             new FileTransferFragment(fileType,
                 new MessageDataFragment(totalSize, offset, nextFragmentSize,
-                    fileData.Skip(offset).Take(nextFragmentSize).ToArray())),
+                    fileData.Skip(offset).Take(nextFragmentSize).ToArray(), 
+                    MessageDataFragmentFieldSize.FourBytes)),
                         cancellationToken, throwOnNak: false)
                     .ConfigureAwait(false);
 
@@ -777,22 +827,8 @@ namespace OSDP.Net
             BiometricReadData biometricReadData, TimeSpan timeout,
             CancellationToken cancellationToken = default)
         {
-            var requestLock = GetRequestLock(connectionId, address);
-
-            if (!await requestLock.WaitAsync(timeout, cancellationToken))
-            {
-                throw new TimeoutException("Timeout waiting for another request to complete.");
-            }
-
-            try
-            {
-                return await WaitForBiometricRead(connectionId, address, biometricReadData, timeout,
-                    cancellationToken);
-            }
-            finally
-            {
-                requestLock.Release();
-            }
+            using var scope = await BeginCommandAsync(connectionId, address, timeout, cancellationToken);
+            return await WaitForBiometricRead(connectionId, address, biometricReadData, timeout, scope.Token);
         }
 
         private async Task<BiometricReadResult> WaitForBiometricRead(Guid connectionId, byte address,
@@ -855,21 +891,8 @@ namespace OSDP.Net
             BiometricTemplateData biometricTemplateData, TimeSpan timeout,
             CancellationToken cancellationToken = default)
         {
-            var requestLock = GetRequestLock(connectionId, address);
-            
-            if (!await requestLock.WaitAsync(timeout, cancellationToken))
-            {
-                throw new TimeoutException("Timeout waiting for another request to complete.");
-            }
-            
-            try
-            {
-                return await WaitForBiometricMatch(connectionId, address, biometricTemplateData, timeout, cancellationToken);
-            }
-            finally
-            {
-                requestLock.Release();
-            }
+            using var scope = await BeginCommandAsync(connectionId, address, timeout, cancellationToken);
+            return await WaitForBiometricMatch(connectionId, address, biometricTemplateData, timeout, scope.Token);
         }
 
         private async Task<BiometricMatchResult> WaitForBiometricMatch(Guid connectionId, byte address,
@@ -934,22 +957,9 @@ namespace OSDP.Net
             byte algorithm, byte key, byte[] challenge, ushort maximumFragmentSize, TimeSpan timeout,
             CancellationToken cancellationToken = default)
         {
-            var requestLock = GetRequestLock(connectionId, address);
-
-            if (!await requestLock.WaitAsync(timeout, cancellationToken))
-            {
-                throw new TimeoutException("Timeout waiting for another request to complete.");
-            }
-
-            try
-            {
-                return await WaitForChallengeResponse(connectionId, address, algorithm, key, challenge, maximumFragmentSize,
-                    timeout, cancellationToken);
-            }
-            finally
-            {
-                requestLock.Release();
-            }
+            using var scope = await BeginCommandAsync(connectionId, address, timeout, cancellationToken);
+            return await WaitForChallengeResponse(connectionId, address, algorithm, key, challenge, maximumFragmentSize,
+                timeout, scope.Token);
         }
 
         private async Task<byte[]> WaitForChallengeResponse(Guid connectionId, byte address, byte algorithm, byte key,
@@ -988,7 +998,8 @@ namespace OSDP.Net
                     await SendCommand(connectionId, address, new AuthenticationChallengeFragment(
                             new MessageDataFragment(totalSize, offset, fragmentSize,
                                 requestData.Skip(offset).Take((ushort)Math.Min(fragmentSize, totalSize - offset))
-                                    .ToArray())), cancellationToken)
+                                    .ToArray(), 
+                                MessageDataFragmentFieldSize.TwoBytes)), cancellationToken)
                         .ConfigureAwait(false);
 
                     offset += fragmentSize;
@@ -1137,11 +1148,14 @@ namespace OSDP.Net
         /// </summary>
         public async Task Shutdown()
         {
+            var shutdownCts = _shutdownCts;
+            shutdownCts.Cancel();
+
             foreach (var bus in _buses.Values)
             {
                 bus.ConnectionStatusChanged -= BusOnConnectionStatusChanged;
                 await bus.Close().ConfigureAwait(false);
-                
+
                 foreach (byte address in bus.ConfigureDeviceAddresses)
                 {
                     OnConnectionStatusChanged(bus.Id, address, false, false);
@@ -1150,11 +1164,21 @@ namespace OSDP.Net
             }
             _buses.Clear();
 
+            while (Volatile.Read(ref _inFlightCommands) > 0)
+            {
+                await Task.Delay(_timeToWaitToCheckOnData).ConfigureAwait(false);
+            }
+
             foreach (var requestLock in _requestLocks.Values)
             {
                 requestLock.Dispose();
             }
             _requestLocks.Clear();
+
+            _shutdownCts = new CancellationTokenSource();
+            shutdownCts.Dispose();
+
+            OSDPFileCaptureTracer.CloseAllWriters();
         }
 
         /// <summary>
@@ -1448,84 +1472,132 @@ namespace OSDP.Net
 
         private void OnReplyReceived(ReplyTracker reply)
         {
+            // Not wrapped in try/catch: ReplyReceived is a private event whose subscribers are
+            // internal SendCommand handlers. Exceptions must propagate back to callers via the
+            // TaskCompletionSource so they receive the actual error instead of a timeout.
             ReplyReceived?.Invoke(this, new ReplyEventArgs { Reply = reply });
 
-            switch ((ReplyType)reply.ReplyMessage.Type)
+            try
             {
-                case ReplyType.Nak:
-                    NakReplyReceived?.Invoke(this,
-                        new NakReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            Nak.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.LocalStatusReport:
-                    LocalStatusReportReplyReceived?.Invoke(this,
-                        new LocalStatusReportReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            Model.ReplyData.LocalStatus.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.InputStatusReport:
-                    InputStatusReportReplyReceived?.Invoke(this,
-                        new InputStatusReportReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            Model.ReplyData.InputStatus.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.OutputStatusReport:
-                    OutputStatusReportReplyReceived?.Invoke(this,
-                        new OutputStatusReportReplyEventArgs(reply.ConnectionId,reply.ReplyMessage.Address,
-                            Model.ReplyData.OutputStatus.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.ReaderStatusReport:
-                    ReaderStatusReportReplyReceived?.Invoke(this,
-                        new ReaderStatusReportReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            Model.ReplyData.ReaderStatus.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.RawReaderData:
-                    RawCardDataReplyReceived?.Invoke(this,
-                        new RawCardDataReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            RawCardData.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.FormattedReaderData:
-                    FormattedCardDataReplyReceived?.Invoke(this,
-                        new FormattedCardDataReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            FormattedCardData.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.ManufactureSpecific:
-                    ManufacturerSpecificReplyReceived?.Invoke(this,
-                        new ManufacturerSpecificReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            ManufacturerSpecific.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.PIVData:
-                    PIVDataReplyReceived?.Invoke(this,
-                        new MultiPartMessageDataReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.ExtendedPdIdReport:
-                    ExtendedIdReplyReceived?.Invoke(this,
-                        new MultiPartMessageDataReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.ResponseToChallenge:
-                    AuthenticationChallengeResponseReceived?.Invoke(this,
-                        new MultiPartMessageDataReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));   
-                    break;
-                case ReplyType.KeypadData:
-                    KeypadReplyReceived?.Invoke(this,
-                        new KeypadReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            KeypadData.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.BiometricData:
-                    BiometricReadResultsReplyReceived?.Invoke(this,
-                        new BiometricReadResultsReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            BiometricReadResult.ParseData(reply.ReplyMessage.Payload)));
-                    break;
-                case ReplyType.BiometricMatchResult:
-                    BiometricMatchReplyReceived?.Invoke(this,
-                        new BiometricMatchReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
-                            BiometricMatchResult.ParseData(reply.ReplyMessage.Payload)));
-                    break;
+                switch ((ReplyType)reply.ReplyMessage.Type)
+                {
+                    case ReplyType.Nak:
+                        NakReplyReceived?.Invoke(this,
+                            new NakReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
+                                Nak.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.LocalStatusReport:
+                        LocalStatusReportReplyReceived?.Invoke(this,
+                            new LocalStatusReportReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                Model.ReplyData.LocalStatus.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.InputStatusReport:
+                        InputStatusReportReplyReceived?.Invoke(this,
+                            new InputStatusReportReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                Model.ReplyData.InputStatus.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.OutputStatusReport:
+                        OutputStatusReportReplyReceived?.Invoke(this,
+                            new OutputStatusReportReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                Model.ReplyData.OutputStatus.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.ReaderStatusReport:
+                        ReaderStatusReportReplyReceived?.Invoke(this,
+                            new ReaderStatusReportReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                Model.ReplyData.ReaderStatus.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.RawReaderData:
+                        RawCardDataReplyReceived?.Invoke(this,
+                            new RawCardDataReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                RawCardData.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.FormattedReaderData:
+                        FormattedCardDataReplyReceived?.Invoke(this,
+                            new FormattedCardDataReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                FormattedCardData.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.ManufactureSpecific:
+                        ManufacturerSpecificReplyReceived?.Invoke(this,
+                            new ManufacturerSpecificReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                ManufacturerSpecific.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.ExtendedRead:
+                        ExtendedReadReplyReceived?.Invoke(this,
+                            new ExtendedReadReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                ExtendedRead.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.PIVData:
+                        PIVDataReplyReceived?.Invoke(this,
+                            new MultiPartMessageDataReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.ExtendedPdIdReport:
+                        ExtendedIdReplyReceived?.Invoke(this,
+                            new MultiPartMessageDataReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.ResponseToChallenge:
+                        AuthenticationChallengeResponseReceived?.Invoke(this,
+                            new MultiPartMessageDataReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.KeypadData:
+                        KeypadReplyReceived?.Invoke(this,
+                            new KeypadReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
+                                KeypadData.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.BiometricData:
+                        BiometricReadResultsReplyReceived?.Invoke(this,
+                            new BiometricReadResultsReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                BiometricReadResult.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                    case ReplyType.BiometricMatchResult:
+                        BiometricMatchReplyReceived?.Invoke(this,
+                            new BiometricMatchReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                BiometricMatchResult.ParseData(reply.ReplyMessage.Payload)));
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error in typed reply event handler for reply {ReplyType} from address {Address}",
+                    (ReplyType)reply.ReplyMessage.Type, reply.ReplyMessage.Address);
+            }
+
+            try
+            {
+                RawReplyReceived?.Invoke(this,
+                    new RawReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
+                        reply.ReplyMessage.Type, reply.ReplyMessage.Payload));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error in raw reply event handler for reply {ReplyType} from address {Address}",
+                    (ReplyType)reply.ReplyMessage.Type, reply.ReplyMessage.Address);
             }
         }
 
         private event EventHandler<ReplyEventArgs> ReplyReceived;
+
+        /// <summary>
+        /// Occurs when any reply is received.
+        /// </summary>
+        public event EventHandler<RawReplyEventArgs> RawReplyReceived;
 
         /// <summary>
         /// Occurs when connection status changed.
@@ -1572,6 +1644,11 @@ namespace OSDP.Net
         /// Occurs when manufacturer specific reply is received.
         /// </summary>
         public event EventHandler<ManufacturerSpecificReplyEventArgs> ManufacturerSpecificReplyReceived;
+
+        /// <summary>
+        /// Occurs when an extended read reply (transparent mode) is received.
+        /// </summary>
+        public event EventHandler<ExtendedReadReplyEventArgs> ExtendedReadReplyReceived;
 
         /// <summary>
         /// Occurs when key pad data reply is received.
@@ -1922,6 +1999,40 @@ namespace OSDP.Net
         }
 
         /// <summary>
+        /// The extended read (transparent mode) reply has been received.
+        /// </summary>
+        public class ExtendedReadReplyEventArgs : EventArgs
+        {
+            /// <summary>
+            /// Initializes a new instance of the <see cref="ExtendedReadReplyEventArgs"/> class.
+            /// </summary>
+            /// <param name="connectionId">Identify the connection for communicating to the device.</param>
+            /// <param name="address">Address assigned to the device.</param>
+            /// <param name="extendedRead">An extended read reply.</param>
+            public ExtendedReadReplyEventArgs(Guid connectionId, byte address, ExtendedRead extendedRead)
+            {
+                ConnectionId = connectionId;
+                Address = address;
+                ExtendedRead = extendedRead;
+            }
+
+            /// <summary>
+            /// Identify the connection for communicating to the device.
+            /// </summary>
+            public Guid ConnectionId { get; }
+
+            /// <summary>
+            /// Address assigned to the device.
+            /// </summary>
+            public byte Address { get; }
+
+            /// <summary>
+            /// An extended read reply.
+            /// </summary>
+            public ExtendedRead ExtendedRead { get; }
+        }
+
+        /// <summary>
         /// The multi-part message reply has been received.
         /// </summary>
         private class MultiPartMessageDataReplyEventArgs : EventArgs
@@ -2108,6 +2219,47 @@ namespace OSDP.Net
             /// The last received status from the PD that indicates what error has occurred.
             /// </summary>
             public FileTransferStatus Status { get; }
+        }
+
+        /// <summary>
+        /// A reply has been received.
+        /// </summary>
+        public class RawReplyEventArgs : EventArgs
+        {
+            /// <summary>
+            /// Initializes a new instance of the <see cref="RawReplyEventArgs"/> class.
+            /// </summary>
+            /// <param name="connectionId">Identify the connection for communicating to the device.</param>
+            /// <param name="address">Address assigned to the device.</param>
+            /// <param name="replyType">The reply type code of the message.</param>
+            /// <param name="payload">The raw reply payload.</param>
+            public RawReplyEventArgs(Guid connectionId, byte address, byte replyType, ReadOnlyMemory<byte> payload)
+            {
+                ConnectionId = connectionId;
+                Address = address;
+                ReplyType = replyType;
+                Payload = payload;
+            }
+
+            /// <summary>
+            /// Identify the connection for communicating to the device.
+            /// </summary>
+            public Guid ConnectionId { get; }
+
+            /// <summary>
+            /// Address assigned to the device.
+            /// </summary>
+            public byte Address { get; }
+
+            /// <summary>
+            /// The reply type code of the message.
+            /// </summary>
+            public byte ReplyType { get; }
+
+            /// <summary>
+            /// The raw reply payload.
+            /// </summary>
+            public ReadOnlyMemory<byte> Payload { get; }
         }
 
         private class ReplyEventArgs : EventArgs

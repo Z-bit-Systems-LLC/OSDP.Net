@@ -1,4 +1,4 @@
-﻿using NUnit.Framework;
+using NUnit.Framework;
 using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model.CommandData;
@@ -13,7 +13,7 @@ internal class FileTransferFragmentTest
         0x01, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x09, 0x08, 0x07, 0x06, 0x05
     ];
 
-    private FileTransferFragment TestFileTransferFragment => new(0x01, new MessageDataFragment(10, 0, 5, [0x09, 0x08, 0x07, 0x06, 0x05]));
+    private FileTransferFragment TestFileTransferFragment => new(0x01, new MessageDataFragment(10, 0, 5, [0x09, 0x08, 0x07, 0x06, 0x05], MessageDataFragmentFieldSize.FourBytes));
 
     [Test]
     public void CheckConstantValues()

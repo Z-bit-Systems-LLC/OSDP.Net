@@ -474,4 +474,108 @@ public class MessageSpyTest
             Assert.That(message1.Sequence, Is.Not.EqualTo(message2.Sequence));
         }
     }
+
+    [TestFixture]
+    public class SecureCryptogramAcceptanceTest
+    {
+        // osdp_RMAC_I (SCS_14) reply; the byte after the SCS type (index 7) is the accept/reject marker.
+        private const string RMacTemplate = "53-80-1B-00-0F-03-14-{0}-78-11-11-11-11-11-11-11-11-11-11-11-11-11-11-11-11-00-00";
+
+        [TestCase("01", true)]   // success per OSDP spec D.1.3.4
+        [TestCase("00", false)]  // not the success value
+        [TestCase("FF", false)]  // explicit failure marker
+        public void SecureCryptogramHasBeenAccepted_IsTrueOnlyForSuccessValue(string dataByte, bool expected)
+        {
+            // Arrange
+            var spy = new MessageSpy();
+            var data = BinaryUtils.HexToBytes(string.Format(RMacTemplate, dataByte)).ToArray();
+
+            // Act
+            var message = spy.ParseReply(data);
+
+            // Assert
+            Assert.That(message.SecureCryptogramHasBeenAccepted(), Is.EqualTo(expected));
+        }
+    }
+
+    [TestFixture]
+    public class MarkBytePrefixTest
+    {
+        [Test]
+        public void PeekAddressByte_ReplyWithLeadingMarkByte_ShouldReturnReplyAddress()
+        {
+            // Arrange - a device often transmits a 0xFF line-driver/mark byte before the SOM
+            var spy = new MessageSpy();
+            var data = BinaryUtils.HexToBytes("FF-53-80-09-00-05-40-00-4D-B2").ToArray();
+
+            // Act
+            var address = spy.PeekAddressByte(data);
+
+            // Assert
+            Assert.That(address, Is.EqualTo(0x80));
+        }
+
+        [Test]
+        public void ParseReply_WithLeadingMarkByte_ShouldParseCorrectly()
+        {
+            // Arrange
+            var spy = new MessageSpy();
+            var data = BinaryUtils.HexToBytes("FF-53-80-09-00-05-40-00-4D-B2").ToArray();
+
+            // Act
+            var message = spy.ParseReply(data);
+
+            // Assert
+            Assert.That(message.Address, Is.EqualTo(0));
+            Assert.That((ReplyType)message.Type, Is.EqualTo(ReplyType.Ack));
+        }
+
+        [Test]
+        public void ParseCommand_WithLeadingMarkByte_ShouldParseCorrectly()
+        {
+            // Arrange
+            var spy = new MessageSpy();
+            var data = BinaryUtils.HexToBytes("FF-53-00-08-00-04-60-00-C0-B9").ToArray();
+
+            // Act
+            var message = spy.ParseCommand(data);
+
+            // Assert
+            Assert.That(message.Address, Is.EqualTo(0));
+            Assert.That((CommandType)message.Type, Is.EqualTo(CommandType.Poll));
+        }
+
+        [Test]
+        public void ParsePacket_ReplyWithLeadingMarkByte_ShouldDetectReplyDirection()
+        {
+            // Arrange - regression test for replies being misclassified as commands
+            // because the 0xFF mark byte shifted the address byte.
+            var spy = new MessageSpy();
+            var data = BinaryUtils.HexToBytes("FF-53-80-09-00-05-40-00-4D-B2").ToArray();
+
+            // Act
+            var packet = spy.ParsePacket(data);
+
+            // Assert
+            Assert.That(packet.CommandType, Is.Null);
+            Assert.That(packet.ReplyType, Is.EqualTo(ReplyType.Ack));
+            Assert.That(packet.Address, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void ParsePacket_CommandWithoutMarkByte_ShouldDetectCommandDirection()
+        {
+            // Arrange
+            var spy = new MessageSpy();
+            var data = BinaryUtils.HexToBytes("53-00-08-00-04-60-00-C0-B9").ToArray();
+
+            // Act
+            var packet = spy.ParsePacket(data);
+
+            // Assert
+            Assert.That(packet.ReplyType, Is.Null);
+            Assert.That(packet.CommandType, Is.EqualTo(CommandType.Poll));
+            Assert.That(packet.Address, Is.EqualTo(0));
+        }
+    }
 }

@@ -12,11 +12,13 @@ namespace OSDP.Net;
 internal class DeviceProxy : IComparable<DeviceProxy>
 {
     private const int RetryAmount = 2;
+    private const int BusyRetryAmount = 20;
 
     private readonly ConcurrentQueue<CommandData> _commands = new();
     private readonly bool _useSecureChannel;
 
     private int _counter = RetryAmount;
+    private bool _counterIsBusyRetry;
     private DateTime _lastValidReply = DateTime.MinValue;
     private CommandData _retryCommand;
 
@@ -162,8 +164,15 @@ internal class DeviceProxy : IComparable<DeviceProxy>
     /// Store command for retry
     /// </summary>
     /// <param name="command"></param>
-    internal void RetryCommand(CommandData command)
+    /// <param name="isBusyRetry"></param>
+    internal void RetryCommand(CommandData command, bool isBusyRetry = false)
     {
+        if (_counterIsBusyRetry != isBusyRetry)
+        {
+            _counter = isBusyRetry ? BusyRetryAmount : RetryAmount;
+            _counterIsBusyRetry = isBusyRetry;
+        }
+
         if (_counter-- > 0)
         {
             _retryCommand = command;
@@ -171,7 +180,7 @@ internal class DeviceProxy : IComparable<DeviceProxy>
         else
         {
             _retryCommand = null;
-            _counter = RetryAmount;
+            _counter = isBusyRetry ? BusyRetryAmount : RetryAmount;
         }
     }
 
@@ -184,6 +193,7 @@ internal class DeviceProxy : IComparable<DeviceProxy>
             
         // Reset retry counter
         _counter = RetryAmount;
+        _counterIsBusyRetry = false;
     }
 
     internal void InitializeSecureChannel(byte[] payload, byte[] secureBlockData)

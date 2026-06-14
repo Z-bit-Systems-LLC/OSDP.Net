@@ -53,6 +53,6 @@ internal class FileTransferFragment : CommandData
     /// <returns>An instance of FileTransferFragment representing the message payload</returns>
     public static FileTransferFragment ParseData(ReadOnlySpan<byte> data)
     {
-        return new FileTransferFragment(data[0], MessageDataFragment.ParseData(data.Slice(1)));
+        return new FileTransferFragment(data[0], MessageDataFragment.ParseData(data.Slice(1), MessageDataFragmentFieldSize.FourBytes));
     }
 }

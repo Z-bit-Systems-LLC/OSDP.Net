@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 using OSDP.Net.Messages;
 using OSDP.Net.Model.CommandData;
@@ -150,7 +150,7 @@ public class Packet : IPacket
             case Messages.CommandType.ManufacturerSpecific:
                 return CommandData.ManufacturerSpecific.ParseData(RawPayloadData);
             case Messages.CommandType.ExtendedWrite:
-                return null;
+                return ExtendedWrite.ParseData(RawPayloadData);
             case Messages.CommandType.Abort:
                 return null;
             case Messages.CommandType.PivData:
@@ -158,7 +158,7 @@ public class Packet : IPacket
             case Messages.CommandType.GenerateChallenge:
                 return null;
             case Messages.CommandType.AuthenticateChallenge:
-                return MessageDataFragment.ParseData(RawPayloadData);
+                return MessageDataFragment.ParseData(RawPayloadData, MessageDataFragmentFieldSize.TwoBytes);
             case Messages.CommandType.KeepActive:
                 return null;
         }
@@ -208,7 +208,7 @@ public class Packet : IPacket
             case Messages.ReplyType.ManufactureSpecific:
                 return ReplyData.ManufacturerSpecific.ParseData(RawPayloadData);
             case Messages.ReplyType.ExtendedRead:
-                break;
+                return ExtendedRead.ParseData(RawPayloadData);
         }
 
         return null;
