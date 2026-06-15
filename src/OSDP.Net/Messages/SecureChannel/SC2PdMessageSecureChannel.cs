@@ -236,9 +236,7 @@ internal class SC2PdMessageSecureChannel : SC2PdMessageSecureChannelBase
     {
         if (IsSecurityEstablished)
         {
-            return command.IsSecureMessage || AllowUnsecured.Contains((CommandType)command.Type)
-                ? null
-                : new Nak(ErrorCode.CommunicationSecurityNotMet);
+            return command.IsSecureMessage ? null : new Nak(ErrorCode.CommunicationSecurityNotMet);
         }
 
         if (SecurityMode != SecurityMode.FullSecurity)
