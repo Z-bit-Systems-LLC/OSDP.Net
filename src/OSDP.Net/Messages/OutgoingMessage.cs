@@ -37,11 +37,12 @@ internal class OutgoingMessage : Message
         ReadOnlySpan<byte> securityBlock;
         if (isSC2)
         {
-            // SC2: always use WithDataSecurity because command byte is encrypted
+            // SC2: always use WithDataSecurity because command byte is encrypted.
+            // SC2 uses its own block-type range (0x27/0x28) per the OSDP-SC2 Annex.
             bool isReply = (Address & 0x80) != 0;
             securityBlock = isReply
-                ? SecurityBlock.ReplyMessageWithDataSecurity
-                : SecurityBlock.CommandMessageWithDataSecurity;
+                ? SecurityBlock.ReplyMessageWithDataSecurityV2
+                : SecurityBlock.CommandMessageWithDataSecurityV2;
         }
         else
         {

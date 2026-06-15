@@ -184,7 +184,9 @@ namespace OSDP.Net.Messages
         /// </value>
         public bool HasSecureData =>
             SecurityBlockType == (byte)SecureChannel.SecurityBlockType.CommandMessageWithDataSecurity ||
-            SecurityBlockType == (byte)SecureChannel.SecurityBlockType.ReplyMessageWithDataSecurity;
+            SecurityBlockType == (byte)SecureChannel.SecurityBlockType.ReplyMessageWithDataSecurity ||
+            SecurityBlockType == (byte)SecureChannel.SecurityBlockType.CommandMessageWithDataSecurityV2 ||
+            SecurityBlockType == (byte)SecureChannel.SecurityBlockType.ReplyMessageWithDataSecurityV2;
 
         /// <summary>
         /// Indicates whether the payload was successfully decrypted.
@@ -220,9 +222,11 @@ namespace OSDP.Net.Messages
         /// <inheritdoc/>
         protected override ReadOnlySpan<byte> Data() => Payload.ToArray();
 
-        private bool IsDataSecure => Payload == null || Payload.Length == 0 || 
-            SecurityBlockType == (byte)SecureChannel.SecurityBlockType.ReplyMessageWithDataSecurity || 
-            SecurityBlockType == (byte)SecureChannel.SecurityBlockType.CommandMessageWithDataSecurity;
+        private bool IsDataSecure => Payload == null || Payload.Length == 0 ||
+            SecurityBlockType == (byte)SecureChannel.SecurityBlockType.ReplyMessageWithDataSecurity ||
+            SecurityBlockType == (byte)SecureChannel.SecurityBlockType.CommandMessageWithDataSecurity ||
+            SecurityBlockType == (byte)SecureChannel.SecurityBlockType.ReplyMessageWithDataSecurityV2 ||
+            SecurityBlockType == (byte)SecureChannel.SecurityBlockType.CommandMessageWithDataSecurityV2;
         
         private IEnumerable<byte> Mac { get; }
 
@@ -238,6 +242,10 @@ namespace OSDP.Net.Messages
             (byte)SecureChannel.SecurityBlockType.ReplyMessageWithNoDataSecurity,
             (byte)SecureChannel.SecurityBlockType.CommandMessageWithDataSecurity,
             (byte)SecureChannel.SecurityBlockType.ReplyMessageWithDataSecurity,
+            (byte)SecureChannel.SecurityBlockType.CommandMessageWithNoDataSecurityV2,
+            (byte)SecureChannel.SecurityBlockType.ReplyMessageWithNoDataSecurityV2,
+            (byte)SecureChannel.SecurityBlockType.CommandMessageWithDataSecurityV2,
+            (byte)SecureChannel.SecurityBlockType.ReplyMessageWithDataSecurityV2,
         };
 
         /// <summary>

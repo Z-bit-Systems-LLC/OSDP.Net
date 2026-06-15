@@ -17,21 +17,25 @@ public class SC2MessageTest
     private static readonly byte[] TestRndB = HexToBytes("B0B1B2B3B4B5B6B7B8B9BABBBCBDBEBF");
     private static readonly byte[] TestCUID = HexToBytes("C0C1C2C3C4C5C6C7");
 
-    // Counter 0 TX (Poll command): plain = 53 00 08 00 05 60 DA 99
+    // SC2 uses block types SCS_27 (command) and SCS_28 (reply) per the OSDP-SC2 Annex.
+    // Counter 0 and 1 below are the exact frames published in the Annex "Secure Channel Session
+    // Messaging" sample. Counters 2 and 3 are synthetic continuations on the same session.
+
+    // Counter 0 TX (Poll command 0x60), SCS_27 — Annex sample frame
     private static readonly byte[] Counter0TXEncrypted = HexToBytes(
-        "53001A000D021780198CBFBF8DEAE07AF582C05744F9890EFF00");
+        "53001A000D0227805D77A7E9B3DC461E72D4858D4A2869EEDE35");
 
-    // Counter 1 RX (Ack reply): plain = 53 80 08 00 05 40 68 9F
+    // Counter 1 RX (Ack reply 0x40), SCS_28 — Annex sample frame
     private static readonly byte[] Counter1RXEncrypted = HexToBytes(
-        "53801A000D021877294E82C8D37790496B94F94E6D580E8C0EF4");
+        "53801A000D0228776DB59A9EED41362DECC2BC946389EE6C2FC1");
 
-    // Counter 2 TX
+    // Counter 2 TX (Poll command 0x60), SCS_27
     private static readonly byte[] Counter2TXEncrypted = HexToBytes(
-        "53001A000E021762FD900209F99284CA87EBD3DC1D58333C1670");
+        "53001A000E022762B96B1A5FC7A422AE00BD96061389D3DC3745");
 
-    // Counter 3 RX
+    // Counter 3 RX (Ack reply 0x40), SCS_28
     private static readonly byte[] Counter3RXEncrypted = HexToBytes(
-        "53801A000E02185E95A072CC9F228A8BB0846FC21F2C850E1558");
+        "53801A000E02285ED15B6A9AA1142CEF37D22A1811FD65EE346D");
 
     // Header bytes (AAD) for each test vector: SOM + ADDR + LEN(2) + CTRL + SCB(2)
     private const int HeaderSize = 7; // 5 (SOM+ADDR+LEN+CTRL) + 2 (SCB)

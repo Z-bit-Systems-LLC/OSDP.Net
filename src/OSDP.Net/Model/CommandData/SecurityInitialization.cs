@@ -53,14 +53,18 @@ internal class SecurityInitialization : CommandData
     /// <inheritdoc />
     public override ReadOnlySpan<byte> SecurityControlBlock()
     {
-        byte scbData = Version == SecureChannelVersion.V2
+        bool isV2 = Version == SecureChannelVersion.V2;
+        byte scbType = isV2
+            ? (byte)SecurityBlockType.BeginNewSecureConnectionSequenceV2
+            : (byte)SecurityBlockType.BeginNewSecureConnectionSequence;
+        byte scbData = isV2
             ? (byte)0x02
             : (byte)(IsDefaultKey ? 0x00 : 0x01);
 
         return new byte[]
         {
             0x03,
-            (byte)SecurityBlockType.BeginNewSecureConnectionSequence,
+            scbType,
             scbData
         };
     }

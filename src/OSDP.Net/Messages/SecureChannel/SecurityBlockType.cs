@@ -57,6 +57,55 @@ namespace OSDP.Net.Messages.SecureChannel
         /// message contains a MAC signature and the data field is
         /// encrypted using the S-ENC key
         /// </summary>
-        ReplyMessageWithDataSecurity = 0x18
+        ReplyMessageWithDataSecurity = 0x18,
+
+        // OSDP-SC2 (AES-256 GCM) block types. The OSDP-SC2 Annex assigns SC2 its own
+        // distinct 0x2X range so SC2 traffic is identifiable by block type alone rather
+        // than relying on the SCB data byte. The SCB data byte remains 0x02 for all SC2 steps.
+
+        /// <summary>
+        /// SCS_21 - SC2; sent with osdp_CHLNG when the ACU begins a new SC2
+        /// secure channel connection sequence
+        /// </summary>
+        BeginNewSecureConnectionSequenceV2 = 0x21,
+
+        /// <summary>
+        /// SCS_22 - SC2; sent with osdp_CCRYPT in response to osdp_CHLNG
+        /// </summary>
+        SecureConnectionSequenceStep2V2 = 0x22,
+
+        /// <summary>
+        /// SCS_23 - SC2; sent with osdp_SCRYPT as the third step of the SC2 handshake
+        /// </summary>
+        SecureConnectionSequenceStep3V2 = 0x23,
+
+        /// <summary>
+        /// SCS_24 - SC2; sent with osdp_RMAC_I as the final step of the SC2 handshake
+        /// </summary>
+        SecureConnectionSequenceStep4V2 = 0x24,
+
+        /// <summary>
+        /// SCS_25 - SC2; ACU -> PD; secure channel established, command carries a MAC
+        /// (GCM tag) but the data field is unencrypted (development/test use only)
+        /// </summary>
+        CommandMessageWithNoDataSecurityV2 = 0x25,
+
+        /// <summary>
+        /// SCS_26 - SC2; PD -> ACU; secure channel established, reply carries a MAC
+        /// (GCM tag) but the data field is unencrypted (development/test use only)
+        /// </summary>
+        ReplyMessageWithNoDataSecurityV2 = 0x26,
+
+        /// <summary>
+        /// SCS_27 - SC2; ACU -> PD; secure channel established, command data is
+        /// encrypted with S-ENC using AES-256 GCM
+        /// </summary>
+        CommandMessageWithDataSecurityV2 = 0x27,
+
+        /// <summary>
+        /// SCS_28 - SC2; PD -> ACU; secure channel established, reply data is
+        /// encrypted with S-ENC using AES-256 GCM
+        /// </summary>
+        ReplyMessageWithDataSecurityV2 = 0x28
     }
 }

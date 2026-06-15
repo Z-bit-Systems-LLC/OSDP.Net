@@ -93,16 +93,29 @@ public class OSDPPacketTextFormatter : IPacketTextFormatter
         return null;
     }
 
+    /// <summary>
+    /// Determines whether a handshake packet is OSDP-SC2 based on its security block type
+    /// (SC2 uses the distinct 0x21-0x28 range). The block type is reliable even before a spy
+    /// has established SC2 state from the key length.
+    /// </summary>
+    private static bool IsSecureChannelV2Handshake(Packet packet)
+    {
+        byte type = packet.IncomingMessage.SecurityBlockType;
+        return type is >= 0x21 and <= 0x28;
+    }
+
     private static string FormatSessionChallenge(Packet packet)
     {
         var payload = packet.RawPayloadData;
+        // SC2 RND.A is 16 bytes; SC1 RND.A is 8 bytes.
+        int rndALength = IsSecureChannelV2Handshake(packet) ? 16 : 8;
         var lines = new List<string>
         {
             "    Secure Channel Handshake: osdp_CHLNG (Step 1 of 4 - ACU challenge)",
             FormatSecurityBlockLine(packet, DescribeKeyType(packet))
         };
-        lines.Add(payload.Length >= 8
-            ? $"    RND.A (ACU random): {Hex(payload.Slice(0, 8))}"
+        lines.Add(payload.Length >= rndALength
+            ? $"    RND.A (ACU random): {Hex(payload.Slice(0, rndALength))}"
             : $"    Payload: {Hex(payload)}");
         return string.Join(Environment.NewLine, lines);
     }
@@ -115,7 +128,15 @@ public class OSDPPacketTextFormatter : IPacketTextFormatter
             "    Secure Channel Handshake: osdp_CCRYPT (Step 2 of 4 - PD response)",
             FormatSecurityBlockLine(packet, DescribeKeyType(packet))
         };
-        if (payload.Length >= 32)
+        // SC2 CCRYPT: cUID(8) + RND.B(16) + cryptogram(32) = 56 bytes.
+        // SC1 CCRYPT: cUID(8) + RND.B(8) + cryptogram(16) = 32 bytes.
+        if (IsSecureChannelV2Handshake(packet) && payload.Length >= 56)
+        {
+            lines.Add($"    cUID (PD unique ID): {Hex(payload.Slice(0, 8))}");
+            lines.Add($"    RND.B (PD random): {Hex(payload.Slice(8, 16))}");
+            lines.Add($"    Client cryptogram: {Hex(payload.Slice(24, 32))}");
+        }
+        else if (payload.Length >= 32)
         {
             lines.Add($"    cUID (PD unique ID): {Hex(payload.Slice(0, 8))}");
             lines.Add($"    RND.B (PD random): {Hex(payload.Slice(8, 8))}");
@@ -168,6 +189,14 @@ public class OSDPPacketTextFormatter : IPacketTextFormatter
             0x16 => "SCS_16",
             0x17 => "SCS_17",
             0x18 => "SCS_18",
+            0x21 => "SCS_21",
+            0x22 => "SCS_22",
+            0x23 => "SCS_23",
+            0x24 => "SCS_24",
+            0x25 => "SCS_25",
+            0x26 => "SCS_26",
+            0x27 => "SCS_27",
+            0x28 => "SCS_28",
             _ => $"0x{type:X2}"
         };
     }
@@ -184,7 +213,12 @@ public class OSDPPacketTextFormatter : IPacketTextFormatter
             return null;
         }
 
-        return secureBlockData[0] == 0x00 ? "Default key (SCBK-D)" : "Configured key (SCBK)";
+        return secureBlockData[0] switch
+        {
+            0x00 => "Default key (SCBK-D)",
+            0x02 => "SC2 AES-256 SCBK",
+            _ => "Configured key (SCBK)"
+        };
     }
 
     /// <summary>
@@ -200,7 +234,8 @@ public class OSDPPacketTextFormatter : IPacketTextFormatter
             return null;
         }
 
-        return secureBlockData[0] == 0x01
+        // SC1 signals acceptance with 0x01; SC2 (SCS_24) signals acceptance with 0x02. 0xFF = rejected.
+        return secureBlockData[0] is 0x01 or 0x02
             ? "Server cryptogram accepted"
             : "Server cryptogram rejected";
     }

@@ -210,7 +210,7 @@ internal class SC2PdMessageSecureChannel : SC2PdMessageSecureChannelBase
     {
         var serverCryptogram = command.Payload;
 
-        if (command.SecurityBlockType != (byte)SecurityBlockType.SecureConnectionSequenceStep3)
+        if (command.SecurityBlockType != (byte)SecurityBlockType.SecureConnectionSequenceStep3V2)
         {
             Logger?.LogWarning("Received unexpected security block type: {SecurityBlockType}",
                 command.SecurityBlockType);

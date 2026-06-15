@@ -153,7 +153,7 @@ The ACU initiates the secure channel by sending a challenge with a 16-byte rando
 [2:3]    Length (little-endian)
 [4]      Control byte (SCB bit set)
 [5]      SCB length = 0x03
-[6]      SCB type = 0x11 (SCS_11: Begin New Secure Connection)
+[6]      SCB type = 0x21 (SCS_21: Begin New Secure Connection)
 [7]      SCB data = 0x02 (SC2 indicator)
 [8]      Command code = 0x76 (osdp_CHLNG)
 [9:24]   RndA (16 bytes, server random number)
@@ -162,7 +162,9 @@ The ACU initiates the secure channel by sending a challenge with a 16-byte rando
 
 **Total length: 27 bytes**
 
-The SC2 indicator byte (`0x02`) in `SCB data[0]` distinguishes SC2 from SC1:
+SC2 uses its own security-block **type** range (`0x21`–`0x28`), distinct from SC1's `0x11`–`0x18`,
+so SC2 traffic is identifiable by block type alone. In addition, the SC2 indicator byte (`0x02`) is
+carried in `SCB data[0]` of every handshake step:
 - `0x00` = SC1 with default key (SCBK-D)
 - `0x01` = SC1 with device-specific key
 - `0x02` = SC2
@@ -182,7 +184,7 @@ The PD responds with its unique identifier, its own random number, and a cryptog
 [2:3]    Length (little-endian)
 [4]      Control byte (SCB bit set)
 [5]      SCB length = 0x03
-[6]      SCB type = 0x12 (SCS_12: Sequence Step 2)
+[6]      SCB type = 0x22 (SCS_22: Sequence Step 2)
 [7]      SCB data = 0x02
 [8]      Reply code = 0x76 (osdp_CCRYPT)
 [9:16]   Client UID (8 bytes)
@@ -213,7 +215,7 @@ The ACU validates the client cryptogram and responds with its own cryptogram.
 [2:3]    Length (little-endian)
 [4]      Control byte (SCB bit set)
 [5]      SCB length = 0x03
-[6]      SCB type = 0x13 (SCS_13: Sequence Step 3)
+[6]      SCB type = 0x23 (SCS_23: Sequence Step 3)
 [7]      SCB data = 0x02
 [8]      Command code = 0x77 (osdp_SCRYPT)
 [9:40]   Server Cryptogram (32 bytes)
@@ -243,8 +245,8 @@ The PD validates the server cryptogram and confirms the secure channel is establ
 [2:3]    Length (little-endian)
 [4]      Control byte (SCB bit set)
 [5]      SCB length = 0x03
-[6]      SCB type = 0x14 (SCS_14: Sequence Step 4)
-[7]      SCB data = 0x02 (SC2 indicator; SC1 uses 0x01 for accepted)
+[6]      SCB type = 0x24 (SCS_24: Sequence Step 4)
+[7]      SCB data = 0x02 (SC2 accepted; 0xFF signals rejection. SC1 uses 0x01 for accepted)
 [8]      Reply code = 0x78 (osdp_RMAC_I)
          (no payload — SC2 does not compute an RMAC)
 [9:10]   CRC-16
@@ -307,7 +309,7 @@ Byte layout:
 [2:3]        Length (little-endian, total packet length)
 [4]          Control byte (seq bits, CRC bit, SCB bit set)
 [5]          SCB length = 0x02
-[6]          SCB type = 0x17 (SCS_17: Command with Data Security)
+[6]          SCB type = 0x27 (SCS_27: Command with Data Security)
 [7:N-18]     Ciphertext (encrypted command byte + payload)
 [N-18:N-2]   GCM authentication tag (16 bytes)
 [N-2:N]      CRC-16
@@ -322,7 +324,7 @@ Byte layout:
 [2:3]        Length (little-endian, total packet length)
 [4]          Control byte (seq bits, CRC bit, SCB bit set)
 [5]          SCB length = 0x02
-[6]          SCB type = 0x18 (SCS_18: Reply with Data Security)
+[6]          SCB type = 0x28 (SCS_28: Reply with Data Security)
 [7:N-18]     Ciphertext (encrypted reply byte + payload)
 [N-18:N-2]   GCM authentication tag (16 bytes)
 [N-2:N]      CRC-16
@@ -389,20 +391,22 @@ When the counter reaches 500,000,000, the session must be re-established by perf
 
 ### Security Block Types (SCS values)
 
+SC2 uses the `0x21`–`0x28` range (SC1 uses `0x11`–`0x18`).
+
 | Hex | Name | Usage |
 |---|---|---|
-| `0x11` | SCS_11 | osdp_CHLNG (begin secure connection) |
-| `0x12` | SCS_12 | osdp_CCRYPT (step 2) |
-| `0x13` | SCS_13 | osdp_SCRYPT (step 3) |
-| `0x14` | SCS_14 | osdp_RMAC_I (step 4) |
-| `0x15` | SCS_15 | Command, MAC only (no encryption) |
-| `0x16` | SCS_16 | Reply, MAC only (no encryption) |
-| `0x17` | SCS_17 | Command with data security |
-| `0x18` | SCS_18 | Reply with data security |
+| `0x21` | SCS_21 | osdp_CHLNG (begin secure connection) |
+| `0x22` | SCS_22 | osdp_CCRYPT (step 2) |
+| `0x23` | SCS_23 | osdp_SCRYPT (step 3) |
+| `0x24` | SCS_24 | osdp_RMAC_I (step 4) |
+| `0x25` | SCS_25 | Command, MAC only (no encryption) |
+| `0x26` | SCS_26 | Reply, MAC only (no encryption) |
+| `0x27` | SCS_27 | Command with data security |
+| `0x28` | SCS_28 | Reply with data security |
 
 ### SC2 Indicator Values (SCB data byte)
 
-The SCB data byte is the third byte of the Security Control Block (after length and type). It is carried in all four handshake steps (SCS_11 through SCS_14) to consistently identify the secure channel version.
+The SCB data byte is the third byte of the Security Control Block (after length and type). It is carried in all four handshake steps (SCS_21 through SCS_24) to consistently identify the secure channel version.
 
 | Value | Meaning |
 |---|---|
@@ -411,10 +415,10 @@ The SCB data byte is the third byte of the Security Control Block (after length 
 | `0x02` | SC2 |
 
 For SC2, all handshake messages use `0x02`:
-- SCS_11 (osdp_CHLNG): ACU sends `03-11-02`
-- SCS_12 (osdp_CCRYPT): PD sends `03-12-02`
-- SCS_13 (osdp_SCRYPT): ACU sends `03-13-02`
-- SCS_14 (osdp_RMAC_I): PD sends `03-14-02`
+- SCS_21 (osdp_CHLNG): ACU sends `03-21-02`
+- SCS_22 (osdp_CCRYPT): PD sends `03-22-02`
+- SCS_23 (osdp_SCRYPT): ACU sends `03-23-02`
+- SCS_24 (osdp_RMAC_I): PD sends `03-24-02` on success (`03-24-FF` on rejection)
 
 ### OSDP Command/Reply Codes (Handshake)
 
@@ -461,44 +465,44 @@ Nonce = 34 F8 D8 E7 B5 3E D9 F5 0D C2 F2 1C
 
 Each test vector is a complete OSDP packet (SOM through CRC).
 
-**Counter 0 — TX Poll command (ACU -> PD):**
+**Counter 0 — TX Poll command (ACU -> PD):** (matches the OSDP-SC2 Annex sample frame)
 ```
 Plaintext: 60 (Poll command, no payload)
 
-Full packet: 53 00 1A 00 0D 02 17 80 19 8C BF BF 8D EA E0 7A
-             F5 82 C0 57 44 F9 89 0E FF 00
+Full packet: 53 00 1A 00 0D 02 27 80 5D 77 A7 E9 B3 DC 46 1E
+             72 D4 85 8D 4A 28 69 EE DE 35
 
 Breakdown:
-  Header+SCB: 53 00 1A 00 0D 02 17  (7 bytes AAD)
+  Header+SCB: 53 00 1A 00 0D 02 27  (7 bytes AAD)
   Ciphertext: 80                     (1 byte, encrypted 0x60)
-  GCM tag:    19 8C BF BF 8D EA E0 7A F5 82 C0 57 44 F9 89 0E
-  CRC:        FF 00
+  GCM tag:    5D 77 A7 E9 B3 DC 46 1E 72 D4 85 8D 4A 28 69 EE
+  CRC:        DE 35
 ```
 
-**Counter 1 — RX Ack reply (PD -> ACU):**
+**Counter 1 — RX Ack reply (PD -> ACU):** (matches the OSDP-SC2 Annex sample frame)
 ```
 Plaintext: 40 (Ack reply, no payload)
 
-Full packet: 53 80 1A 00 0D 02 18 77 29 4E 82 C8 D3 77 90 49
-             6B 94 F9 4E 6D 58 0E 8C 0E F4
+Full packet: 53 80 1A 00 0D 02 28 77 6D B5 9A 9E ED 41 36 2D
+             EC C2 BC 94 63 89 EE 6C 2F C1
 
 Breakdown:
-  Header+SCB: 53 80 1A 00 0D 02 18  (7 bytes AAD)
+  Header+SCB: 53 80 1A 00 0D 02 28  (7 bytes AAD)
   Ciphertext: 77                     (1 byte, encrypted 0x40)
-  GCM tag:    29 4E 82 C8 D3 77 90 49 6B 94 F9 4E 6D 58 0E 8C
-  CRC:        0E F4
+  GCM tag:    6D B5 9A 9E ED 41 36 2D EC C2 BC 94 63 89 EE 6C
+  CRC:        2F C1
 ```
 
 **Counter 2 — TX Poll command:**
 ```
-Full packet: 53 00 1A 00 0E 02 17 62 FD 90 02 09 F9 92 84 CA
-             87 EB D3 DC 1D 58 33 3C 16 70
+Full packet: 53 00 1A 00 0E 02 27 62 B9 6B 1A 5F C7 A4 22 AE
+             00 BD 96 06 13 89 D3 DC 37 45
 ```
 
 **Counter 3 — RX Ack reply:**
 ```
-Full packet: 53 80 1A 00 0E 02 18 5E 95 A0 72 CC 9F 22 8A 8B
-             B0 84 6F C2 1F 2C 85 0E 15 58
+Full packet: 53 80 1A 00 0E 02 28 5E D1 5B 6A 9A A1 14 2C EF
+             37 D2 2A 18 11 FD 65 EE 34 6D
 ```
 
 ### 10.5 Validation Order
@@ -507,7 +511,7 @@ To validate your implementation, verify in this order:
 
 1. **KMAC256**: Derive S-ENC and S-NONCE from SCBK, RndA, RndB. Compare against Section 10.2.
 2. **Nonce**: Compute nonce at counter=0 using S-NONCE and cUID. Compare against Section 10.3.
-3. **Encrypt**: Encrypt plaintext `0x60` with counter=0, AAD=`53 00 1A 00 0D 02 17`. Verify ciphertext byte and GCM tag match Counter 0 TX.
+3. **Encrypt**: Encrypt plaintext `0x60` with counter=0, AAD=`53 00 1A 00 0D 02 27`. Verify ciphertext byte and GCM tag match Counter 0 TX.
 4. **Decrypt**: Decrypt Counter 1 RX using counter=1. Verify plaintext is `0x40`.
 5. **Full sequence**: Encrypt/decrypt all 4 test vectors in order (counter 0 through 3).
 

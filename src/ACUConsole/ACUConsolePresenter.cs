@@ -597,7 +597,10 @@ namespace ACUConsole
 
         public async Task SendEncryptionKeySet(byte address, byte[] key)
         {
-            var keyConfig = new EncryptionKeyConfiguration(KeyType.SecureChannelBaseKey, key);
+            // A 32-byte key is an OSDP-SC2 AES-256 SCBK (KeyType 0x02 per the SC2 Annex);
+            // a 16-byte key is the SC1 AES-128 SCBK (KeyType 0x01).
+            var keyType = key.Length == 32 ? KeyType.SecureChannelBaseKeyAes256 : KeyType.SecureChannelBaseKey;
+            var keyConfig = new EncryptionKeyConfiguration(keyType, key);
             var result = await ExecuteCommand("Encryption Key Configuration", address, 
                 () => _controlPanel.EncryptionKeySet(_connectionId, address, keyConfig));
             

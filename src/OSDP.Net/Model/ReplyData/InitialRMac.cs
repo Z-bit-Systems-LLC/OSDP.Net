@@ -38,17 +38,22 @@ namespace OSDP.Net.Model.ReplyData
         /// <inheritdoc />
         public override ReadOnlySpan<byte> SecurityControlBlock()
         {
-            // osdp_RMAC_I carries SCS_14. Per the OSDP spec (section D.1.3.4) the data byte is 0x01
-            // when the server cryptogram was accepted (secure channel established); 0xFF signals rejection.
-            // SC2 (empty RMAC payload) uses 0x02 to identify the SC2 secure channel.
-            byte scbData = RMac.Length == 0
+            // osdp_RMAC_I carries SCS_14 (SC1) or SCS_24 (SC2). Per the OSDP spec (section D.1.3.4)
+            // the SC1 data byte is 0x01 when the server cryptogram was accepted; 0xFF signals rejection.
+            // SC2 (empty RMAC payload) uses block type 0x24 with data byte 0x02 to identify the SC2
+            // secure channel per the OSDP-SC2 Annex.
+            bool isV2 = RMac.Length == 0;
+            byte scbType = isV2
+                ? (byte)SecurityBlockType.SecureConnectionSequenceStep4V2
+                : (byte)SecurityBlockType.SecureConnectionSequenceStep4;
+            byte scbData = isV2
                 ? (byte)0x02
                 : (byte)(ServerCryptogramAccepted ? 0x01 : 0xff);
 
             return new byte[]
             {
                 0x03,
-                (byte)SecurityBlockType.SecureConnectionSequenceStep4,
+                scbType,
                 scbData
             };
         }
