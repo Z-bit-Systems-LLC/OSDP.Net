@@ -414,7 +414,7 @@ namespace ACUConsole
         /// Performs an asymmetric pairing exchange with the device at the given address to establish
         /// a 32-byte SC2 key out-of-band, then re-adds the device secured under SC2 with that key.
         /// </summary>
-        public async Task PairDevice(byte address)
+        public async Task PairDevice(byte address, IProgress<PairingProgress> progress = null)
         {
             if (!IsConnected)
             {
@@ -425,11 +425,18 @@ namespace ACUConsole
             var name = device?.Name ?? $"Device {address}";
             var useCrc = device?.UseCrc ?? true;
 
-            // Pairing runs in cleartext; ensure the device is polled unsecured for the exchange.
-            _controlPanel.AddDevice(_connectionId, address, useCrc, false, null);
+            // Pairing runs in cleartext. Only re-add the device if it is currently configured for a
+            // secure channel; re-adding drops and re-syncs the link, so avoid it when the device is
+            // already communicating in the clear (the normal pairing precondition).
+            if (device is { UseSecureChannel: true })
+            {
+                _controlPanel.AddDevice(_connectionId, address, useCrc, false, null);
+            }
+
             AddLogMessage($"Pairing with device at address {address}...");
 
-            var result = await _controlPanel.PairDevice(_connectionId, address, BuildAcuPairingConfiguration());
+            var result = await _controlPanel.PairDevice(_connectionId, address, BuildAcuPairingConfiguration(),
+                progress: progress);
 
             var thumbprint = BitConverter.ToString(result.PeerCertificate.Thumbprint).Replace("-", string.Empty);
             AddLogMessage($"Paired with {result.PeerIdentity}. Certificate thumbprint: {thumbprint}");
@@ -445,6 +452,9 @@ namespace ACUConsole
             device.SecureChannelVersion = SecureChannelVersion.V2;
             SaveConfiguration();
 
+            // The PD activates the derived key on its running channel as soon as it sends the pairing
+            // Result, so by the time we have the result here the PD is already expecting SC2 with the
+            // paired key. Switch to SC2 immediately — the handshake establishes deterministically.
             _controlPanel.AddDevice(_connectionId, address, useCrc, true, result.Scbk, SecureChannelVersion.V2);
             AddLogMessage($"Device '{name}' now using SC2 with the paired key.");
         }

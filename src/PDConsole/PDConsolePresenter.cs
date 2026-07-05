@@ -377,15 +377,15 @@ namespace PDConsole
         }
 
         /// <summary>
-        /// Persists a pairing-derived SCBK, switches the PD to Secure/SC2 mode, and schedules a
-        /// reconnect so the new key takes effect. Returns true once the key is stored so the PD
-        /// confirms success to the ACU.
+        /// Persists a pairing-derived SCBK, switches the PD to Secure/SC2 mode, and reports the paired
+        /// ACU identity. Returns true once the key is stored so the PD confirms success to the ACU.
         /// </summary>
-        private Task<bool> OnPairingScbkEstablished(byte[] scbk, System.Threading.CancellationToken token)
+        private Task<bool> OnPairingScbkEstablished(OSDP.Net.Pairing.PairingResult result,
+            System.Threading.CancellationToken token)
         {
             try
             {
-                _settings.Security.SecureChannelKey = Convert.ToHexString(scbk);
+                _settings.Security.SecureChannelKey = Convert.ToHexString(result.Scbk);
                 _settings.Security.SecureChannelMode = SecureChannelMode.Secure;
                 _settings.Security.SecureChannelVersion = SecureChannelVersion.V2;
 
@@ -394,22 +394,20 @@ namespace PDConsole
                     SaveSettings(_currentSettingsFilePath);
                 }
 
-                StatusChanged?.Invoke(this, "Paired with ACU; SC2 key established. Restarting for secure channel...");
+                var identity = result.PeerIdentity;
+                var thumbprint = Convert.ToHexString(result.PeerCertificate.Thumbprint);
+                AddPairingHistoryEntry("Asymmetric Pairing",
+                    $"Paired with {identity.Manufacturer} {identity.Model} (S/N {identity.SerialNumber}).\n" +
+                    $"Certificate thumbprint: {thumbprint}\n" +
+                    "SC2 key established; secure channel activating in place.");
 
-                // Restart out-of-band so this reply is sent before the device switches to Secure mode.
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await StopDevice();
-                        await StartDevice();
-                    }
-                    catch (Exception ex)
-                    {
-                        ErrorOccurred?.Invoke(this, ex);
-                    }
-                });
+                // Refresh the status line (Security -> Secure) via StatusChanged.
+                StatusChanged?.Invoke(this, $"Paired with {identity.Manufacturer} {identity.Model}; SC2 active.");
 
+                // No restart required: the running SC2 channel activates the derived key in place
+                // (deterministically, right after the pairing Result reply is sent), so the ACU's
+                // subsequent SC2 handshake uses the paired key. Persisting the settings above simply
+                // ensures a future cold start comes up in Secure mode with the same key.
                 return Task.FromResult(true);
             }
             catch (Exception ex)
@@ -417,6 +415,28 @@ namespace PDConsole
                 ErrorOccurred?.Invoke(this, ex);
                 return Task.FromResult(false);
             }
+        }
+
+        /// <summary>
+        /// Adds a synthetic entry to the command history so pairing lifecycle events are visible in the
+        /// PD console alongside received commands.
+        /// </summary>
+        private void AddPairingHistoryEntry(string description, string details)
+        {
+            var entry = new CommandEvent
+            {
+                Timestamp = DateTime.Now,
+                Description = description,
+                Details = details
+            };
+
+            _commandHistory.Add(entry);
+            if (_commandHistory.Count > 100)
+            {
+                _commandHistory.RemoveAt(0);
+            }
+
+            CommandReceived?.Invoke(this, entry);
         }
 
         /// <summary>

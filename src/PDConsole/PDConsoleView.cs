@@ -344,7 +344,11 @@ namespace PDConsole
         {
             Application.MainLoop.Invoke(() =>
             {
-                // You could add a status bar or status message area if needed
+                // Keep the Device Status line current (e.g. Security: Pairing -> Secure after pairing).
+                if (_statusLabel != null)
+                {
+                    _statusLabel.Text = _controller.GetDeviceStatusText();
+                }
             });
         }
 

@@ -38,7 +38,7 @@ namespace ACUConsole
         void AddDevice(string name, byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey,
             SecureChannelVersion secureChannelVersion);
         void RemoveDevice(byte address);
-        Task PairDevice(byte address);
+        Task PairDevice(byte address, IProgress<OSDP.Net.Pairing.PairingProgress> progress = null);
         Task<string> DiscoverDevice(string portName, int pingTimeout, int reconnectDelay, CancellationToken cancellationToken = default);
 
         // Command Methods

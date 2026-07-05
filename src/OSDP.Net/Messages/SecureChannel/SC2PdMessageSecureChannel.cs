@@ -80,6 +80,19 @@ internal class SC2PdMessageSecureChannel : SC2PdMessageSecureChannelBase
     public SecurityMode SecurityMode { get; set; } = SecurityMode.Unsecured;
 
     /// <summary>
+    /// Activates a pairing-derived SCBK on this running channel and switches it to full security.
+    /// The next SC2 handshake will use the paired key, so no reconnect is required after pairing.
+    /// Call this only after the pairing Result reply has been sent.
+    /// </summary>
+    /// <param name="scbk">The 32-byte pairing-derived secure channel base key.</param>
+    public void ActivatePairedKey(byte[] scbk)
+    {
+        _securityKey = scbk;
+        SC2Context.UpdateBaseKey(scbk);
+        SecurityMode = SecurityMode.FullSecurity;
+    }
+
+    /// <summary>
     /// Commands allowed without secure channel.
     /// </summary>
     public CommandType[] AllowUnsecured { get; set; } = Array.Empty<CommandType>();

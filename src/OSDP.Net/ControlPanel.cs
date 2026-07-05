@@ -1049,7 +1049,7 @@ namespace OSDP.Net
         /// <returns>The derived SCBK and the authenticated peer identity.</returns>
         public async Task<PairingResult> PairDevice(Guid connectionId, byte address,
             PairingConfiguration configuration, ushort maximumFragmentSize = 128, TimeSpan? timeout = null,
-            CancellationToken cancellationToken = default)
+            IProgress<PairingProgress> progress = null, CancellationToken cancellationToken = default)
         {
             if (configuration == null) throw new ArgumentNullException(nameof(configuration));
 
@@ -1058,16 +1058,25 @@ namespace OSDP.Net
 
             var session = new AcuPairingSession(configuration);
 
+            // Weight the four messages so the reported fraction advances smoothly from 0 to 1 across
+            // the whole exchange. Message 1 and 2 carry the bulk of the bytes (certificates, keys).
+            progress?.Report(new PairingProgress(PairingStage.SendingRequest, 0.0));
             var message1 = session.CreateMessage1();
             var message2 = await ExchangePairingMessage(connectionId, address, message1, maximumFragmentSize,
-                exchangeTimeout, scope.Token);
+                exchangeTimeout, scope.Token,
+                f => progress?.Report(new PairingProgress(PairingStage.SendingRequest, 0.45 * f)),
+                f => progress?.Report(new PairingProgress(PairingStage.AwaitingResponse, 0.45 + 0.30 * f)));
             ThrowIfRejectionResult(message2);
 
             var message3 = session.ProcessMessage2(message2);
             var resultMessage = await ExchangePairingMessage(connectionId, address, message3, maximumFragmentSize,
-                exchangeTimeout, scope.Token);
+                exchangeTimeout, scope.Token,
+                f => progress?.Report(new PairingProgress(PairingStage.SendingConfirmation, 0.75 + 0.15 * f)),
+                f => progress?.Report(new PairingProgress(PairingStage.AwaitingResult, 0.90 + 0.10 * f)));
 
-            return session.ProcessResult(resultMessage);
+            var result = session.ProcessResult(resultMessage);
+            progress?.Report(new PairingProgress(PairingStage.Completed, 1.0));
+            return result;
         }
 
         private static void ThrowIfRejectionResult(byte[] message)
@@ -1082,7 +1091,8 @@ namespace OSDP.Net
         }
 
         private async Task<byte[]> ExchangePairingMessage(Guid connectionId, byte address, byte[] outboundMessage,
-            ushort maximumFragmentSize, TimeSpan timeout, CancellationToken cancellationToken)
+            ushort maximumFragmentSize, TimeSpan timeout, CancellationToken cancellationToken,
+            Action<double> onSendProgress = null, Action<double> onReceiveProgress = null)
         {
             bool complete = false;
             byte[] responseData = null;
@@ -1097,6 +1107,8 @@ namespace OSDP.Net
 
                 complete = Message.BuildMultiPartMessageData(fragment.WholeMessageLength, fragment.Offset,
                     fragment.LengthOfFragment, fragment.Data, responseData);
+                onReceiveProgress?.Invoke((double)(fragment.Offset + fragment.LengthOfFragment) /
+                                          fragment.WholeMessageLength);
             }
 
             PairDataReplyReceived += Handler;
@@ -1127,6 +1139,7 @@ namespace OSDP.Net
                     }
 
                     offset += fragmentSize;
+                    onSendProgress?.Invoke((double)offset / totalSize);
                 }
 
                 var endTime = DateTime.UtcNow + timeout;

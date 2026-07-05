@@ -15,7 +15,7 @@ internal class SC2SecurityContext
     private const int NonceSize = 12;
     private const int CryptogramSize = 32;
 
-    private readonly byte[] _scbk;
+    private byte[] _scbk;
 
     /// <summary>
     /// Creates a new SC2 security context with the specified base key.
@@ -72,6 +72,22 @@ internal class SC2SecurityContext
     /// Indicates whether the secure channel has been fully established.
     /// </summary>
     internal bool IsSecurityEstablished { get; set; }
+
+    /// <summary>
+    /// Replaces the secure channel base key and resets the context, so a subsequent handshake uses
+    /// the new key. Used to activate a pairing-derived SCBK on a running channel without a reconnect.
+    /// </summary>
+    /// <param name="scbk">The new 32-byte secure channel base key.</param>
+    internal void UpdateBaseKey(byte[] scbk)
+    {
+        if (scbk == null || scbk.Length != KeySize)
+        {
+            throw new ArgumentException($"SC2 requires a {KeySize}-byte secure channel base key.", nameof(scbk));
+        }
+
+        _scbk = (byte[])scbk.Clone();
+        Reset();
+    }
 
     /// <summary>
     /// Resets the security context to its initial state with a new random number.

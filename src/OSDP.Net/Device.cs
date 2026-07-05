@@ -30,6 +30,7 @@ public class Device : IDisposable
     private CancellationTokenSource _cancellationTokenSource;
     private DateTime _lastValidReceivedCommand = DateTime.MinValue;
     private PairingTransport _pairingTransport;
+    private byte[] _pendingPairedKey;
 
     private const int PairingReplyFragmentSize = 128;
     private static readonly TimeSpan PairingSessionTimeout = TimeSpan.FromSeconds(30);
@@ -178,6 +179,22 @@ public class Device : IDisposable
 
             var reply = HandleCommand(command);
             await channel.SendReply(reply);
+
+            // Pairing just completed and its Result reply has now been sent. Activate the derived key
+            // on this running channel and switch it to full security so the ACU's next SC2 handshake
+            // uses the paired key — no reconnect required. Also update the configuration so a future
+            // reconnect uses the paired key. Order matters: this must run after the Result is sent.
+            if (_pendingPairedKey != null)
+            {
+                var pairedKey = _pendingPairedKey;
+                _pendingPairedKey = null;
+                channel.ActivatePairedKey(pairedKey);
+                UpdateDeviceConfig(c =>
+                {
+                    c.SecurityKey = pairedKey;
+                    c.RequireSecurity = true;
+                });
+            }
 
             if (contextCount != _connectionContextCounter)
             {
@@ -693,37 +710,67 @@ public class Device : IDisposable
         }
 
         var message = _pairingTransport.InboundBuffer.ToArray();
-        var responseMessage = ProcessCompletePairingMessage(configuration, message);
-        if (responseMessage != null)
+        var step = ProcessCompletePairingMessage(configuration, message);
+        if (step.Response == null)
         {
-            QueuePairingResponse(responseMessage);
+            return new Ack();
         }
 
+        if (step.IsResult)
+        {
+            // The Result is a single fragment. Return it directly (rather than via the poll queue) so
+            // it is delivered before this channel switches to secure mode. On success, stage the paired
+            // key so the loop activates it after this reply is sent — see RunClientLoop.
+            if (step.PairedKey != null)
+            {
+                _pendingPairedKey = step.PairedKey;
+            }
+
+            return new PairData((ushort)step.Response.Length, 0, step.Response);
+        }
+
+        // Message 2 is multi-fragment; deliver it over subsequent polls.
+        QueuePairingResponse(step.Response);
         return new Ack();
     }
 
-    private byte[] ProcessCompletePairingMessage(Pairing.PairingConfiguration configuration, byte[] message)
+    private readonly struct PairingStepResult
+    {
+        internal PairingStepResult(byte[] response, bool isResult, byte[] pairedKey)
+        {
+            Response = response;
+            IsResult = isResult;
+            PairedKey = pairedKey;
+        }
+
+        internal byte[] Response { get; }
+        internal bool IsResult { get; }
+        internal byte[] PairedKey { get; }
+    }
+
+    private PairingStepResult ProcessCompletePairingMessage(Pairing.PairingConfiguration configuration, byte[] message)
     {
         var session = _pairingTransport.Session;
         try
         {
             if (message.Length > 0 && message[0] == Pairing.PairingMessages.TypeMessage1)
             {
-                return session.ProcessMessage1(message);
+                return new PairingStepResult(session.ProcessMessage1(message), false, null);
             }
 
             var outcome = session.ProcessMessage3(message);
             if (!outcome.Success)
             {
                 _pairingTransport = null;
-                return outcome.FailureResult;
+                return new PairingStepResult(outcome.FailureResult, true, null);
             }
 
-            var persisted = PersistPairedKey(configuration, outcome.Scbk);
+            var pairingResult = new Pairing.PairingResult(outcome.Scbk, session.PeerCertificate);
+            var persisted = PersistPairedKey(configuration, pairingResult);
             var result = session.BuildResult(persisted ? Pairing.PairingStatus.Success
                 : Pairing.PairingStatus.PersistenceFailed);
             _pairingTransport = null;
-            return result;
+            return new PairingStepResult(result, true, persisted ? outcome.Scbk : null);
         }
         catch (Pairing.PairingException exception)
         {
@@ -732,11 +779,11 @@ public class Device : IDisposable
             var status = exception.Status is Pairing.PairingStatus.PolicyRejected
                 ? Pairing.PairingStatus.PolicyRejected
                 : Pairing.PairingStatus.ProtocolError;
-            return Pairing.PairingMessages.EncodeResult(status, Array.Empty<byte>());
+            return new PairingStepResult(Pairing.PairingMessages.EncodeResult(status, Array.Empty<byte>()), true, null);
         }
     }
 
-    private bool PersistPairedKey(Pairing.PairingConfiguration configuration, byte[] scbk)
+    private bool PersistPairedKey(Pairing.PairingConfiguration configuration, Pairing.PairingResult result)
     {
         if (configuration.OnScbkEstablished == null)
         {
@@ -746,7 +793,7 @@ public class Device : IDisposable
         try
         {
             var token = _cancellationTokenSource?.Token ?? CancellationToken.None;
-            return configuration.OnScbkEstablished(scbk, token).GetAwaiter().GetResult();
+            return configuration.OnScbkEstablished(result, token).GetAwaiter().GetResult();
         }
         catch (Exception exception)
         {

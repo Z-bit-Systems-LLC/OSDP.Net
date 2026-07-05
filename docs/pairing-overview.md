@@ -59,6 +59,22 @@ the SC2 record layer or handshake. The complete flow is:
 Pairing is strictly opt-in. A PD with no pairing configuration behaves exactly as a symmetric-only
 device and NAKs the pairing command; pure pre-shared-key SC2 (and SC1) deployments are unaffected.
 
+### Deterministic cleartext-to-SC2 handoff (single connection)
+
+Steps 2-4 above happen over the **same** connection, and the transition is deterministic — no
+timing delays and no reconnect on the PD:
+
+- When the PD processes message 3 it derives the SCBK, sends the single-fragment **Result reply in
+  the clear**, and only then activates the derived key on its **running** SC2 channel in place
+  (switching that channel to full security). Because the activation happens strictly after the
+  Result is sent, the PD is guaranteed to be ready before the ACU issues its first `CHLNG`.
+- The ACU receives the Result, completes pairing, and immediately re-adds the device under SC2. The
+  protocol round-trip (PD activates -> Result -> ACU receives -> ACU challenges) enforces the
+  ordering, so the SC2 handshake establishes without any sleep or PD restart.
+
+The `Pairing_ThenSc2OnSameConnection_EstablishesInPlaceWithoutReconnect` integration test covers this
+live path.
+
 ## 3. Cryptographic Primitives
 
 | Primitive | Algorithm | Sizes (bytes) |
@@ -260,7 +276,12 @@ var acuConfig = new PairingConfiguration(
     PairingTrustAnchor.FromCa(ca));
 
 panel.AddDevice(connectionId, address, useCrc: true, useSecureChannel: false); // cleartext
-PairingResult result = await panel.PairDevice(connectionId, address, acuConfig);
+
+// Optional IProgress<PairingProgress> drives a progress bar over the ~4s exchange.
+var progress = new Progress<PairingProgress>(p =>
+    Console.WriteLine($"{p.Stage}: {p.Fraction:P0}"));
+PairingResult result = await panel.PairDevice(connectionId, address, acuConfig, progress: progress);
+
 panel.AddDevice(connectionId, address, true, true, result.Scbk, SecureChannelVersion.V2); // SC2
 
 // PD side (on the DeviceConfiguration)
@@ -268,22 +289,32 @@ config.Pairing = new PairingConfiguration(
     PairingCredentials.Generate(new DeviceIdentity("ACME Access", "AR-200", "PD-0001"), ca),
     PairingTrustAnchor.FromCa(ca))
 {
-    OnScbkEstablished = async (scbk, ct) => { await PersistScbk(scbk); return true; }
+    // The callback receives the full PairingResult (derived SCBK plus the authenticated peer
+    // identity/certificate), so the PD can report who it paired with. Return true once stored.
+    OnScbkEstablished = async (pairingResult, ct) =>
+    {
+        await PersistScbk(pairingResult.Scbk);
+        Log($"Paired with {pairingResult.PeerIdentity}");
+        return true;
+    }
 };
 ```
 
-Leaving `DeviceConfiguration.Pairing` null keeps the device symmetric-only.
+Leaving `DeviceConfiguration.Pairing` null keeps the device symmetric-only. The PD activates the
+derived key on its running SC2 channel in place after the exchange (see
+[Section 2](#deterministic-cleartext-to-sc2-handoff-single-connection)), so no PD restart is needed.
 
 ## 11. Console Demonstration
 
 1. **PDConsole**: set `Security.SecureChannelMode = "Pairing"` in `appsettings.json` (optionally set
    `Security.Pairing.DeviceSeedHex` for a reproducible identity) and start the device. It listens in
-   cleartext and waits for a pairing exchange.
+   cleartext and waits for a pairing exchange. Its Device Status shows `Security: Pairing`.
 2. **ACUConsole**: start a connection, then choose **Devices → Pair (Asymmetric)** and select the
-   device. The event log shows the authenticated PD identity and certificate thumbprint.
-3. On success the ACU re-adds the device under SC2 with the derived key; the PDConsole persists the
-   key, switches its mode to `Secure`/V2, and reconnects. Subsequent traffic is AES-256-GCM
-   encrypted.
+   device. A progress dialog shows the exchange advancing to 100%.
+3. On success: the ACUConsole logs the authenticated PD identity and certificate thumbprint and
+   switches the device to SC2 with the derived key; the PDConsole logs a pairing entry with the ACU
+   identity/thumbprint and its Device Status flips to `Security: Secure`. The SC2 secure channel then
+   establishes in place over the same link, and subsequent traffic is AES-256-GCM encrypted.
 
 ## 12. Implementation Checklist
 

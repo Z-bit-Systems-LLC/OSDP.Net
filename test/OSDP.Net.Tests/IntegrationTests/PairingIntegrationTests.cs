@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -41,8 +42,12 @@ public class PairingIntegrationTests
 
         await using var harness = await Harness.StartCleartextPairingDevice(_loggerFactory, pdConfig);
 
+        // Synchronous collector preserves report order (unlike Progress<T>, which marshals).
+        var progress = new PairingProgressCollector();
+
         var result = await harness.Panel.PairDevice(harness.ConnectionId, harness.Address,
-            BuildAcuConfig(demoCa), maximumFragmentSize: 128, timeout: TimeSpan.FromSeconds(20));
+            BuildAcuConfig(demoCa), maximumFragmentSize: 128, timeout: TimeSpan.FromSeconds(20),
+            progress: progress);
 
         Assert.Multiple(() =>
         {
@@ -50,7 +55,18 @@ public class PairingIntegrationTests
             Assert.That(result.Scbk, Is.EqualTo(pdScbk), "ACU and PD must derive the same SCBK");
             Assert.That(result.PeerIdentity.SerialNumber, Is.EqualTo(PdIdentity.SerialNumber));
             Assert.That(result.PeerIdentity.Manufacturer, Is.EqualTo(PdIdentity.Manufacturer));
+            Assert.That(progress.Reports, Is.Not.Empty, "Pairing should report progress");
+            Assert.That(progress.Reports[^1].Stage, Is.EqualTo(PairingStage.Completed));
+            Assert.That(progress.Reports[^1].Fraction, Is.EqualTo(1.0));
+            Assert.That(progress.Reports.Select(p => p.Fraction), Is.Ordered, "Fraction should be monotonic");
         });
+    }
+
+    private sealed class PairingProgressCollector : IProgress<PairingProgress>
+    {
+        public System.Collections.Generic.List<PairingProgress> Reports { get; } = new();
+
+        public void Report(PairingProgress value) => Reports.Add(value);
     }
 
     [Test]
@@ -79,6 +95,48 @@ public class PairingIntegrationTests
             secureHarness.Address);
 
         Assert.That(capabilities, Is.Not.Null, "Encrypted SC2 command should succeed with the paired key");
+    }
+
+    [Test]
+    public async Task Pairing_ThenSc2OnSameConnection_EstablishesInPlaceWithoutReconnect()
+    {
+        // The live scenario: pair, then switch to SC2 on the SAME connection. The PD activates the
+        // derived key on its running channel in place (no reconnect), so the ACU's SC2 handshake
+        // establishes deterministically.
+        var demoCa = CertificateAuthority.Demo();
+        byte[] pdScbk = null;
+        var pdConfig = BuildPdConfig(demoCa, scbk =>
+        {
+            pdScbk = scbk;
+            return true;
+        });
+
+        await using var harness = await Harness.StartCleartextPairingDevice(_loggerFactory, pdConfig);
+
+        var result = await harness.Panel.PairDevice(harness.ConnectionId, harness.Address,
+            BuildAcuConfig(demoCa), timeout: TimeSpan.FromSeconds(20));
+        Assert.That(result.Scbk, Is.EqualTo(pdScbk));
+
+        // Same connection: switch the ACU to SC2 with the derived key (as the console does).
+        harness.Panel.AddDevice(harness.ConnectionId, harness.Address, true, true, result.Scbk,
+            SecureChannelVersion.V2);
+
+        // The encrypted SC2 command succeeds once the handshake establishes over the same link.
+        OSDP.Net.Model.ReplyData.DeviceCapabilities capabilities = null;
+        for (var attempt = 0; attempt < 40 && capabilities == null; attempt++)
+        {
+            try
+            {
+                capabilities = await harness.Panel.DeviceCapabilities(harness.ConnectionId, harness.Address);
+            }
+            catch (Exception)
+            {
+                await Task.Delay(250);
+            }
+        }
+
+        Assert.That(capabilities, Is.Not.Null,
+            "SC2 should establish in place on the same connection after pairing");
     }
 
     [Test]
@@ -131,7 +189,7 @@ public class PairingIntegrationTests
         var credentials = PairingCredentials.Generate(PdIdentity, ca);
         return new PairingConfiguration(credentials, PairingTrustAnchor.FromCa(ca))
         {
-            OnScbkEstablished = (scbk, _) => Task.FromResult(persist(scbk))
+            OnScbkEstablished = (result, _) => Task.FromResult(persist(result.Scbk))
         };
     }
 
@@ -153,6 +211,10 @@ public class PairingIntegrationTests
             {
                 Address = 0,
                 RequireSecurity = false,
+                // Pairing targets SC2, so the device runs an (unsecured) SC2 channel using a 32-byte
+                // placeholder key until pairing derives and activates the real SCBK in place.
+                SecurityKey = new byte[32],
+                SecureChannelVersion = SecureChannelVersion.V2,
                 Pairing = pairingConfig
             };
             return Start(loggerFactory, config, useSecureChannel: false, securityKey: null,

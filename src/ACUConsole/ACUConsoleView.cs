@@ -435,21 +435,20 @@ namespace ACUConsole
             }
 
             var deviceList = _presenter.GetDeviceList();
-            var input = RemoveDeviceDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            var input = PairDeviceDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
             if (input.WasCancelled)
             {
                 return;
             }
 
-            try
+            // The pairing status dialog shows a progress bar and reports success/failure itself.
+            await PairDeviceStatusDialog.Show(async handle =>
             {
-                await _presenter.PairDevice(input.DeviceAddress);
-                UpdateDeviceStatusDisplay();
-            }
-            catch (Exception ex)
-            {
-                ShowError("Pairing Failed", ex.Message);
-            }
+                var progress = new Progress<OSDP.Net.Pairing.PairingProgress>(p => handle.Report(p));
+                await _presenter.PairDevice(input.DeviceAddress, progress);
+            });
+
+            UpdateDeviceStatusDisplay();
         }
 
         private void RemoveDevice()

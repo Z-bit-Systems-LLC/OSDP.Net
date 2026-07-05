@@ -75,9 +75,10 @@ public sealed class PairingConfiguration
     public Func<bool> ScbkIsProvisioned { get; set; }
 
     /// <summary>
-    /// Gets or sets the persistence callback invoked with the derived SCBK before the responder
-    /// confirms success (PD-only). Return <c>true</c> once the key is durably stored; return
-    /// <c>false</c> to signal a persistence failure so neither side commits the key.
+    /// Gets or sets the persistence callback invoked with the pairing result (derived SCBK and the
+    /// authenticated peer identity) before the responder confirms success (PD-only). Return
+    /// <c>true</c> once the key is durably stored; return <c>false</c> to signal a persistence
+    /// failure so neither side commits the key.
     /// </summary>
-    public Func<byte[], CancellationToken, Task<bool>> OnScbkEstablished { get; set; }
+    public Func<PairingResult, CancellationToken, Task<bool>> OnScbkEstablished { get; set; }
 }
