@@ -256,7 +256,7 @@ public class SecureChannelComplianceTests : IntegrationTestFixtureBase
 
         // Disconnect
         RemoveDeviceFromPanel();
-        await Task.Delay(TimeSpan.FromSeconds(9));
+        await Task.Delay(TestOfflineThreshold + TimeSpan.FromMilliseconds(700));
         Assert.That(TargetDevice.IsConnected, Is.False);
 
         // Re-establish secure channel
@@ -296,7 +296,7 @@ public class SecureChannelComplianceTests : IntegrationTestFixtureBase
             RemoveDeviceFromPanel();
 
             // Wait for PD to go offline before next iteration
-            await Task.Delay(TimeSpan.FromSeconds(9));
+            await Task.Delay(TestOfflineThreshold + TimeSpan.FromMilliseconds(700));
             Assert.That(TargetDevice.IsConnected, Is.False, $"Iteration {i}: PD should be offline");
         }
     }

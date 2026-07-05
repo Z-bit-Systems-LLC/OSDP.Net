@@ -23,6 +23,14 @@ public sealed class IntegrationConsts
 
 public class IntegrationTestFixtureBase
 {
+    /// <summary>
+    /// Shortened offline threshold used during tests so offline-detection tests don't wait the
+    /// production 8 seconds. Kept comfortably above the library's 1-second offline reconnect backoff
+    /// (Bus) so a device does not flicker offline mid-handshake. Offline-timing tests express their
+    /// waits relative to this value.
+    /// </summary>
+    protected static readonly TimeSpan TestOfflineThreshold = TimeSpan.FromSeconds(2);
+
     protected ILoggerFactory LoggerFactory;
 
     protected byte DeviceAddress;
@@ -42,6 +50,9 @@ public class IntegrationTestFixtureBase
     [SetUp]
     public void Setup()
     {
+        // Shorten the offline threshold so offline-detection tests don't wait the production 8s.
+        OSDP.Net.ConnectionTiming.OfflineThreshold = TestOfflineThreshold;
+
         // Each test gets spun up with its own console capture so we have to create
         // a new logger factory instance for every single test. Otherwise, the test runner
         // isn't able to associate stdout output with the particular test
@@ -65,6 +76,8 @@ public class IntegrationTestFixtureBase
         _acuConnection?.Dispose();
         _deviceConnection?.Dispose();
         LoggerFactory?.Dispose();
+
+        OSDP.Net.ConnectionTiming.OfflineThreshold = OSDP.Net.ConnectionTiming.DefaultOfflineThreshold;
     }
 
     protected async Task InitTestTargets(

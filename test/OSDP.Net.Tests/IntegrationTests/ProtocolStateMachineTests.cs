@@ -63,7 +63,7 @@ public class ProtocolStateMachineTests : IntegrationTestFixtureBase
         await TargetPanel.Shutdown();
 
         // Wait longer than the 8-second offline timeout
-        await Task.Delay(TimeSpan.FromSeconds(9));
+        await Task.Delay(TestOfflineThreshold + TimeSpan.FromMilliseconds(700));
 
         Assert.That(TargetDevice.IsConnected, Is.False);
     }
@@ -258,7 +258,7 @@ public class ProtocolStateMachineTests : IntegrationTestFixtureBase
         RemoveDeviceFromPanel();
 
         // Wait for the PD to go offline
-        await Task.Delay(TimeSpan.FromSeconds(9));
+        await Task.Delay(TestOfflineThreshold + TimeSpan.FromMilliseconds(700));
         Assert.That(TargetDevice.IsConnected, Is.False);
 
         // Re-add device to panel (simulates ACU reconnect)

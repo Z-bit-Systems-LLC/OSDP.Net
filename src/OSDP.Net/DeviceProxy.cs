@@ -80,7 +80,7 @@ internal class DeviceProxy : IComparable<DeviceProxy>
 
     public bool IsSecurityEstablished => !IsSendingMultiMessageNoSecureChannel && MessageControl.HasSecurityControlBlock && MessageSecureChannel.IsSecurityEstablished;
 
-    public bool IsConnected => _lastValidReply + TimeSpan.FromSeconds(8) >= DateTime.UtcNow &&
+    public bool IsConnected => _lastValidReply + ConnectionTiming.OfflineThreshold >= DateTime.UtcNow &&
                                (IsSendingMultiMessageNoSecureChannel || !MessageControl.HasSecurityControlBlock || IsSecurityEstablished);
     
     public IMessageSecureChannel MessageSecureChannel { get; }

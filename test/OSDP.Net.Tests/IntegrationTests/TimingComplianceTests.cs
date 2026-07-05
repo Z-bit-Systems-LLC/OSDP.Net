@@ -137,31 +137,32 @@ public class TimingComplianceTests : IntegrationTestFixtureBase
     [Test]
     public async Task OfflineTimeout_PdStillConnected_JustBeforeTimeout()
     {
-        // Verify PD is still connected at 7 seconds (just before 8-second timeout)
+        // Verify PD is still connected just before the offline timeout elapses
         Assert.That(TargetDevice.IsConnected, Is.True);
 
         await TargetPanel.Shutdown();
 
-        // Wait 7 seconds - should still be within the 8-second timeout window
-        await Task.Delay(TimeSpan.FromSeconds(7));
+        // Wait less than the offline threshold - should still be within the timeout window
+        await Task.Delay(TestOfflineThreshold / 2);
 
         Assert.That(TargetDevice.IsConnected, Is.True,
-            "PD should still consider itself connected within the 8-second timeout window");
+            "PD should still consider itself connected within the offline-timeout window");
     }
 
     [Test]
     public async Task OfflineTimeout_PdDisconnected_AfterTimeout()
     {
-        // OSDP 2.2.2 Section 6.1 - PD offline after 8 seconds without valid command
+        // OSDP 2.2.2 Section 6.1 - PD offline after the timeout without valid command
+        // (production threshold is 8s; tests use a shortened TestOfflineThreshold)
         Assert.That(TargetDevice.IsConnected, Is.True);
 
         await TargetPanel.Shutdown();
 
-        // Wait past the 8-second timeout
-        await Task.Delay(TimeSpan.FromSeconds(9));
+        // Wait past the offline threshold
+        await Task.Delay(TestOfflineThreshold + TimeSpan.FromMilliseconds(700));
 
         Assert.That(TargetDevice.IsConnected, Is.False,
-            "PD must consider connection offline after 8 seconds without a valid command");
+            "PD must consider connection offline after the timeout without a valid command");
     }
 
     [Test]
@@ -172,12 +173,12 @@ public class TimingComplianceTests : IntegrationTestFixtureBase
 
         await TargetPanel.Shutdown();
 
-        // Check at regular intervals that IsConnected tracks correctly
-        await Task.Delay(TimeSpan.FromSeconds(4));
-        Assert.That(TargetDevice.IsConnected, Is.True, "Should still be connected at 4 seconds");
+        // Check at intervals that IsConnected tracks correctly across the threshold
+        await Task.Delay(TestOfflineThreshold / 2);
+        Assert.That(TargetDevice.IsConnected, Is.True, "Should still be connected before the threshold");
 
-        await Task.Delay(TimeSpan.FromSeconds(5));
-        Assert.That(TargetDevice.IsConnected, Is.False, "Should be disconnected at 9 seconds total");
+        await Task.Delay(TestOfflineThreshold);
+        Assert.That(TargetDevice.IsConnected, Is.False, "Should be disconnected past the threshold");
     }
 }
 

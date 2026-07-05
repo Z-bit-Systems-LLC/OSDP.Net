@@ -56,7 +56,7 @@ public class Device : IDisposable
     /// </summary>
     /// <value><c>true</c> if the device is connected; otherwise, <c>false</c>.</value>
     public bool IsConnected => _connectionListener?.ConnectionCount > 0 && (
-        _lastValidReceivedCommand + TimeSpan.FromSeconds(8) >= DateTime.UtcNow);
+        _lastValidReceivedCommand + ConnectionTiming.OfflineThreshold >= DateTime.UtcNow);
 
     /// <summary>
     /// Gets raised whenever osdp_ComSet command is successfully processed, and there is 
