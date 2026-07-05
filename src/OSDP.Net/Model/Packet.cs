@@ -209,6 +209,8 @@ public class Packet : IPacket
                 return ReplyData.ManufacturerSpecific.ParseData(RawPayloadData);
             case Messages.ReplyType.ExtendedRead:
                 return ExtendedRead.ParseData(RawPayloadData);
+            case Messages.ReplyType.PairData:
+                return DataFragmentResponse.ParseData(RawPayloadData);
         }
 
         return null;

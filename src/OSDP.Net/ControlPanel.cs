@@ -13,6 +13,7 @@ using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
 using OSDP.Net.PanelCommands.DeviceDiscover;
+using OSDP.Net.Pairing;
 using OSDP.Net.Tracing;
 using CommunicationConfiguration = OSDP.Net.Model.CommandData.CommunicationConfiguration;
 using DeviceCapabilities = OSDP.Net.Model.ReplyData.DeviceCapabilities;
@@ -1030,6 +1031,125 @@ namespace OSDP.Net
         }
 
         /// <summary>
+        /// Performs an asymmetric pairing exchange (EDHOC-style, ML-KEM-768 / ML-DSA-44) with a
+        /// PD to establish a 32-byte SC2 secure channel base key out-of-band, replacing the need
+        /// for Installation Mode / SCBK-D.
+        /// </summary>
+        /// <remarks>
+        /// The device should be added unsecured for the duration of pairing (the exchange runs in
+        /// cleartext). On success, re-add the device with <see cref="SecureChannelVersion.V2"/> and
+        /// the returned <see cref="PairingResult.Scbk"/> to run the symmetric SC2 handshake.
+        /// </remarks>
+        /// <param name="connectionId">Identify the connection for communicating to the device.</param>
+        /// <param name="address">Address assigned to the device.</param>
+        /// <param name="configuration">The ACU pairing credentials, trust anchor, and policy.</param>
+        /// <param name="maximumFragmentSize">The maximum size of each pairing command fragment.</param>
+        /// <param name="timeout">Time to wait for each pairing response message.</param>
+        /// <param name="cancellationToken">The token to observe.</param>
+        /// <returns>The derived SCBK and the authenticated peer identity.</returns>
+        public async Task<PairingResult> PairDevice(Guid connectionId, byte address,
+            PairingConfiguration configuration, ushort maximumFragmentSize = 128, TimeSpan? timeout = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (configuration == null) throw new ArgumentNullException(nameof(configuration));
+
+            var exchangeTimeout = timeout ?? TimeSpan.FromSeconds(30);
+            using var scope = await BeginCommandAsync(connectionId, address, exchangeTimeout, cancellationToken);
+
+            var session = new AcuPairingSession(configuration);
+
+            var message1 = session.CreateMessage1();
+            var message2 = await ExchangePairingMessage(connectionId, address, message1, maximumFragmentSize,
+                exchangeTimeout, scope.Token);
+            ThrowIfRejectionResult(message2);
+
+            var message3 = session.ProcessMessage2(message2);
+            var resultMessage = await ExchangePairingMessage(connectionId, address, message3, maximumFragmentSize,
+                exchangeTimeout, scope.Token);
+
+            return session.ProcessResult(resultMessage);
+        }
+
+        private static void ThrowIfRejectionResult(byte[] message)
+        {
+            // If the PD returned a Result message in place of message 2, surface its status.
+            if (message.Length >= 1 && message[0] == PairingMessages.TypeResult)
+            {
+                var result = PairingMessages.ParseResult(message);
+                throw new PairingException(result.Status,
+                    $"PD rejected pairing during the first exchange with status {result.Status}.");
+            }
+        }
+
+        private async Task<byte[]> ExchangePairingMessage(Guid connectionId, byte address, byte[] outboundMessage,
+            ushort maximumFragmentSize, TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            bool complete = false;
+            byte[] responseData = null;
+
+            void Handler(object sender, MultiPartMessageDataReplyEventArgs args)
+            {
+                if (args.ConnectionId != connectionId || args.Address != address) return;
+
+                var fragment = args.DataFragmentResponse;
+                if (fragment.WholeMessageLength == 0) return;
+                responseData ??= new byte[fragment.WholeMessageLength];
+
+                complete = Message.BuildMultiPartMessageData(fragment.WholeMessageLength, fragment.Offset,
+                    fragment.LengthOfFragment, fragment.Data, responseData);
+            }
+
+            PairDataReplyReceived += Handler;
+            SetReceivingMultipartMessaging(connectionId, address, true);
+
+            var totalSize = (ushort)outboundMessage.Length;
+            ushort offset = 0;
+
+            try
+            {
+                while (!cancellationToken.IsCancellationRequested && offset < totalSize)
+                {
+                    var fragmentSize = (ushort)Math.Min(maximumFragmentSize, totalSize - offset);
+                    var fragmentData = new byte[fragmentSize];
+                    Array.Copy(outboundMessage, offset, fragmentData, 0, fragmentSize);
+
+                    var reply = await SendCommand(connectionId, address, new PairFragment(
+                            new MessageDataFragment(totalSize, offset, fragmentSize, fragmentData,
+                                MessageDataFragmentFieldSize.TwoBytes)), cancellationToken, throwOnNak: false)
+                        .ConfigureAwait(false);
+
+                    if (reply.Type == (byte)ReplyType.Nak)
+                    {
+                        var nak = Nak.ParseData(reply.Payload);
+                        throw new PairingException(PairingStatus.NotSupported,
+                            $"PD rejected the pairing command (NAK: {nak.ErrorCode}). " +
+                            "The device may not be configured for asymmetric pairing.");
+                    }
+
+                    offset += fragmentSize;
+                }
+
+                var endTime = DateTime.UtcNow + timeout;
+                while (DateTime.UtcNow <= endTime)
+                {
+                    if (complete)
+                    {
+                        return responseData;
+                    }
+
+                    await Task.Delay(_timeToWaitToCheckOnData, cancellationToken);
+                }
+
+                throw new TimeoutException("Timeout waiting to receive pairing response.");
+            }
+            finally
+            {
+                PairDataReplyReceived -= Handler;
+                SetReceivingMultipartMessaging(connectionId, address, false);
+            }
+        }
+
+        /// <summary>
         /// Inform the PD the maximum size that the ACU can receive.
         /// </summary>
         /// <param name="connectionId">Identify the connection for communicating to the device.</param>
@@ -1552,6 +1672,12 @@ namespace OSDP.Net
                                 reply.ReplyMessage.Address,
                                 DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));
                         break;
+                    case ReplyType.PairData:
+                        PairDataReplyReceived?.Invoke(this,
+                            new MultiPartMessageDataReplyEventArgs(reply.ConnectionId,
+                                reply.ReplyMessage.Address,
+                                DataFragmentResponse.ParseData(reply.ReplyMessage.Payload)));
+                        break;
                     case ReplyType.KeypadData:
                         KeypadReplyReceived?.Invoke(this,
                             new KeypadReplyEventArgs(reply.ConnectionId, reply.ReplyMessage.Address,
@@ -1679,6 +1805,11 @@ namespace OSDP.Net
         /// Occurs when authentication challenge response is received.
         /// </summary>
         private event EventHandler<MultiPartMessageDataReplyEventArgs> AuthenticationChallengeResponseReceived;
+
+        /// <summary>
+        /// Occurs when an asymmetric pairing response fragment is received.
+        /// </summary>
+        private event EventHandler<MultiPartMessageDataReplyEventArgs> PairDataReplyReceived;
 
         /// <summary>
         /// A negative reply that has been received.

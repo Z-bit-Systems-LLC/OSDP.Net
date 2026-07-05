@@ -38,6 +38,7 @@ namespace ACUConsole
         void AddDevice(string name, byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey,
             SecureChannelVersion secureChannelVersion);
         void RemoveDevice(byte address);
+        Task PairDevice(byte address);
         Task<string> DiscoverDevice(string portName, int pingTimeout, int reconnectDelay, CancellationToken cancellationToken = default);
 
         // Command Methods

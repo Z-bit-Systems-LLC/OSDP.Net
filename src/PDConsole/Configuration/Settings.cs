@@ -112,7 +112,14 @@ namespace PDConsole.Configuration
         Install,
 
         /// <summary>Secure channel using the configured per-installation key (SCBK).</summary>
-        Secure
+        Secure,
+
+        /// <summary>
+        /// Asymmetric device pairing (EDHOC-style, ML-KEM-768 / ML-DSA-44). The PD accepts a
+        /// cleartext pairing exchange that derives the 32-byte SC2 SCBK out-of-band; on success the
+        /// PD switches to <see cref="Secure"/> mode with the derived key.
+        /// </summary>
+        Pairing
     }
 
     public class SecuritySettings
@@ -151,6 +158,31 @@ namespace PDConsole.Configuration
         /// The secure channel protocol version (V1 = AES-128 CBC, V2 = AES-256 GCM).
         /// </summary>
         public SecureChannelVersion SecureChannelVersion { get; set; } = SecureChannelVersion.V1;
+
+        /// <summary>
+        /// Asymmetric pairing options, used when <see cref="SecureChannelMode"/> is
+        /// <see cref="SecureChannelMode.Pairing"/>.
+        /// </summary>
+        public PairingSettings Pairing { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Options for asymmetric device pairing on the PD side.
+    /// </summary>
+    public class PairingSettings
+    {
+        /// <summary>
+        /// Whether to use the built-in reproducible demonstration certificate authority. When true,
+        /// the PD's certificate is issued by the demo CA and the demo CA is the trust anchor for the
+        /// ACU certificate.
+        /// </summary>
+        public bool UseDemoCa { get; set; } = true;
+
+        /// <summary>
+        /// Optional 32-byte ML-DSA seed (hex) for a reproducible device identity key. Leave empty for
+        /// a randomly generated device key.
+        /// </summary>
+        public string DeviceSeedHex { get; set; } = "";
     }
 
     public class SimulationSettings

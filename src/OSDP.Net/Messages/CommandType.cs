@@ -133,6 +133,13 @@
         /// <summary>
         /// osdp_KEEPACTIVE - keep reader active
         /// </summary>
-        KeepActive = 0xA7
+        KeepActive = 0xA7,
+
+        /// <summary>
+        /// osdp_PAIR - asymmetric device pairing fragment (experimental extension).
+        /// Command code 0xB0 is chosen to avoid the OSDP 3.0 PIV draft's tentative 0xA6-0xAF block;
+        /// it is not an SIA-assigned value.
+        /// </summary>
+        Pair = 0xB0
     }
 }

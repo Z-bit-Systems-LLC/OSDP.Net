@@ -102,6 +102,7 @@ namespace ACUConsole
                 new MenuBarItem("_Devices", [
                     new MenuItem("_Add", string.Empty, AddDevice),
                     new MenuItem("_Remove", string.Empty, RemoveDevice),
+                    new MenuItem("_Pair (Asymmetric)", string.Empty, () => _ = PairDevice()),
                     _discoverMenuItem
                 ]),
                 new MenuBarItem("_Commands", [
@@ -422,6 +423,32 @@ namespace ACUConsole
                 {
                     ShowError("Error", ex.Message);
                 }
+            }
+        }
+
+        private async Task PairDevice()
+        {
+            if (!_presenter.IsConnected)
+            {
+                ShowError("Information", "Start a connection before pairing devices.");
+                return;
+            }
+
+            var deviceList = _presenter.GetDeviceList();
+            var input = RemoveDeviceDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            if (input.WasCancelled)
+            {
+                return;
+            }
+
+            try
+            {
+                await _presenter.PairDevice(input.DeviceAddress);
+                UpdateDeviceStatusDisplay();
+            }
+            catch (Exception ex)
+            {
+                ShowError("Pairing Failed", ex.Message);
             }
         }
 

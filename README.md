@@ -10,7 +10,8 @@ Further information can be found at [SIA OSDP Homepage](https://www.securityindu
 ## Prerequisites
 
 OSDP.Net supports the following .NET implementations:
-- .NET Framework 4.6.2 and later
+- .NET Framework 4.6.2 and
+- later
 - NET 8.0 and later
 
 ## Getting Started
@@ -221,9 +222,28 @@ panel.AddDevice(connectionId, address, useCrc: true, useSecureChannel: true,
 
 > **Note:** On .NET Standard 2.0 and .NET Framework targets, SC2 uses BouncyCastle's managed AES-GCM implementation which does not benefit from AES-NI hardware acceleration. This is suitable for low-throughput environments but may have reduced performance compared to .NET 8+ targets. For production deployments with high message volumes, .NET 8 or later is recommended.
 
+### Asymmetric Device Pairing (experimental)
+
+An experimental profile establishes the 32-byte SC2 SCBK out-of-band via an EDHOC-style,
+post-quantum key agreement (ML-KEM-768 / ML-DSA-44) with C.509 device certificates, replacing the
+shared-symmetric-key model and Installation Mode. Pairing is strictly opt-in — devices without a
+pairing configuration remain symmetric-only. See the [Asymmetric Pairing Guide](docs/pairing-overview.md).
+
+```c#
+var ca = CertificateAuthority.Demo(); // production supplies its own CA / trust anchor
+var acuConfig = new PairingConfiguration(
+    PairingCredentials.Generate(new DeviceIdentity("ACME Controllers", "ACU-9", "SN-1"), ca),
+    PairingTrustAnchor.FromCa(ca));
+
+panel.AddDevice(connectionId, address, useCrc: true, useSecureChannel: false); // cleartext
+var result = await panel.PairDevice(connectionId, address, acuConfig);
+panel.AddDevice(connectionId, address, true, true, result.Scbk, SecureChannelVersion.V2); // SC2
+```
+
 ## Documentation
 
 - [SC2 Implementation Guide](docs/sc2-overview.md) — Language-agnostic reference for implementing Secure Channel v2
+- [Asymmetric Pairing Guide](docs/pairing-overview.md) — Post-quantum out-of-band SCBK establishment (experimental)
 - [PowerShell Support](docs/powershell.md)
 - [Supported Commands and Replies](docs/supported_commands.md)
 - [Tracing Guide](docs/tracing-guide.md)

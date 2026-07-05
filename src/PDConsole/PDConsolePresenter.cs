@@ -61,13 +61,22 @@ namespace PDConsole
                 var vendorCode = ConvertHexStringToBytes(_settings.Device.VendorCode, 3);
                 var serialNumber = ParseSerialNumber(_settings.Device.SerialNumber);
                 var (requireSecurity, securityKey) = ResolveSecurity(_settings.Security);
+                var pairingMode = _settings.Security.SecureChannelMode == SecureChannelMode.Pairing;
                 var deviceConfig = new DeviceConfiguration(new ClientIdentification(vendorCode, serialNumber))
                 {
                     Address = _settings.Device.Address,
                     RequireSecurity = requireSecurity,
                     SecurityKey = securityKey,
-                    SecureChannelVersion = _settings.Security.SecureChannelVersion
+                    // Pairing derives a 32-byte SCBK, so it always targets SC2.
+                    SecureChannelVersion = pairingMode
+                        ? SecureChannelVersion.V2
+                        : _settings.Security.SecureChannelVersion
                 };
+
+                if (pairingMode)
+                {
+                    deviceConfig.Pairing = BuildPairingConfiguration();
+                }
 
                 // Wire up logging if enabled
                 ILoggerFactory loggerFactory = null;
@@ -339,6 +348,78 @@ namespace PDConsole
         }
 
         /// <summary>
+        /// Builds the asymmetric pairing configuration for the PD from the current settings and
+        /// device identity, wiring the persistence callback that commits a derived SCBK.
+        /// </summary>
+        private OSDP.Net.Pairing.PairingConfiguration BuildPairingConfiguration()
+        {
+            var identity = new OSDP.Net.Pairing.DeviceIdentity(
+                string.IsNullOrWhiteSpace(_settings.Device.ExtendedId.Manufacturer)
+                    ? _settings.Device.VendorCode
+                    : _settings.Device.ExtendedId.Manufacturer,
+                _settings.Device.Model,
+                _settings.Device.SerialNumber);
+
+            var ca = OSDP.Net.Pairing.CertificateAuthority.Demo();
+            byte[] seed = null;
+            if (!string.IsNullOrWhiteSpace(_settings.Security.Pairing.DeviceSeedHex))
+            {
+                seed = Convert.FromHexString(_settings.Security.Pairing.DeviceSeedHex.Replace(" ", "").Replace("-", ""));
+            }
+
+            var credentials = OSDP.Net.Pairing.PairingCredentials.Generate(identity, ca, seed);
+            var trustAnchor = OSDP.Net.Pairing.PairingTrustAnchor.FromCa(ca);
+
+            return new OSDP.Net.Pairing.PairingConfiguration(credentials, trustAnchor)
+            {
+                OnScbkEstablished = OnPairingScbkEstablished
+            };
+        }
+
+        /// <summary>
+        /// Persists a pairing-derived SCBK, switches the PD to Secure/SC2 mode, and schedules a
+        /// reconnect so the new key takes effect. Returns true once the key is stored so the PD
+        /// confirms success to the ACU.
+        /// </summary>
+        private Task<bool> OnPairingScbkEstablished(byte[] scbk, System.Threading.CancellationToken token)
+        {
+            try
+            {
+                _settings.Security.SecureChannelKey = Convert.ToHexString(scbk);
+                _settings.Security.SecureChannelMode = SecureChannelMode.Secure;
+                _settings.Security.SecureChannelVersion = SecureChannelVersion.V2;
+
+                if (!string.IsNullOrWhiteSpace(_currentSettingsFilePath))
+                {
+                    SaveSettings(_currentSettingsFilePath);
+                }
+
+                StatusChanged?.Invoke(this, "Paired with ACU; SC2 key established. Restarting for secure channel...");
+
+                // Restart out-of-band so this reply is sent before the device switches to Secure mode.
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await StopDevice();
+                        await StartDevice();
+                    }
+                    catch (Exception ex)
+                    {
+                        ErrorOccurred?.Invoke(this, ex);
+                    }
+                });
+
+                return Task.FromResult(true);
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke(this, ex);
+                return Task.FromResult(false);
+            }
+        }
+
+        /// <summary>
         /// Maps the configured <see cref="SecureChannelMode"/> to the library's
         /// RequireSecurity/SecurityKey pair. Install mode keys with the well-known default key,
         /// Secure mode uses the configured key, and ClearText disables the secure channel.
@@ -355,6 +436,11 @@ namespace PDConsole
 
                 case SecureChannelMode.Secure:
                     return (true, ParseSecureChannelKey(security.SecureChannelKey, isV2));
+
+                case SecureChannelMode.Pairing:
+                    // Pairing runs in cleartext; the placeholder key is unused until the exchange
+                    // derives the real 32-byte SCBK and the mode switches to Secure.
+                    return (false, SecuritySettings.DefaultSC2Key);
 
                 case SecureChannelMode.ClearText:
                 default:

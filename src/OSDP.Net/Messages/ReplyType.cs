@@ -118,6 +118,13 @@ namespace OSDP.Net.Messages
         /// <summary>
         /// osdp_XRD - extended read reply
         /// </summary>
-        ExtendedRead = 0xB1
+        ExtendedRead = 0xB1,
+
+        /// <summary>
+        /// osdp_PAIRR - asymmetric device pairing fragment reply (experimental extension).
+        /// Reply code 0x8A is chosen to avoid the OSDP 3.0 PIV draft's tentative 0x84-0x89 block;
+        /// it is not an SIA-assigned value.
+        /// </summary>
+        PairData = 0x8A
     }
 }

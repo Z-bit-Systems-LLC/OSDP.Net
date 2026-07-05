@@ -29,6 +29,10 @@ public class Device : IDisposable
     private IOsdpConnectionListener _connectionListener;
     private CancellationTokenSource _cancellationTokenSource;
     private DateTime _lastValidReceivedCommand = DateTime.MinValue;
+    private PairingTransport _pairingTransport;
+
+    private const int PairingReplyFragmentSize = 128;
+    private static readonly TimeSpan PairingSessionTimeout = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// Represents a Peripheral Device (PD) that communicates over the OSDP protocol.
@@ -109,7 +113,7 @@ public class Device : IDisposable
                     SecurityMode = !_deviceConfiguration.RequireSecurity
                         ? SecurityMode.Unsecured
                         : SecurityMode.FullSecurity,
-                    AllowUnsecured = _deviceConfiguration.AllowUnsecured ?? Array.Empty<CommandType>(),
+                    AllowUnsecured = EffectiveAllowUnsecured(),
                 };
 
                 await RunClientLoop(channel, incomingConnection, currentContextCount);
@@ -127,7 +131,7 @@ public class Device : IDisposable
                            _deviceConfiguration.SecurityKey.SequenceEqual(SecurityContext.DefaultKey))
                         ? SecurityMode.InstallMode
                         : SecurityMode.FullSecurity,
-                    AllowUnsecured = _deviceConfiguration.AllowUnsecured ?? Array.Empty<CommandType>(),
+                    AllowUnsecured = EffectiveAllowUnsecured(),
                 };
 
                 await RunClientLoop(channel, incomingConnection, currentContextCount);
@@ -231,6 +235,7 @@ public class Device : IDisposable
             CommandType.Abort => HandleAbortRequest(),
             CommandType.PivData => HandlePivData(GetPIVData.ParseData(command.Payload)),
             CommandType.KeepActive => HandleKeepActive(KeepReaderActive.ParseData(command.Payload)),
+            CommandType.Pair => HandlePairCommand(PairFragment.ParseData(command.Payload)),
             _ => HandleUnknownCommand(command)
         };
 
@@ -605,6 +610,165 @@ public class Device : IDisposable
         return new Nak(ErrorCode.UnknownCommandCode);
     }
 
+    private CommandType[] EffectiveAllowUnsecured()
+    {
+        var configured = _deviceConfiguration.AllowUnsecured ?? Array.Empty<CommandType>();
+        if (_deviceConfiguration.Pairing == null || Array.IndexOf(configured, CommandType.Pair) >= 0)
+        {
+            return configured;
+        }
+
+        // Pairing runs in cleartext before any secure channel, so the Pair command must be
+        // accepted unsecured when a device is configured for asymmetric pairing.
+        var extended = new CommandType[configured.Length + 1];
+        Array.Copy(configured, extended, configured.Length);
+        extended[configured.Length] = CommandType.Pair;
+        return extended;
+    }
+
+    /// <summary>
+    /// Tracks the in-progress asymmetric pairing exchange: the reassembly buffer for the current
+    /// inbound message and the responder session that spans messages 1 through 3.
+    /// </summary>
+    private sealed class PairingTransport
+    {
+        internal Pairing.PdPairingSession Session { get; set; }
+        internal List<byte> InboundBuffer { get; } = new();
+        internal int InboundTotal { get; set; }
+        internal DateTime LastActivity { get; set; }
+    }
+
+    /// <summary>
+    /// Handles one fragment of an asymmetric pairing exchange (osdp_PAIR). Reassembles the inbound
+    /// pairing message, runs the responder state machine on completion, and queues the fragmented
+    /// response for delivery on subsequent polls. Returns a NAK when the device is not configured
+    /// for pairing.
+    /// </summary>
+    private PayloadData HandlePairCommand(PairFragment command)
+    {
+        var configuration = _deviceConfiguration.Pairing;
+        if (configuration == null)
+        {
+            return new Nak(ErrorCode.UnknownCommandCode);
+        }
+
+        var fragment = command.Fragment;
+
+        // A message-1 first fragment always starts a fresh session (retry-friendly); a message-3
+        // first fragment continues the existing session. The inner message type byte is the first
+        // byte of the reassembled payload, so it is the first data byte at offset zero.
+        if (fragment.Offset == 0)
+        {
+            if (_pairingTransport != null && DateTime.UtcNow - _pairingTransport.LastActivity > PairingSessionTimeout)
+            {
+                _pairingTransport = null;
+            }
+
+            var messageType = fragment.DataFragment.Length > 0 ? fragment.DataFragment[0] : (byte)0;
+            if (messageType == Pairing.PairingMessages.TypeMessage1)
+            {
+                _pairingTransport = new PairingTransport { Session = new Pairing.PdPairingSession(configuration) };
+            }
+            else if (messageType != Pairing.PairingMessages.TypeMessage3 || _pairingTransport?.Session == null)
+            {
+                _pairingTransport = null;
+                return new Nak(ErrorCode.UnableToProcessCommand);
+            }
+
+            _pairingTransport.InboundBuffer.Clear();
+            _pairingTransport.InboundTotal = fragment.TotalSize;
+        }
+
+        if (_pairingTransport == null)
+        {
+            return new Nak(ErrorCode.UnableToProcessCommand);
+        }
+
+        _pairingTransport.LastActivity = DateTime.UtcNow;
+        _pairingTransport.InboundBuffer.AddRange(fragment.DataFragment);
+
+        if (_pairingTransport.InboundBuffer.Count < _pairingTransport.InboundTotal)
+        {
+            return new Ack();
+        }
+
+        var message = _pairingTransport.InboundBuffer.ToArray();
+        var responseMessage = ProcessCompletePairingMessage(configuration, message);
+        if (responseMessage != null)
+        {
+            QueuePairingResponse(responseMessage);
+        }
+
+        return new Ack();
+    }
+
+    private byte[] ProcessCompletePairingMessage(Pairing.PairingConfiguration configuration, byte[] message)
+    {
+        var session = _pairingTransport.Session;
+        try
+        {
+            if (message.Length > 0 && message[0] == Pairing.PairingMessages.TypeMessage1)
+            {
+                return session.ProcessMessage1(message);
+            }
+
+            var outcome = session.ProcessMessage3(message);
+            if (!outcome.Success)
+            {
+                _pairingTransport = null;
+                return outcome.FailureResult;
+            }
+
+            var persisted = PersistPairedKey(configuration, outcome.Scbk);
+            var result = session.BuildResult(persisted ? Pairing.PairingStatus.Success
+                : Pairing.PairingStatus.PersistenceFailed);
+            _pairingTransport = null;
+            return result;
+        }
+        catch (Pairing.PairingException exception)
+        {
+            _logger?.LogInformation(exception, "Pairing rejected: {Status}", exception.Status);
+            _pairingTransport = null;
+            var status = exception.Status is Pairing.PairingStatus.PolicyRejected
+                ? Pairing.PairingStatus.PolicyRejected
+                : Pairing.PairingStatus.ProtocolError;
+            return Pairing.PairingMessages.EncodeResult(status, Array.Empty<byte>());
+        }
+    }
+
+    private bool PersistPairedKey(Pairing.PairingConfiguration configuration, byte[] scbk)
+    {
+        if (configuration.OnScbkEstablished == null)
+        {
+            return true;
+        }
+
+        try
+        {
+            var token = _cancellationTokenSource?.Token ?? CancellationToken.None;
+            return configuration.OnScbkEstablished(scbk, token).GetAwaiter().GetResult();
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogError(exception, "Pairing key persistence callback threw.");
+            return false;
+        }
+    }
+
+    private void QueuePairingResponse(byte[] responseMessage)
+    {
+        var total = (ushort)responseMessage.Length;
+        var offset = 0;
+        while (offset < responseMessage.Length)
+        {
+            var fragmentSize = Math.Min(PairingReplyFragmentSize, responseMessage.Length - offset);
+            var fragment = new byte[fragmentSize];
+            Array.Copy(responseMessage, offset, fragment, 0, fragmentSize);
+            EnqueuePollReply(new PairData(total, (ushort)offset, fragment));
+            offset += fragmentSize;
+        }
+    }
+
     private void UpdateDeviceConfig(Action<DeviceConfiguration> updateAction, bool resetConnection = false)
     {
         var configCopy = _deviceConfiguration.Clone();
@@ -696,6 +860,14 @@ public class DeviceConfiguration : ICloneable
     [
         CommandType.IdReport, CommandType.DeviceCapabilities, CommandType.CommunicationSet
     ];
+
+    /// <summary>
+    /// Optional asymmetric pairing configuration. When set, the device accepts the cleartext
+    /// osdp_PAIR exchange and, on success, derives a 32-byte SCBK for SC2. When left null (the
+    /// default), the device behaves as a symmetric-only device and rejects pairing commands, so
+    /// pre-shared-key SC2 (and SC1) deployments are unaffected.
+    /// </summary>
+    public Pairing.PairingConfiguration Pairing { get; set; }
 
     /// <summary>
     /// Client identification (cUID) used during secure channel establishment.

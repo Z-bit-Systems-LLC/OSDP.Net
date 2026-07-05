@@ -20,8 +20,10 @@ using OSDP.Net.Connections;
 using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
+using OSDP.Net.Pairing;
 using OSDP.Net.PanelCommands.DeviceDiscover;
 using OSDP.Net.Tracing;
+using System.Security.Cryptography;
 using CommunicationConfiguration = OSDP.Net.Model.CommandData.CommunicationConfiguration;
 using ManufacturerSpecific = OSDP.Net.Model.CommandData.ManufacturerSpecific;
 
@@ -406,6 +408,55 @@ namespace ACUConsole
             });
 
             AddLogMessage($"Device '{name}' added at address {address}");
+        }
+
+        /// <summary>
+        /// Performs an asymmetric pairing exchange with the device at the given address to establish
+        /// a 32-byte SC2 key out-of-band, then re-adds the device secured under SC2 with that key.
+        /// </summary>
+        public async Task PairDevice(byte address)
+        {
+            if (!IsConnected)
+            {
+                throw new InvalidOperationException("Start a connection before pairing devices.");
+            }
+
+            var device = _settings.Devices.FirstOrDefault(d => d.Address == address);
+            var name = device?.Name ?? $"Device {address}";
+            var useCrc = device?.UseCrc ?? true;
+
+            // Pairing runs in cleartext; ensure the device is polled unsecured for the exchange.
+            _controlPanel.AddDevice(_connectionId, address, useCrc, false, null);
+            AddLogMessage($"Pairing with device at address {address}...");
+
+            var result = await _controlPanel.PairDevice(_connectionId, address, BuildAcuPairingConfiguration());
+
+            var thumbprint = BitConverter.ToString(result.PeerCertificate.Thumbprint).Replace("-", string.Empty);
+            AddLogMessage($"Paired with {result.PeerIdentity}. Certificate thumbprint: {thumbprint}");
+
+            if (device == null)
+            {
+                device = new DeviceSetting { Address = address, Name = name, UseCrc = useCrc };
+                _settings.Devices.Add(device);
+            }
+
+            device.SecureChannelKey = result.Scbk;
+            device.UseSecureChannel = true;
+            device.SecureChannelVersion = SecureChannelVersion.V2;
+            SaveConfiguration();
+
+            _controlPanel.AddDevice(_connectionId, address, useCrc, true, result.Scbk, SecureChannelVersion.V2);
+            AddLogMessage($"Device '{name}' now using SC2 with the paired key.");
+        }
+
+        private static PairingConfiguration BuildAcuPairingConfiguration()
+        {
+            // The demonstration CA is reproducible so a demo ACU and PD trust each other out of the box.
+            var ca = CertificateAuthority.Demo();
+            var acuSeed = SHA256.HashData(Encoding.UTF8.GetBytes("OSDP-DEMO-ACU-SEED"));
+            var identity = new DeviceIdentity("OSDP ACU Console", "ACU", "ACU-0001");
+            var credentials = PairingCredentials.Generate(identity, ca, acuSeed);
+            return new PairingConfiguration(credentials, PairingTrustAnchor.FromCa(ca));
         }
 
         public void RemoveDevice(byte address)

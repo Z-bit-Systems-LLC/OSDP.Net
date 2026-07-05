@@ -32,6 +32,12 @@ Key improvements over SC1:
 
 SC2 follows the same 4-step handshake pattern as SC1 (CHLNG, CCRYPT, SCRYPT, RMAC_I) but with different field sizes, key derivation, and post-establishment message format.
 
+> **SCBK provisioning.** SC2 has no default key (SCBK-D) and no Installation Mode. The 32-byte SCBK
+> must be provisioned out-of-band — either pre-shared, set via osdp_KEYSET over an existing secure
+> channel, or established by the experimental [asymmetric pairing profile](pairing-overview.md)
+> (EDHOC-style ML-KEM-768 / ML-DSA-44), which derives the SCBK from a mutually authenticated key
+> exchange.
+
 ## 2. SC2 vs SC1 at a Glance
 
 | Aspect | SC1 | SC2 |
