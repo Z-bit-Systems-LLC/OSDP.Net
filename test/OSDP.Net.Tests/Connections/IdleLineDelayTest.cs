@@ -34,18 +34,21 @@ public class IdleLineDelayTest
         var connection = new FakeSerialConnection(9600);
 
         // 100 bytes at 10 bit-times/byte over 9600 baud = 1000 bits / 9600 bps ≈ 104.17 ms.
-        Assert.That(connection.IdleLineDelay(100).TotalSeconds, Is.EqualTo(1000.0 / 9600).Within(1e-9));
+        // Tolerance accounts for TimeSpan's 100ns tick rounding.
+        Assert.That(connection.IdleLineDelay(100).TotalSeconds, Is.EqualTo(1000.0 / 9600).Within(1e-6));
     }
 
     [Test]
     public void IdleLineDelay_IsProportionalToBytesAndInverseToBaud()
     {
+        // Compare on TotalSeconds with tolerance; TimeSpan rounds to 100ns ticks, so exact
+        // TimeSpan equality is brittle here.
         Assert.Multiple(() =>
         {
-            Assert.That(new FakeSerialConnection(9600).IdleLineDelay(200),
-                Is.EqualTo(new FakeSerialConnection(9600).IdleLineDelay(100) * 2));
-            Assert.That(new FakeSerialConnection(19200).IdleLineDelay(100),
-                Is.EqualTo(new FakeSerialConnection(9600).IdleLineDelay(50)));
+            Assert.That(new FakeSerialConnection(9600).IdleLineDelay(200).TotalSeconds,
+                Is.EqualTo(new FakeSerialConnection(9600).IdleLineDelay(100).TotalSeconds * 2).Within(1e-6));
+            Assert.That(new FakeSerialConnection(19200).IdleLineDelay(100).TotalSeconds,
+                Is.EqualTo(new FakeSerialConnection(9600).IdleLineDelay(50).TotalSeconds).Within(1e-6));
         });
     }
 
