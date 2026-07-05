@@ -140,6 +140,53 @@ public class PairingIntegrationTests
     }
 
     [Test]
+    public async Task Pairing_ThenSc2WithFastConnectWindow_EstablishesPromptly()
+    {
+        // Smoothing the pairing-to-SC2 handoff: a freshly added secure device is not yet "connected",
+        // so the bus normally throttles it with a one-second offline back-off between each handshake
+        // step, stretching establishment across a couple of seconds. Because pairing just proved the
+        // PD is present, the console adds the SC2 device with a fast-connect window so the handshake
+        // runs at poll speed instead. This test asserts the encrypted channel comes up quickly.
+        var demoCa = CertificateAuthority.Demo();
+        byte[] pdScbk = null;
+        var pdConfig = BuildPdConfig(demoCa, scbk =>
+        {
+            pdScbk = scbk;
+            return true;
+        });
+
+        await using var harness = await Harness.StartCleartextPairingDevice(_loggerFactory, pdConfig);
+
+        var result = await harness.Panel.PairDevice(harness.ConnectionId, harness.Address,
+            BuildAcuConfig(demoCa), timeout: TimeSpan.FromSeconds(20));
+        Assert.That(result.Scbk, Is.EqualTo(pdScbk));
+
+        // Watch for the secure channel to come up on the paired device.
+        var panel = harness.Panel;
+        var address = harness.Address;
+        var secure = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnStatus(object _, ControlPanel.ConnectionStatusEventArgs e)
+        {
+            if (e.Address == address && e.IsSecureChannelEstablished) secure.TrySetResult(true);
+        }
+        panel.ConnectionStatusChanged += OnStatus;
+
+        // Switch to SC2 with the fast-connect window (as the console does after pairing).
+        panel.AddDevice(harness.ConnectionId, address, true, true, result.Scbk,
+            SecureChannelVersion.V2, skipConnectBackoff: TimeSpan.FromSeconds(3));
+
+        var establishedInTime = await Task.WhenAny(secure.Task, Task.Delay(TimeSpan.FromSeconds(2)))
+            == secure.Task;
+        panel.ConnectionStatusChanged -= OnStatus;
+
+        // Without the fast-connect window the freshly added device eats a one-second offline back-off
+        // between each handshake step; with it the handshake runs at the 200 ms poll cadence, so the
+        // secure channel comes up well inside two seconds.
+        Assert.That(establishedInTime, Is.True,
+            "The fast-connect window should let SC2 establish without the per-step back-off");
+    }
+
+    [Test]
     public async Task Pairing_WhenDeviceNotConfiguredForPairing_IsRejected()
     {
         // Opt-in regression: a symmetric-only device (Pairing == null) must NAK the pairing command.
@@ -160,7 +207,7 @@ public class PairingIntegrationTests
 
         var ex = Assert.ThrowsAsync<PairingException>(async () => await harness.Panel.PairDevice(
             harness.ConnectionId, harness.Address, BuildAcuConfig(demoCa), timeout: TimeSpan.FromSeconds(20)));
-        Assert.That(ex.Status, Is.EqualTo(PairingStatus.PersistenceFailed));
+        Assert.That(ex!.Status, Is.EqualTo(PairingStatus.PersistenceFailed));
     }
 
     [Test]

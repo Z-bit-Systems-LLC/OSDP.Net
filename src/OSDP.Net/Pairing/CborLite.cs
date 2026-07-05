@@ -79,13 +79,13 @@ internal static class CborLite
             else if (length < 0x100)
             {
                 _buffer.Add((byte)(prefix | 24));
-                _buffer.Add((byte)length);
+                _buffer.Add((byte)(length & 0xFF));
             }
             else if (length < 0x10000)
             {
                 _buffer.Add((byte)(prefix | 25));
                 _buffer.Add((byte)(length >> 8));
-                _buffer.Add((byte)length);
+                _buffer.Add((byte)(length & 0xFF));
             }
             else if (length < 0x100000000)
             {
@@ -93,7 +93,7 @@ internal static class CborLite
                 _buffer.Add((byte)(length >> 24));
                 _buffer.Add((byte)(length >> 16));
                 _buffer.Add((byte)(length >> 8));
-                _buffer.Add((byte)length);
+                _buffer.Add((byte)(length & 0xFF));
             }
             else
             {

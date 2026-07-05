@@ -94,7 +94,7 @@ public class PairingSessionTest
         var message2 = harness.Pd.ProcessMessage1(harness.Acu.CreateMessage1());
 
         var ex = Assert.Throws<PairingException>(() => harness.Acu.ProcessMessage2(message2));
-        Assert.That(ex.Status, Is.EqualTo(PairingStatus.PeerCertificateRejected));
+        Assert.That(ex!.Status, Is.EqualTo(PairingStatus.PeerCertificateRejected));
     }
 
     [Test]
@@ -106,7 +106,7 @@ public class PairingSessionTest
         var message1 = harness.Acu.CreateMessage1();
 
         var ex = Assert.Throws<PairingException>(() => harness.Pd.ProcessMessage1(message1));
-        Assert.That(ex.Status, Is.EqualTo(PairingStatus.PeerCertificateRejected));
+        Assert.That(ex!.Status, Is.EqualTo(PairingStatus.PeerCertificateRejected));
     }
 
     [Test]
@@ -144,7 +144,7 @@ public class PairingSessionTest
 
         var failureResult = harness.Pd.BuildResult(PairingStatus.PersistenceFailed);
         var ex = Assert.Throws<PairingException>(() => harness.Acu.ProcessResult(failureResult));
-        Assert.That(ex.Status, Is.EqualTo(PairingStatus.PersistenceFailed));
+        Assert.That(ex!.Status, Is.EqualTo(PairingStatus.PersistenceFailed));
     }
 
     [Test]
@@ -152,7 +152,7 @@ public class PairingSessionTest
     {
         var harness = CreateHarness(configurePd: config => config.ApprovePeer = _ => false);
         var ex = Assert.Throws<PairingException>(() => harness.Pd.ProcessMessage1(harness.Acu.CreateMessage1()));
-        Assert.That(ex.Status, Is.EqualTo(PairingStatus.PolicyRejected));
+        Assert.That(ex!.Status, Is.EqualTo(PairingStatus.PolicyRejected));
     }
 
     [Test]
@@ -165,7 +165,7 @@ public class PairingSessionTest
         });
 
         var ex = Assert.Throws<PairingException>(() => harness.Pd.ProcessMessage1(harness.Acu.CreateMessage1()));
-        Assert.That(ex.Status, Is.EqualTo(PairingStatus.PolicyRejected));
+        Assert.That(ex!.Status, Is.EqualTo(PairingStatus.PolicyRejected));
     }
 
     [Test]
@@ -173,7 +173,7 @@ public class PairingSessionTest
     {
         var harness = CreateHarness();
         var ex = Assert.Throws<PairingException>(() => harness.Acu.ProcessResult(new byte[] { 0x04, 0x82, 0x00, 0x40 }));
-        Assert.That(ex.Status, Is.EqualTo(PairingStatus.ProtocolError));
+        Assert.That(ex!.Status, Is.EqualTo(PairingStatus.ProtocolError));
     }
 
     private static byte[] Seed(byte fill)

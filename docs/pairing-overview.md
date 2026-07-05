@@ -72,8 +72,17 @@ timing delays and no reconnect on the PD:
   protocol round-trip (PD activates -> Result -> ACU receives -> ACU challenges) enforces the
   ordering, so the SC2 handshake establishes without any sleep or PD restart.
 
-The `Pairing_ThenSc2OnSameConnection_EstablishesInPlaceWithoutReconnect` integration test covers this
-live path.
+To keep the switch to secure messaging fast, the ACU re-adds the paired device with a short
+**fast-connect window** (`AddDevice(..., skipConnectBackoff: TimeSpan.FromSeconds(3))`). A freshly
+added device is not yet "connected", so the bus normally throttles it with a one-second offline
+back-off between each secure channel handshake step, stretching establishment across a couple of
+seconds and making the transition look like a reconnect. Because pairing just proved the PD is
+present, the window lets the `CHLNG`/`CCRYPT`/`SCRYPT` handshake run at the 200 ms poll cadence
+instead. The window is bounded, so the normal back-off resumes automatically, and it is opt-in — a
+device added the usual way (pre-shared-key SC2) behaves exactly as before.
+
+The `Pairing_ThenSc2OnSameConnection_EstablishesInPlaceWithoutReconnect` and
+`Pairing_ThenSc2WithFastConnectWindow_EstablishesPromptly` integration tests cover this live path.
 
 ## 3. Cryptographic Primitives
 
@@ -282,7 +291,10 @@ var progress = new Progress<PairingProgress>(p =>
     Console.WriteLine($"{p.Stage}: {p.Fraction:P0}"));
 PairingResult result = await panel.PairDevice(connectionId, address, acuConfig, progress: progress);
 
-panel.AddDevice(connectionId, address, true, true, result.Scbk, SecureChannelVersion.V2); // SC2
+// Re-add under SC2. The fast-connect window lets the handshake run at poll speed instead of the
+// per-step offline back-off, since pairing just proved the PD is present.
+panel.AddDevice(connectionId, address, true, true, result.Scbk, SecureChannelVersion.V2,
+    skipConnectBackoff: TimeSpan.FromSeconds(3)); // SC2
 
 // PD side (on the DeviceConfiguration)
 config.Pairing = new PairingConfiguration(

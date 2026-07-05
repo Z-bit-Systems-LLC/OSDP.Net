@@ -381,7 +381,7 @@ namespace PDConsole
         /// ACU identity. Returns true once the key is stored so the PD confirms success to the ACU.
         /// </summary>
         private Task<bool> OnPairingScbkEstablished(OSDP.Net.Pairing.PairingResult result,
-            System.Threading.CancellationToken token)
+            CancellationToken token)
         {
             try
             {

@@ -51,7 +51,7 @@ public class IntegrationTestFixtureBase
     public void Setup()
     {
         // Shorten the offline threshold so offline-detection tests don't wait the production 8s.
-        OSDP.Net.ConnectionTiming.OfflineThreshold = TestOfflineThreshold;
+        ConnectionTiming.OfflineThreshold = TestOfflineThreshold;
 
         // Each test gets spun up with its own console capture so we have to create
         // a new logger factory instance for every single test. Otherwise, the test runner
@@ -77,7 +77,7 @@ public class IntegrationTestFixtureBase
         _deviceConnection?.Dispose();
         LoggerFactory?.Dispose();
 
-        OSDP.Net.ConnectionTiming.OfflineThreshold = OSDP.Net.ConnectionTiming.DefaultOfflineThreshold;
+        ConnectionTiming.OfflineThreshold = ConnectionTiming.DefaultOfflineThreshold;
     }
 
     protected async Task InitTestTargets(

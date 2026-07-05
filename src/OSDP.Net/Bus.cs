@@ -132,8 +132,9 @@ namespace OSDP.Net
         /// <param name="useSecureChannel">Use a secure channel to communicate</param>
         /// <param name="secureChannelKey">Set the secure channel key, default is used if not specified</param>
         /// <param name="secureChannelVersion">The secure channel version (V1 or V2)</param>
+        /// <param name="skipConnectBackoff">When set, skip the offline back-off for this bounded window so a device already known to be present handshakes at poll speed</param>
         public void AddDevice(byte address, bool useCrc, bool useSecureChannel, byte[] secureChannelKey = null,
-            SecureChannelVersion secureChannelVersion = SecureChannelVersion.V1)
+            SecureChannelVersion secureChannelVersion = SecureChannelVersion.V1, TimeSpan? skipConnectBackoff = null)
         {
             var configuredDevices = _configuredDevices.ToImmutableSortedSet();
 
@@ -146,6 +147,14 @@ namespace OSDP.Net
 
             var addedDevice = _deviceProxyFactory.Create(address, useCrc, useSecureChannel, secureChannelKey,
                 secureChannelVersion);
+
+            if (skipConnectBackoff is { } window && window > TimeSpan.Zero)
+            {
+                // The caller already knows this device is present (for example, right after pairing), so
+                // let its secure channel handshake run at full poll speed instead of the one-second
+                // offline back-off. The window is bounded, after which normal back-off resumes.
+                addedDevice.SkipConnectBackoffUntil = DateTime.UtcNow + window;
+            }
 
             configuredDevices = configuredDevices.Add(addedDevice);
 
@@ -289,7 +298,7 @@ namespace OSDP.Net
                         {
                             ResetDevice(device);
                         }
-                        else if(IsPolling && !device.IsConnected)
+                        else if(IsPolling && !device.IsConnected && device.SkipConnectBackoffUntil < DateTime.UtcNow)
                         {
                             device.RequestDelay = DateTime.UtcNow + TimeSpan.FromSeconds(1);
                         }
@@ -516,8 +525,14 @@ namespace OSDP.Net
         private void ResetDevice(DeviceProxy device)
         {
             device.RequestDelay = DateTime.UtcNow + TimeSpan.FromSeconds(1);
+
+            // Carry over any remaining fast-connect window so resetting the proxy (which recreates it)
+            // does not drop the request to skip the offline back-off. Without this, re-adding a device
+            // at an address that was just connected triggers an immediate reset that would otherwise
+            // discard the window and reinstate the per-step back-off during the handshake.
+            var remainingSkip = device.SkipConnectBackoffUntil - DateTime.UtcNow;
             AddDevice(device.Address, device.MessageControl.UseCrc, device.UseSecureChannel, device.SecureChannelKey,
-                device.SecureChannelVersion);
+                device.SecureChannelVersion, remainingSkip > TimeSpan.Zero ? remainingSkip : null);
         }
 
         private async Task<ReplyTracker> SendCommandAndReceiveReply(OutgoingMessage command, DeviceProxy device, CancellationToken cancellationToken)

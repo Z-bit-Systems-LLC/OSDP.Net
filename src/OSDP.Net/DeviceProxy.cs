@@ -89,6 +89,16 @@ internal class DeviceProxy : IComparable<DeviceProxy>
 
     internal DateTime RequestDelay { get; set; }
 
+    /// <summary>
+    /// While this deadline is in the future, the bus skips the one-second offline back-off that
+    /// normally throttles polling to a device that is not yet connected. It lets a device we already
+    /// know is present (for example, immediately after asymmetric pairing) run its secure channel
+    /// handshake at full poll speed instead of one round-trip per second. It is time-bounded so the
+    /// normal back-off resumes automatically, and defaults to <see cref="DateTime.MinValue"/> so a
+    /// device added the usual way behaves exactly as before.
+    /// </summary>
+    internal DateTime SkipConnectBackoffUntil { get; set; } = DateTime.MinValue;
+
     internal bool IsSendingMultiMessageNoSecureChannel { get; set; }
         
     internal bool IsReceivingMultipartMessage { get; set; }

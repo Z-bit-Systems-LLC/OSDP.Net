@@ -430,7 +430,7 @@ namespace ACUConsole
             // already communicating in the clear (the normal pairing precondition).
             if (device is { UseSecureChannel: true })
             {
-                _controlPanel.AddDevice(_connectionId, address, useCrc, false, null);
+                _controlPanel.AddDevice(_connectionId, address, useCrc, false);
             }
 
             AddLogMessage($"Pairing with device at address {address}...");
@@ -443,7 +443,8 @@ namespace ACUConsole
 
             if (device == null)
             {
-                device = new DeviceSetting { Address = address, Name = name, UseCrc = useCrc };
+                // A device we have never seen before; default to CRC as new devices do.
+                device = new DeviceSetting { Address = address, Name = name, UseCrc = true };
                 _settings.Devices.Add(device);
             }
 
@@ -454,8 +455,11 @@ namespace ACUConsole
 
             // The PD activates the derived key on its running channel as soon as it sends the pairing
             // Result, so by the time we have the result here the PD is already expecting SC2 with the
-            // paired key. Switch to SC2 immediately — the handshake establishes deterministically.
-            _controlPanel.AddDevice(_connectionId, address, useCrc, true, result.Scbk, SecureChannelVersion.V2);
+            // paired key. Switch to SC2 immediately — the handshake establishes deterministically. Grant
+            // a short fast-connect window so the handshake runs at poll speed instead of the one-second
+            // offline back-off; the PD was just talking to us, so there is no reason to throttle.
+            _controlPanel.AddDevice(_connectionId, address, useCrc, true, result.Scbk, SecureChannelVersion.V2,
+                skipConnectBackoff: TimeSpan.FromSeconds(3));
             AddLogMessage($"Device '{name}' now using SC2 with the paired key.");
         }
 

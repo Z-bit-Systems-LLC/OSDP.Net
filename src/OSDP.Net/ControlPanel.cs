@@ -1045,6 +1045,7 @@ namespace OSDP.Net
         /// <param name="configuration">The ACU pairing credentials, trust anchor, and policy.</param>
         /// <param name="maximumFragmentSize">The maximum size of each pairing command fragment.</param>
         /// <param name="timeout">Time to wait for each pairing response message.</param>
+        /// <param name="progress">Optional receiver for pairing progress reports across the exchange.</param>
         /// <param name="cancellationToken">The token to observe.</param>
         /// <returns>The derived SCBK and the authenticated peer identity.</returns>
         public async Task<PairingResult> PairDevice(Guid connectionId, byte address,
@@ -1360,8 +1361,15 @@ namespace OSDP.Net
         /// <param name="useSecureChannel">Require the device to communicate with a secure channel.</param>
         /// <param name="secureChannelKey">The secure channel key.</param>
         /// <param name="secureChannelVersion">The secure channel version (V1 or V2).</param>
+        /// <param name="skipConnectBackoff">
+        /// When set, the device's secure channel handshake runs at full poll speed for this bounded
+        /// window instead of the usual one-second offline back-off between handshake steps. Use it only
+        /// when the device is already known to be present — for example, immediately after asymmetric
+        /// pairing establishes the key — so the switch to secure messaging is not delayed by seconds.
+        /// Leave <c>null</c> (the default) for the standard behavior.
+        /// </param>
         public void AddDevice(Guid connectionId, byte address, bool useCrc, bool useSecureChannel,
-            byte[] secureChannelKey, SecureChannelVersion secureChannelVersion)
+            byte[] secureChannelKey, SecureChannelVersion secureChannelVersion, TimeSpan? skipConnectBackoff = null)
         {
             if (!_buses.TryGetValue(connectionId, out Bus foundBus))
             {
@@ -1374,7 +1382,7 @@ namespace OSDP.Net
             }
 
             foundBus.AddDevice(address, useCrc, useSecureChannel, useSecureChannel ? secureChannelKey : null,
-                secureChannelVersion);
+                secureChannelVersion, skipConnectBackoff);
         }
 
         /// <summary>
