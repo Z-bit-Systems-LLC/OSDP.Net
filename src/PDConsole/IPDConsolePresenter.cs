@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using PDConsole.Configuration;
+using PDConsole.Model.DialogInputs;
 
 namespace PDConsole
 {
@@ -35,6 +36,7 @@ namespace PDConsole
         void SaveSettings(string filePath);
         void SetCurrentSettingsFilePath(string filePath);
         void UpdateSerialConnection(string portName, int baudRate);
+        void ApplyActivationSettings(ActivateDeviceInput input);
         void UpdateSimulationSettings(string cardNumber, string pinNumber);
     }
 }

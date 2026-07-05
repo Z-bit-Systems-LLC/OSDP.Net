@@ -14,6 +14,7 @@ using OSDP.Net.Connections;
 using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model;
 using PDConsole.Configuration;
+using PDConsole.Model.DialogInputs;
 using PDConsole.Tracing;
 
 namespace PDConsole
@@ -265,6 +266,31 @@ namespace PDConsole
             _settings.Connection.SerialPortName = portName;
             _settings.Connection.SerialBaudRate = baudRate;
             StatusChanged?.Invoke(this, "Serial connection settings updated");
+        }
+
+        public void ApplyActivationSettings(ActivateDeviceInput input)
+        {
+            if (input == null) throw new ArgumentNullException(nameof(input));
+
+            if (IsDeviceRunning)
+            {
+                throw new InvalidOperationException("Cannot change settings while device is running. Stop the device first.");
+            }
+
+            _settings.Connection.Type = ConnectionType.Serial;
+            _settings.Connection.SerialPortName = input.PortName;
+            _settings.Connection.SerialBaudRate = input.BaudRate;
+
+            _settings.Security.SecureChannelMode = input.SecureChannelMode;
+            _settings.Security.SecureChannelVersion = input.SecureChannelVersion;
+            if (input.SecureChannelMode == SecureChannelMode.Secure)
+            {
+                _settings.Security.SecureChannelKey = input.SecureChannelKey;
+            }
+            _settings.Security.Pairing.UseDemoCa = input.UseDemoCa;
+            _settings.Security.Pairing.DeviceSeedHex = input.DeviceSeedHex;
+
+            StatusChanged?.Invoke(this, $"Activation settings updated ({input.SecureChannelMode})");
         }
 
         public void UpdateSimulationSettings(string cardNumber, string pinNumber)

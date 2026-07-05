@@ -318,9 +318,11 @@ derived key on its running SC2 channel in place after the exchange (see
 
 ## 11. Console Demonstration
 
-1. **PDConsole**: set `Security.SecureChannelMode = "Pairing"` in `appsettings.json` (optionally set
-   `Security.Pairing.DeviceSeedHex` for a reproducible identity) and start the device. It listens in
-   cleartext and waits for a pairing exchange. Its Device Status shows `Security: Pairing`.
+1. **PDConsole**: choose **Device → Activate** and, in the activation dialog, set **Security** to
+   **Pairing (asymmetric)** (optionally supply a device **Seed** for a reproducible identity), then
+   start. The mode can also be preset via `Security.SecureChannelMode = "Pairing"` in
+   `appsettings.json`. The PD listens in cleartext and waits for a pairing exchange; its Device Status
+   shows `Security: Pairing`.
 2. **ACUConsole**: start a connection, then choose **Devices → Pair (Asymmetric)** and select the
    device. A progress dialog shows the exchange advancing to 100%.
 3. On success: the ACUConsole logs the authenticated PD identity and certificate thumbprint and

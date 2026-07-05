@@ -191,8 +191,8 @@ namespace PDConsole
         // UI Event Handlers
         private async Task StartDevice()
         {
-            // Show serial connection dialog first
-            var input = Dialogs.SerialConnectionDialog.Show(_controller.Settings.Connection);
+            // Show the activation dialog: connection plus the full set of secure channel options.
+            var input = Dialogs.ActivateDeviceDialog.Show(_controller.Settings.Connection, _controller.Settings.Security);
 
             if (input.WasCancelled)
             {
@@ -201,10 +201,10 @@ namespace PDConsole
 
             try
             {
-                // Update connection settings
-                _controller.UpdateSerialConnection(input.PortName, input.BaudRate);
+                // Apply the chosen connection and security settings
+                _controller.ApplyActivationSettings(input);
 
-                // Start the device
+                // Start the device (StatusChanged refreshes the Device Status line with the new mode)
                 await _controller.StartDevice();
                 UpdateButtonStates();
             }
