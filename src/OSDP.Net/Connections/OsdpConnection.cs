@@ -29,6 +29,16 @@ namespace OSDP.Net.Connections
         /// <inheritdoc/>
         public TimeSpan ReplyTimeout { get; set; } = TimeSpan.FromMilliseconds(200);
 
+        /// <summary>
+        /// The time it takes to transmit the given number of bytes on this connection, used by the
+        /// bus to honor the OSDP idle-line requirement. The default models a serial line at
+        /// <see cref="BaudRate"/> (10 bit-times per byte). In-memory or otherwise instantaneous
+        /// connections may override this to return <see cref="TimeSpan.Zero"/>.
+        /// </summary>
+        /// <param name="numberOfBytes">The number of bytes being transmitted.</param>
+        public virtual TimeSpan IdleLineDelay(int numberOfBytes) =>
+            TimeSpan.FromSeconds((1.0 / BaudRate) * (10.0 * numberOfBytes));
+
         /// <inheritdoc/>
         public abstract Task Close();
 

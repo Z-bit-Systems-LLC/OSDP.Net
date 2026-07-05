@@ -82,7 +82,12 @@ namespace OSDP.Net
 
         private static TimeSpan IdleLineDelay(IOsdpConnection connection, int numberOfBytes)
         {
-            return TimeSpan.FromSeconds((1.0 / connection.BaudRate) * (10.0 * numberOfBytes));
+            // Let the connection define its own transmission timing (serial models baud rate;
+            // in-memory connections are instantaneous). Fall back to the baud-based model for any
+            // connection that does not derive from OsdpConnection.
+            return connection is OsdpConnection osdpConnection
+                ? osdpConnection.IdleLineDelay(numberOfBytes)
+                : TimeSpan.FromSeconds((1.0 / connection.BaudRate) * (10.0 * numberOfBytes));
         }
 
         /// <summary>

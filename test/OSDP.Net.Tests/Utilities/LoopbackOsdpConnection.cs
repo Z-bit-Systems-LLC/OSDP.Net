@@ -62,6 +62,13 @@ internal sealed class LoopbackOsdpConnection : OsdpConnection
     /// <inheritdoc />
     public override bool IsOpen => base.IsOpen && !_disposed;
 
+    /// <summary>
+    /// In-memory transfer is instantaneous, so no idle-line delay is simulated. This keeps the
+    /// reported <see cref="OsdpConnection.BaudRate"/> intact (for COMSET behavior) while removing
+    /// baud-rate transmission time from tests. Baud timing is covered by dedicated performance tests.
+    /// </summary>
+    public override TimeSpan IdleLineDelay(int numberOfBytes) => TimeSpan.Zero;
+
     /// <inheritdoc />
     public override Task Open()
     {

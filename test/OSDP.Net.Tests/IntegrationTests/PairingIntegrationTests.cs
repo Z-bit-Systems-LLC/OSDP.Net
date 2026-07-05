@@ -175,10 +175,7 @@ public class PairingIntegrationTests
             bool useSecureChannel, byte[] securityKey, SecureChannelVersion version)
         {
             var harness = new Harness { Address = config.Address };
-            // The bus adds a simulated idle-line delay proportional to message size and inversely to
-            // baud rate. A pairing exchange transfers ~124 fragments (multi-KB PQC certificates and
-            // keys), so a high loopback baud keeps the in-memory test fast without changing behavior.
-            (harness._acuConnection, harness._deviceConnection) = LoopbackOsdpConnection.CreatePair(230400);
+            (harness._acuConnection, harness._deviceConnection) = LoopbackOsdpConnection.CreatePair();
 
             harness._device = new TestDevice(config, loggerFactory);
             harness._listener = new SingleConnectionListener(harness._deviceConnection);
@@ -186,10 +183,7 @@ public class PairingIntegrationTests
 
             harness.Panel = new ControlPanel(loggerFactory);
             var online = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            // A short poll interval keeps connection establishment and the pairing exchange responsive
-            // in-memory; the OSDP default (200 ms) would add seconds of idle waiting per test.
-            harness.ConnectionId = harness.Panel.StartConnection(harness._acuConnection,
-                TimeSpan.FromMilliseconds(25));
+            harness.ConnectionId = harness.Panel.StartConnection(harness._acuConnection);
             harness.Panel.ConnectionStatusChanged += (_, e) =>
             {
                 if (e.ConnectionId == harness.ConnectionId && e.IsConnected)
