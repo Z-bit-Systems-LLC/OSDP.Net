@@ -24,6 +24,7 @@ namespace OSDP.Net.Tests.IntegrationTests;
 /// </summary>
 [TestFixture]
 [Category("Integration")]
+[Category("Compliance")]
 [Category("Compliance.Mandatory")]
 public class ErrorHandlingTests : IntegrationTestFixtureBase
 {
@@ -134,6 +135,7 @@ public class ErrorHandlingTests : IntegrationTestFixtureBase
 /// </summary>
 [TestFixture]
 [Category("Integration")]
+[Category("Compliance")]
 [Category("Compliance.Mandatory")]
 [Category("Compliance.Security")]
 public class SecurityNakTests : IntegrationTestFixtureBase

@@ -21,6 +21,7 @@ namespace OSDP.Net.Tests.IntegrationTests;
 /// </summary>
 [TestFixture]
 [Category("Integration")]
+[Category("Compliance")]
 [Category("Compliance.Mandatory")]
 public class MandatoryCommandTests : IntegrationTestFixtureBase
 {
@@ -202,6 +203,7 @@ public class MandatoryCommandTests : IntegrationTestFixtureBase
 /// </summary>
 [TestFixture]
 [Category("Integration")]
+[Category("Compliance")]
 [Category("Compliance.Mandatory")]
 [Category("Compliance.Security")]
 public class MandatoryCommandsOverSecureChannelTests : IntegrationTestFixtureBase

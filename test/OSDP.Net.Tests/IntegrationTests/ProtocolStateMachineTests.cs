@@ -19,6 +19,7 @@ namespace OSDP.Net.Tests.IntegrationTests;
 /// </summary>
 [TestFixture]
 [Category("Integration")]
+[Category("Compliance")]
 [Category("Compliance.Mandatory")]
 public class ProtocolStateMachineTests : IntegrationTestFixtureBase
 {

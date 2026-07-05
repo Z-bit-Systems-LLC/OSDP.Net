@@ -19,6 +19,7 @@ namespace OSDP.Net.Tests.IntegrationTests;
 /// </summary>
 [TestFixture]
 [Category("Integration")]
+[Category("Compliance")]
 [Category("Compliance.Optional")]
 public class OptionalFeatureTests : IntegrationTestFixtureBase
 {
@@ -145,6 +146,7 @@ public class OptionalFeatureTests : IntegrationTestFixtureBase
 /// </summary>
 [TestFixture]
 [Category("Integration")]
+[Category("Compliance")]
 [Category("Compliance.Optional")]
 public class CommunicationConfigurationTests : IntegrationTestFixtureBase
 {

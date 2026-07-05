@@ -38,6 +38,7 @@ namespace OSDP.Net.Tests.IntegrationTests;
 
 [TestFixture]
 [Category("Integration")]
+[Category("Compliance")]
 public class PeripheryDeviceTest : IntegrationTestFixtureBase
 {
     public static TestCaseData[] EstablishingAcuToPdConnectionTestCases => [

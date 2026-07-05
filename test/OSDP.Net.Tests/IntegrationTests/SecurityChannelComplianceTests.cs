@@ -22,6 +22,7 @@ namespace OSDP.Net.Tests.IntegrationTests;
 /// </summary>
 [TestFixture]
 [Category("Integration")]
+[Category("Compliance")]
 [Category("Compliance.Security")]
 public class SecureChannelComplianceTests : IntegrationTestFixtureBase
 {

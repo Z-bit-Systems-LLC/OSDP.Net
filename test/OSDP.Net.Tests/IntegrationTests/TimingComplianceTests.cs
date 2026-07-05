@@ -25,6 +25,7 @@ namespace OSDP.Net.Tests.IntegrationTests;
 /// </summary>
 [TestFixture]
 [Category("Integration")]
+[Category("Compliance")]
 [Category("Compliance.Timing")]
 public class TimingComplianceTests : IntegrationTestFixtureBase
 {
@@ -185,6 +186,7 @@ public class TimingComplianceTests : IntegrationTestFixtureBase
 /// </summary>
 [TestFixture]
 [Category("Integration")]
+[Category("Compliance")]
 [Category("Compliance.Timing")]
 [Category("Compliance.Security")]
 public class SecureChannelTimingTests : IntegrationTestFixtureBase
