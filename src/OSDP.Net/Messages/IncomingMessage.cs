@@ -58,7 +58,12 @@ namespace OSDP.Net.Messages
                     {
                     }
 
-                    if (lastByteIdx == 0) throw new Exception("The encrypted payload is missing a padding byte");
+                    // lastByteIdx now indexes the 0x80 pad marker. Index 0 is valid: it means the
+                    // command carried an empty payload (e.g. an encrypted osdp_LSTAT), so the whole
+                    // decrypted block is just the padding marker. Only a block with no 0x80 at all
+                    // is genuinely malformed.
+                    if (paddedPayload[lastByteIdx] != FirstPaddingByte)
+                        throw new Exception("The encrypted payload is missing a padding byte");
 
                     Payload = paddedPayload.AsSpan().Slice(0, lastByteIdx).ToArray();
                 }
