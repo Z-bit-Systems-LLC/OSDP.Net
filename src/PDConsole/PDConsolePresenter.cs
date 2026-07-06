@@ -24,6 +24,8 @@ namespace PDConsole
     /// </summary>
     public class PDConsolePresenter(Settings settings) : IPDConsolePresenter
     {
+        private const string SingleFileRepositoryName = "PDConsole";
+
         private Settings _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         private readonly List<CommandEvent> _commandHistory = new();
 
@@ -568,9 +570,31 @@ namespace PDConsole
         {
             if (_loggerFactory != null) return;
 
-            ConfigureLog4Net();
-            _loggerFactory = new LoggerFactory();
-            _loggerFactory.AddLog4Net();
+            // Detect single-file deployment: Assembly.Location is empty in a single-file bundle.
+            var entryAssembly = Assembly.GetEntryAssembly();
+#pragma warning disable IL3000 // Deliberately checking Location to detect single-file deployment
+            var isSingleFile = string.IsNullOrEmpty(entryAssembly?.Location);
+#pragma warning restore IL3000
+
+            if (isSingleFile)
+            {
+                // apache.log4net.Extensions.Logging's AddLog4Net() reads Assembly.CodeBase to
+                // locate log4net.config, which throws "CodeBase is not supported on assemblies
+                // loaded from a single-file bundle". Configure the repository programmatically and
+                // bridge it with a custom provider that never touches CodeBase.
+                var repository = ConfigureLog4NetForSingleFile();
+                _loggerFactory = new LoggerFactory();
+                if (repository != null)
+                {
+                    _loggerFactory.AddProvider(new Log4NetLoggerProvider(repository));
+                }
+            }
+            else
+            {
+                ConfigureLog4Net();
+                _loggerFactory = new LoggerFactory();
+                _loggerFactory.AddLog4Net();
+            }
         }
 
         private static void ConfigureLog4Net()
@@ -581,8 +605,82 @@ namespace PDConsole
             var configFile = new FileInfo("log4net.config");
             if (configFile.Exists)
             {
-                XmlConfigurator.Configure(repository, configFile);
+                try
+                {
+                    XmlConfigurator.Configure(repository, configFile);
+                }
+                catch
+                {
+                    // Fall back to programmatic configuration if file loading fails.
+                    ConfigureLog4NetProgrammatically(repository);
+                }
             }
+            else
+            {
+                ConfigureLog4NetProgrammatically(repository);
+            }
+        }
+
+        private static log4net.Repository.ILoggerRepository ConfigureLog4NetForSingleFile()
+        {
+            try
+            {
+                // Create a named repository (avoids the assembly CodeBase lookup the default
+                // selector performs) and configure it without the XML configurator.
+                log4net.Repository.ILoggerRepository repository;
+                try
+                {
+                    repository = LogManager.CreateRepository(
+                        SingleFileRepositoryName, typeof(log4net.Repository.Hierarchy.Hierarchy));
+                }
+                catch (log4net.Core.LogException)
+                {
+                    // Repository already exists (e.g. logging was re-initialized) - reuse it.
+                    repository = LogManager.GetRepository(SingleFileRepositoryName);
+                }
+
+                ConfigureLog4NetProgrammatically(repository);
+                return repository;
+            }
+            catch
+            {
+                // If logging can't be initialized in single-file mode, continue without it
+                // rather than crashing the application.
+                Console.WriteLine("Warning: Could not initialize logging in single-file mode");
+                return null;
+            }
+        }
+
+        private static void ConfigureLog4NetProgrammatically(log4net.Repository.ILoggerRepository repository)
+        {
+            // Programmatic equivalent of log4net.config's RollingFileAppender writing to pdconsole.log.
+            var layout = new log4net.Layout.PatternLayout(
+                "%date [%thread] %-5level %logger - %message%newline");
+            layout.ActivateOptions();
+
+            var appender = new log4net.Appender.RollingFileAppender
+            {
+                File = Path.Combine(AppContext.BaseDirectory, "pdconsole.log"),
+                AppendToFile = true,
+                RollingStyle = log4net.Appender.RollingFileAppender.RollingMode.Size,
+                MaxSizeRollBackups = 5,
+                MaximumFileSize = "10MB",
+                StaticLogFileName = true,
+                Layout = layout
+            };
+            appender.ActivateOptions();
+
+            var hierarchy = (log4net.Repository.Hierarchy.Hierarchy)repository;
+            hierarchy.Root.Level = log4net.Core.Level.Info;
+            hierarchy.Root.AddAppender(appender);
+
+            // Match the OSDP.Net DEBUG override from log4net.config.
+            if (hierarchy.GetLogger("OSDP.Net") is log4net.Repository.Hierarchy.Logger osdpLogger)
+            {
+                osdpLogger.Level = log4net.Core.Level.Debug;
+            }
+
+            hierarchy.Configured = true;
         }
     }
 }

@@ -34,6 +34,8 @@ namespace ACUConsole
     /// </summary>
     public class ACUConsolePresenter : IACUConsolePresenter
     {
+        private const string SingleFileRepositoryName = "ACUConsole";
+
         private ControlPanel _controlPanel;
         private ILoggerFactory _loggerFactory;
         private readonly List<ACUEvent> _messageHistory = new();
@@ -95,65 +97,71 @@ namespace ACUConsole
             }
             else
             {
-                // For single-file deployment, skip complex logging to avoid CodeBase issues
+                // apache.log4net.Extensions.Logging's AddLog4Net() reads Assembly.CodeBase to
+                // locate log4net.config, which throws "CodeBase is not supported on assemblies
+                // loaded from a single-file bundle". Configure the repository programmatically and
+                // bridge it with a custom provider that never touches CodeBase.
+                var repository = ConfigureLog4NetForSingleFile();
                 _loggerFactory = new LoggerFactory();
-                Console.WriteLine("Running in single-file mode - using basic logging");
+                if (repository != null)
+                {
+                    _loggerFactory.AddProvider(new Log4NetLoggerProvider(repository));
+                }
             }
         }
 
         private void ConfigureLog4Net()
         {
-            // Check if we're running in a single-file deployment
-            var entryAssembly = Assembly.GetEntryAssembly();
-#pragma warning disable IL3000 // Deliberately checking Location to detect single-file deployment
-            var isSingleFile = string.IsNullOrEmpty(entryAssembly?.Location);
-#pragma warning restore IL3000
+            // Standard configuration for regular (non single-file) deployment.
+            var repository = LogManager.GetRepository(Assembly.GetEntryAssembly() ?? Assembly.GetCallingAssembly());
 
-            if (isSingleFile)
+            var configFile = new FileInfo("log4net.config");
+            if (configFile.Exists)
             {
-                // For single-file deployment, use minimal log4net configuration to avoid CodeBase issues
-                ConfigureLog4NetForSingleFile();
-            }
-            else
-            {
-                // For regular deployment, use standard configuration
-                var repository = LogManager.GetRepository(Assembly.GetEntryAssembly() ?? Assembly.GetCallingAssembly());
-
-                var configFile = new FileInfo("log4net.config");
-                if (configFile.Exists)
+                try
                 {
-                    try
-                    {
-                        XmlConfigurator.Configure(repository, configFile);
-                    }
-                    catch
-                    {
-                        // Fallback to programmatic configuration if file loading fails
-                        ConfigureLog4NetProgrammatically(repository);
-                    }
+                    XmlConfigurator.Configure(repository, configFile);
                 }
-                else
+                catch
                 {
-                    // Fallback to programmatic configuration
+                    // Fallback to programmatic configuration if file loading fails
                     ConfigureLog4NetProgrammatically(repository);
                 }
             }
+            else
+            {
+                // Fallback to programmatic configuration
+                ConfigureLog4NetProgrammatically(repository);
+            }
         }
 
-        private void ConfigureLog4NetForSingleFile()
+        private log4net.Repository.ILoggerRepository ConfigureLog4NetForSingleFile()
         {
-            // For single-file deployment, use a very basic configuration that avoids Assembly.CodeBase
             try
             {
-                // Use default configuration without specifying a repository to avoid Assembly.CodeBase issues
-                var repository = LogManager.CreateRepository(Assembly.GetEntryAssembly()!, typeof(log4net.Repository.Hierarchy.Hierarchy));
+                // Create a named repository (avoids the assembly CodeBase lookup the default
+                // selector performs) and configure it without the XML configurator.
+                log4net.Repository.ILoggerRepository repository;
+                try
+                {
+                    repository = LogManager.CreateRepository(
+                        SingleFileRepositoryName, typeof(log4net.Repository.Hierarchy.Hierarchy));
+                }
+                catch (log4net.Core.LogException)
+                {
+                    // Repository already exists (e.g. logging was re-initialized) - reuse it.
+                    repository = LogManager.GetRepository(SingleFileRepositoryName);
+                }
+
                 ConfigureLog4NetProgrammatically(repository);
+                return repository;
             }
             catch
             {
-                // If even this fails, log4net might not work in single-file mode
-                // In this case, logging will simply not work, but app won't crash
+                // If logging can't be initialized in single-file mode, continue without it
+                // rather than crashing the application.
                 Console.WriteLine("Warning: Could not initialize logging in single-file mode");
+                return null;
             }
         }
 
