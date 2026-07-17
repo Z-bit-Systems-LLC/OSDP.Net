@@ -207,6 +207,7 @@ public class OSDPCaptureFileWriterTest
             using var writer = new OSDPCaptureFileWriter(TestFilePath, TestSource, _mockFileSystem.Object);
 
             // Act & Assert
+            // ReSharper disable once AccessToDisposedClosure -- Assert.Throws invokes synchronously before disposal
             Assert.Throws<ArgumentNullException>(() => writer.WritePacket(null, TraceDirection.Output));
         }
 
@@ -448,6 +449,7 @@ public class OSDPCaptureFileWriterTest
             using var writer = new OSDPCaptureFileWriter(TestFilePath, TestSource, _mockFileSystem.Object);
 
             // Act & Assert
+            // ReSharper disable once AccessToDisposedClosure -- Assert.Throws invokes synchronously before disposal
             Assert.Throws<ArgumentNullException>(() => writer.WriteTrace(trace));
         }
 

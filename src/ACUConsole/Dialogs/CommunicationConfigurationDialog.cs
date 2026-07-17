@@ -1,9 +1,12 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Linq;
 using ACUConsole.Configuration;
 using ACUConsole.Extensions;
 using ACUConsole.Model.DialogInputs;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace ACUConsole.Dialogs
 {
@@ -15,11 +18,12 @@ namespace ACUConsole.Dialogs
         /// <summary>
         /// Shows the communication configuration dialog and returns user input
         /// </summary>
+        /// <param name="app">The Terminal.Gui application instance driving the dialog.</param>
         /// <param name="devices">Available devices for selection</param>
         /// <param name="deviceList">Formatted device list for display</param>
         /// <param name="currentBaudRate">Current baud rate for default value</param>
         /// <returns>CommunicationConfigurationInput with user's choices</returns>
-        public static CommunicationConfigurationInput Show(DeviceSetting[] devices, string[] deviceList, int currentBaudRate)
+        public static CommunicationConfigurationInput Show(IApplication app, DeviceSetting[] devices, string[] deviceList, int currentBaudRate)
         {
             var result = new CommunicationConfigurationInput { WasCancelled = true };
 
@@ -27,31 +31,29 @@ namespace ACUConsole.Dialogs
             var suggestedAddress = ((devices.MaxBy(device => device.Address)?.Address ?? 0) + 1).ToString();
 
             // First, collect communication configuration parameters
-            var newAddressTextField = new TextField(25, 1, 25, suggestedAddress);
+            var newAddressTextField = new TextField { X = 25, Y = 1, Width = 25, Text = suggestedAddress };
             var newBaudRateComboBox = CreateBaudRateComboBox(25, 3, currentBaudRate)
                 .ConfigureForOptimalUX();
 
             void NextButtonClicked()
             {
                 // Validate new address
-                if (!byte.TryParse(newAddressTextField.Text.ToString(), out var newAddress) || newAddress > 127)
+                if (!byte.TryParse(newAddressTextField.Text, out var newAddress) || newAddress > 127)
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid address entered (0-127)!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid address entered (0-127)!", "OK");
                     return;
                 }
 
                 // Validate new baud rate
-                if (!int.TryParse(newBaudRateComboBox.Text.ToString(), out var newBaudRate))
+                if (!int.TryParse(newBaudRateComboBox.Text, out var newBaudRate))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid baud rate selected!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid baud rate selected!", "OK");
                     return;
                 }
 
-                Application.RequestStop();
-
                 // Show device selection dialog
-                var deviceSelection = DeviceSelectionDialog.Show("Communication Configuration", devices, deviceList);
-                
+                var deviceSelection = DeviceSelectionDialog.Show(app, "Communication Configuration", devices, deviceList);
+
                 if (!deviceSelection.WasCancelled)
                 {
                     // All validation passed - collect the data
@@ -60,40 +62,52 @@ namespace ACUConsole.Dialogs
                     result.DeviceAddress = deviceSelection.SelectedDeviceAddress;
                     result.WasCancelled = false;
                 }
+
+                app.RequestStop();
             }
 
             void CancelButtonClicked()
             {
                 result.WasCancelled = true;
-                Application.RequestStop();
+                app.RequestStop();
             }
 
-            var nextButton = new Button("Next", true);
-            nextButton.Clicked += NextButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += CancelButtonClicked;
+            var nextButton = new Button { Text = "Next", IsDefault = true };
+            nextButton.Accepting += (_, e) => { NextButtonClicked(); e.Handled = true; };
+            var cancelButton = new Button { Text = "Cancel" };
+            cancelButton.Accepting += (_, e) => { CancelButtonClicked(); e.Handled = true; };
 
-            var dialog = new Dialog("Communication Configuration", 60, 11, cancelButton, nextButton);
-            dialog.Add(new Label(1, 1, "New Address:"), newAddressTextField,
-                      new Label(1, 3, "New Baud Rate:"), newBaudRateComboBox);
+            var dialog = new Dialog { Title = "Communication Configuration", Width = 60, Height = Dim.Auto() };
+            dialog.Add(new Label { X = 1, Y = 1, Text = "New Address:" }, newAddressTextField,
+                      new Label { X = 1, Y = 3, Text = "New Baud Rate:" }, newBaudRateComboBox);
+            dialog.AddButton(cancelButton);
+            dialog.AddButton(nextButton);
             newAddressTextField.SetFocus();
 
-            Application.Run(dialog);
+            app.Run(dialog);
+            dialog.Dispose();
 
             return result;
         }
 
-        private static ComboBox CreateBaudRateComboBox(int x, int y, int currentBaudRate)
+        private static DropDownList CreateBaudRateComboBox(int x, int y, int currentBaudRate)
         {
             // IMPORTANT: Width must be at least ComboBoxExtensions.MinimumRecommendedWidth (30)
             // for dropdown list to display correctly. See ComboBoxExtensions documentation.
-            var baudRateComboBox = new ComboBox(new Rect(x, y, 30, 5), Constants.StandardBaudRates);
+            var baudRateComboBox = new DropDownList
+            {
+                X = x,
+                Y = y,
+                Width = 30,
+                Height = 1,
+                Source = new ListWrapper<string>(new ObservableCollection<string>(Constants.StandardBaudRates))
+            };
 
             // Select default baud rate
             var currentBaudRateString = currentBaudRate.ToString();
             var index = Array.FindIndex(Constants.StandardBaudRates, rate =>
                 string.Equals(rate, currentBaudRateString));
-            baudRateComboBox.SelectedItem = Math.Max(index, 0);
+            baudRateComboBox.Text = Constants.StandardBaudRates[Math.Max(index, 0)];
 
             return baudRateComboBox;
         }

@@ -1,6 +1,7 @@
 using System.IO;
 using PDConsole.Model.DialogInputs;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.Views;
 
 namespace PDConsole.Dialogs
 {
@@ -13,16 +14,20 @@ namespace PDConsole.Dialogs
         /// Shows the load settings dialog and returns user input
         /// </summary>
         /// <returns>LoadSettingsInput with user's choices</returns>
-        public static LoadSettingsInput Show()
+        public static LoadSettingsInput Show(IApplication app)
         {
             var result = new LoadSettingsInput { WasCancelled = true };
 
-            var openDialog = new OpenDialog("Load Settings", string.Empty, [".json"]);
-            Application.Run(openDialog);
-
-            if (!openDialog.Canceled && !string.IsNullOrEmpty(openDialog.FilePath?.ToString()))
+            var openDialog = new OpenDialog
             {
-                var filePath = openDialog.FilePath.ToString();
+                Title = "Load Settings",
+                AllowedTypes = { new AllowedType("JSON", ".json") }
+            };
+            app.Run(openDialog);
+
+            if (!openDialog.Canceled && !string.IsNullOrEmpty(openDialog.Path))
+            {
+                var filePath = openDialog.Path;
 
                 if (File.Exists(filePath))
                 {
@@ -31,10 +36,11 @@ namespace PDConsole.Dialogs
                 }
                 else
                 {
-                    MessageBox.ErrorQuery(40, 8, "Error", "Selected file does not exist", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Selected file does not exist", "OK");
                 }
             }
 
+            openDialog.Dispose();
             return result;
         }
     }

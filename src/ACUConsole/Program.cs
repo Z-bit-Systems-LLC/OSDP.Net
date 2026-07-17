@@ -1,5 +1,5 @@
 using System;
-using Terminal.Gui;
+using Terminal.Gui.App;
 
 namespace ACUConsole
 {
@@ -19,19 +19,24 @@ namespace ACUConsole
                 // Create presenter (handles business logic)
                 _presenter = new ACUConsolePresenter();
 
-                // Initialize Terminal.Gui FIRST (like PDConsole does)
-                Application.Init();
+                // Initialize Terminal.Gui (instance-based application)
+                using var app = Application.Create().Init();
+
+                // Terminal.Gui v2 does not install a synchronization context, so restore one that
+                // marshals async continuations back onto the UI thread (required for any UI shown
+                // after an await, e.g. capability lookups and multi-step command dialogs).
+                System.Threading.SynchronizationContext.SetSynchronizationContext(
+                    new TerminalGuiSynchronizationContext(app));
 
                 // Create view (handles UI)
-                _view = new ACUConsoleView(_presenter);
+                _view = new ACUConsoleView(_presenter, app);
 
-                // Create and add the main window (like PDConsole)
+                // Create the main window (hosts the menu bar and content)
                 var mainWindow = _view.CreateMainWindow();
 
-                Application.Top.Add(mainWindow);
-
                 // Run the application
-                Application.Run();
+                app.Run(mainWindow);
+                mainWindow.Dispose();
             }
             catch (Exception ex)
             {
@@ -48,7 +53,6 @@ namespace ACUConsole
             try
             {
                 _presenter?.Dispose();
-                Application.Shutdown();
             }
             catch (Exception ex)
             {

@@ -1,7 +1,9 @@
 using System;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 using OSDP.Net;
 
 namespace ACUConsole.Dialogs
@@ -14,33 +16,37 @@ namespace ACUConsole.Dialogs
         /// <summary>
         /// Shows the file transfer status dialog with progress updates
         /// </summary>
+        /// <param name="app">Application instance driving the dialog</param>
         /// <param name="onCancel">Action to execute when user cancels</param>
         /// <param name="transferFunc">Function that performs the actual file transfer</param>
         /// <returns>Task that completes when dialog is closed</returns>
-        public static async Task Show(Action onCancel, Func<FileTransferStatusDialogHandle, Task> transferFunc)
+        public static async Task Show(IApplication app, Action onCancel, Func<FileTransferStatusDialogHandle, Task> transferFunc)
         {
             var handle = new FileTransferStatusDialogHandle();
             var completionSource = new TaskCompletionSource<bool>();
 
-            var transferStatusLabel = new Label(new Rect(20, 1, 45, 1), "Initializing...");
-            var progressBar = new ProgressBar(new Rect(1, 3, 35, 1));
-            var progressPercentage = new Label(new Rect(40, 3, 10, 1), "0%");
+            var transferStatusLabel = new Label { X = 20, Y = 1, Width = 45, Height = 1, Text = "Initializing..." };
+            var progressBar = new ProgressBar { X = 1, Y = 3, Width = 35, Height = 1 };
+            var progressPercentage = new Label { X = 40, Y = 3, Width = 10, Height = 1, Text = "0%" };
 
-            var cancelButton = new Button("Cancel");
-            var dialog = new Dialog("File Transfer Status", 60, 10, cancelButton);
+            var cancelButton = new Button { Text = "Cancel" };
+            var dialog = new Dialog { Title = "File Transfer Status", Width = 60, Height = Dim.Auto() };
 
-            cancelButton.Clicked += () =>
+            cancelButton.Accepting += (_, e) =>
             {
                 onCancel?.Invoke();
-                Application.RequestStop(dialog);
+                app.RequestStop();
+                e.Handled = true;
             };
 
-            dialog.Add(new Label(1, 1, "Status:"),
+            dialog.Add(new Label { X = 1, Y = 1, Text = "Status:" },
                 transferStatusLabel,
                 progressBar,
                 progressPercentage);
+            dialog.AddButton(cancelButton);
 
             // Set up the handle references
+            handle.App = app;
             handle.StatusLabel = transferStatusLabel;
             handle.ProgressBar = progressBar;
             handle.PercentageLabel = progressPercentage;
@@ -55,7 +61,7 @@ namespace ACUConsole.Dialogs
                     await transferFunc(handle);
 
                     // Transfer completed successfully - change Cancel to Close button but don't auto-close
-                    Application.MainLoop.Invoke(() =>
+                    app.Invoke(() =>
                     {
                         if (handle.CancelButton != null)
                         {
@@ -67,16 +73,16 @@ namespace ACUConsole.Dialogs
                 catch (OperationCanceledException)
                 {
                     // Transfer was cancelled
-                    Application.MainLoop.Invoke(() =>
+                    app.Invoke(() =>
                     {
                         completionSource.TrySetCanceled();
-                        Application.RequestStop(dialog);
+                        app.RequestStop();
                     });
                 }
                 catch (Exception ex)
                 {
                     // Transfer failed - change Cancel to Close button but don't auto-close
-                    Application.MainLoop.Invoke(() =>
+                    app.Invoke(() =>
                     {
                         if (handle.CancelButton != null)
                         {
@@ -88,7 +94,7 @@ namespace ACUConsole.Dialogs
             });
 
             // Run the dialog modally - this will block until transfer completes or is cancelled
-            Application.Run(dialog);
+            app.Run(dialog);
 
             // Wait for completion
             try
@@ -99,6 +105,10 @@ namespace ACUConsole.Dialogs
             {
                 // Exceptions are handled by the caller
             }
+            finally
+            {
+                dialog.Dispose();
+            }
         }
     }
 
@@ -107,6 +117,7 @@ namespace ACUConsole.Dialogs
     /// </summary>
     public class FileTransferStatusDialogHandle
     {
+        internal IApplication App { get; set; }
         internal Label StatusLabel { get; set; }
         internal ProgressBar ProgressBar { get; set; }
         internal Label PercentageLabel { get; set; }
@@ -136,7 +147,7 @@ namespace ACUConsole.Dialogs
         /// <param name="totalSize">Total file size in bytes</param>
         public void UpdateProgress(ControlPanel.FileTransferStatus status, int totalSize)
         {
-            Application.MainLoop.Invoke(() =>
+            App.Invoke(() =>
             {
                 if (StatusLabel != null)
                 {
@@ -170,11 +181,11 @@ namespace ACUConsole.Dialogs
         /// </summary>
         public void Close()
         {
-            Application.MainLoop.Invoke(() =>
+            App.Invoke(() =>
             {
                 if (Dialog != null)
                 {
-                    Application.RequestStop(Dialog);
+                    App.RequestStop(Dialog);
                 }
             });
         }

@@ -1,6 +1,8 @@
 using ACUConsole.Configuration;
 using ACUConsole.Model.DialogInputs;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace ACUConsole.Dialogs
 {
@@ -12,54 +14,53 @@ namespace ACUConsole.Dialogs
         /// <summary>
         /// Shows the biometric read dialog and returns user input
         /// </summary>
+        /// <param name="app">The Terminal.Gui application instance driving the dialog.</param>
         /// <param name="devices">Available devices for selection</param>
         /// <param name="deviceList">Formatted device list for display</param>
         /// <returns>BiometricReadInput with user's choices</returns>
-        public static BiometricReadInput Show(DeviceSetting[] devices, string[] deviceList)
+        public static BiometricReadInput Show(IApplication app, DeviceSetting[] devices, string[] deviceList)
         {
             var result = new BiometricReadInput { WasCancelled = true };
 
             // First, collect biometric read parameters
-            var readerNumberTextField = new TextField(25, 1, 25, "0");
-            var typeTextField = new TextField(25, 3, 25, "1");
-            var formatTextField = new TextField(25, 5, 25, "0");
-            var qualityTextField = new TextField(25, 7, 25, "1");
+            var readerNumberTextField = new TextField { X = 25, Y = 1, Width = 25, Text = "0" };
+            var typeTextField = new TextField { X = 25, Y = 3, Width = 25, Text = "1" };
+            var formatTextField = new TextField { X = 25, Y = 5, Width = 25, Text = "0" };
+            var qualityTextField = new TextField { X = 25, Y = 7, Width = 25, Text = "1" };
 
             void NextButtonClicked()
             {
                 // Validate reader number
-                if (!byte.TryParse(readerNumberTextField.Text.ToString(), out var readerNumber))
+                if (!byte.TryParse(readerNumberTextField.Text, out var readerNumber))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reader number entered!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid reader number entered!", "OK");
                     return;
                 }
 
                 // Validate type
-                if (!byte.TryParse(typeTextField.Text.ToString(), out var type))
+                if (!byte.TryParse(typeTextField.Text, out var type))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid type entered!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid type entered!", "OK");
                     return;
                 }
 
                 // Validate format
-                if (!byte.TryParse(formatTextField.Text.ToString(), out var format))
+                if (!byte.TryParse(formatTextField.Text, out var format))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid format entered!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid format entered!", "OK");
                     return;
                 }
 
                 // Validate quality
-                if (!byte.TryParse(qualityTextField.Text.ToString(), out var quality))
+                if (!byte.TryParse(qualityTextField.Text, out var quality))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid quality entered!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid quality entered!", "OK");
                     return;
                 }
 
-                Application.RequestStop();
-
                 // Show device selection dialog
-                var deviceSelection = DeviceSelectionDialog.Show("Biometric Read", devices, deviceList);
-                
+                var deviceSelection = DeviceSelectionDialog.Show(app, "Biometric Read", devices, deviceList);
+
                 if (!deviceSelection.WasCancelled)
                 {
                     // All validation passed - collect the data
@@ -70,28 +71,33 @@ namespace ACUConsole.Dialogs
                     result.DeviceAddress = deviceSelection.SelectedDeviceAddress;
                     result.WasCancelled = false;
                 }
+
+                app.RequestStop();
             }
 
             void CancelButtonClicked()
             {
                 result.WasCancelled = true;
-                Application.RequestStop();
+                app.RequestStop();
             }
 
-            var nextButton = new Button("Next", true);
-            nextButton.Clicked += NextButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += CancelButtonClicked;
+            var nextButton = new Button { Text = "Next", IsDefault = true };
+            nextButton.Accepting += (_, e) => { NextButtonClicked(); e.Handled = true; };
+            var cancelButton = new Button { Text = "Cancel" };
+            cancelButton.Accepting += (_, e) => { CancelButtonClicked(); e.Handled = true; };
 
-            var dialog = new Dialog("Biometric Read", 60, 13, cancelButton, nextButton);
-            dialog.Add(new Label(1, 1, "Reader Number:"), readerNumberTextField,
-                      new Label(1, 3, "Type:"), typeTextField,
-                      new Label(1, 5, "Format:"), formatTextField,
-                      new Label(1, 7, "Quality:"), qualityTextField);
+            var dialog = new Dialog { Title = "Biometric Read", Width = 60, Height = Dim.Auto() };
+            dialog.Add(new Label { X = 1, Y = 1, Text = "Reader Number:" }, readerNumberTextField,
+                      new Label { X = 1, Y = 3, Text = "Type:" }, typeTextField,
+                      new Label { X = 1, Y = 5, Text = "Format:" }, formatTextField,
+                      new Label { X = 1, Y = 7, Text = "Quality:" }, qualityTextField);
+            dialog.AddButton(cancelButton);
+            dialog.AddButton(nextButton);
             readerNumberTextField.SetFocus();
 
-            Application.Run(dialog);
-            
+            app.Run(dialog);
+            dialog.Dispose();
+
             return result;
         }
     }

@@ -1,4 +1,6 @@
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace PDConsole.Dialogs
 {
@@ -10,35 +12,47 @@ namespace PDConsole.Dialogs
         /// <summary>
         /// Shows the about dialog with version information and logo
         /// </summary>
-        public static void Show()
+        public static void Show(IApplication app)
         {
             var version = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version;
 
-            var textLabel = new Label(1, 2, $"OSDP.Net\nPD Console\n\nVersion:\n{version}");
+            var textLabel = new Label
+            {
+                X = 1,
+                Y = 2,
+                Text = $"OSDP.Net\nPD Console\n\nVersion:\n{version}"
+            };
 
             var logo =
 @"█████
     █     █    █  ███
    █      █        █
   █  ███  █▀▄  █   █
- █        █▄▀  █   █ 
+ █        █▄▀  █   █
 █
 ███████████████████████";
-            var logoLabel = new Label(15, 1, logo);
-
-            void OkButtonClicked()
+            var logoLabel = new Label
             {
-                Application.RequestStop();
-            }
+                X = 15,
+                Y = 1,
+                Text = logo
+            };
 
-            var okButton = new Button("OK", true);
-            okButton.Clicked += OkButtonClicked;
+            var okButton = new Button { Text = "OK", IsDefault = true };
+            okButton.Accepting += (_, e) => { app.RequestStop(); e.Handled = true; };
 
-            var dialog = new Dialog("About", 42, 12, okButton);
+            var dialog = new Dialog
+            {
+                Title = "About",
+                Width = 42,
+                Height = Dim.Auto()
+            };
             dialog.Add(textLabel, logoLabel);
+            dialog.AddButton(okButton);
             okButton.SetFocus();
 
-            Application.Run(dialog);
+            app.Run(dialog);
+            dialog.Dispose();
         }
     }
 }

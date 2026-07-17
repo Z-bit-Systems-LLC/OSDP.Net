@@ -3,7 +3,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using PDConsole.Configuration;
-using Terminal.Gui;
+using Terminal.Gui.App;
 
 namespace PDConsole
 {
@@ -25,19 +25,25 @@ namespace PDConsole
                 // Create controller (ViewModel)
                 _presenter = new PDConsolePresenter(settings);
                 _presenter.SetCurrentSettingsFilePath(settingsFilePath);
-                
-                // Initialize Terminal.Gui
-                Application.Init();
-                
+
+                // Initialize Terminal.Gui (instance-based application)
+                using var app = Application.Create().Init();
+
+                // Terminal.Gui v2 does not install a synchronization context, so restore one that
+                // marshals async continuations back onto the UI thread (required for any UI shown
+                // after an await).
+                System.Threading.SynchronizationContext.SetSynchronizationContext(
+                    new TerminalGuiSynchronizationContext(app));
+
                 // Create view
-                _view = new PDConsoleView(_presenter);
-                
-                // Create and add a main window
+                _view = new PDConsoleView(_presenter, app);
+
+                // Create the main window (hosts the menu bar and content)
                 var mainWindow = _view.CreateMainWindow();
-                Application.Top.Add(mainWindow);
-                
+
                 // Run the application
-                Application.Run();
+                app.Run(mainWindow);
+                mainWindow.Dispose();
             }
             catch (Exception ex)
             {
@@ -101,7 +107,6 @@ namespace PDConsole
             try
             {
                 _presenter?.Dispose();
-                Application.Shutdown();
             }
             catch (Exception ex)
             {

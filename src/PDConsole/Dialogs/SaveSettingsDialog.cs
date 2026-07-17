@@ -1,5 +1,6 @@
 using PDConsole.Model.DialogInputs;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.Views;
 
 namespace PDConsole.Dialogs
 {
@@ -11,24 +12,28 @@ namespace PDConsole.Dialogs
         /// <summary>
         /// Shows the save settings dialog and returns user input
         /// </summary>
+        /// <param name="app">The Terminal.Gui application instance driving the dialog.</param>
         /// <param name="currentFilePath">Current settings file path for default</param>
         /// <returns>SaveSettingsInput with user's choices</returns>
-        public static SaveSettingsInput Show(string currentFilePath)
+        public static SaveSettingsInput Show(IApplication app, string currentFilePath)
         {
             var result = new SaveSettingsInput { WasCancelled = true };
 
-            var saveDialog = new SaveDialog("Save Settings", string.Empty, [".json"])
+            var saveDialog = new SaveDialog
             {
-                FilePath = currentFilePath ?? "appsettings.json"
+                Title = "Save Settings",
+                Path = currentFilePath ?? "appsettings.json",
+                AllowedTypes = { new AllowedType("JSON", ".json") }
             };
-            Application.Run(saveDialog);
+            app.Run(saveDialog);
 
-            if (!saveDialog.Canceled && !string.IsNullOrEmpty(saveDialog.FilePath?.ToString()))
+            if (!saveDialog.Canceled && !string.IsNullOrEmpty(saveDialog.Path))
             {
-                result.FilePath = saveDialog.FilePath.ToString();
+                result.FilePath = saveDialog.Path;
                 result.WasCancelled = false;
             }
 
+            saveDialog.Dispose();
             return result;
         }
     }

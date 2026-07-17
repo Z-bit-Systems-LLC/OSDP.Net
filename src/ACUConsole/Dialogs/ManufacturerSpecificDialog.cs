@@ -1,7 +1,9 @@
 using System;
 using ACUConsole.Configuration;
 using ACUConsole.Model.DialogInputs;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace ACUConsole.Dialogs
 {
@@ -13,16 +15,17 @@ namespace ACUConsole.Dialogs
         /// <summary>
         /// Shows the manufacturer specific command dialog and returns user input
         /// </summary>
+        /// <param name="app">The Terminal.Gui application instance driving the dialog.</param>
         /// <param name="devices">Available devices for selection</param>
         /// <param name="deviceList">Formatted device list for display</param>
         /// <returns>ManufacturerSpecificInput with user's choices</returns>
-        public static ManufacturerSpecificInput Show(DeviceSetting[] devices, string[] deviceList)
+        public static ManufacturerSpecificInput Show(IApplication app, DeviceSetting[] devices, string[] deviceList)
         {
             var result = new ManufacturerSpecificInput { WasCancelled = true };
 
             // First, collect manufacturer specific parameters
-            var vendorCodeTextField = new TextField(25, 1, 25, "");
-            var dataTextField = new TextField(25, 3, 40, "");
+            var vendorCodeTextField = new TextField { X = 25, Y = 1, Width = 25, Text = "" };
+            var dataTextField = new TextField { X = 25, Y = 3, Width = 40, Text = "" };
 
             void NextButtonClicked()
             {
@@ -30,23 +33,23 @@ namespace ACUConsole.Dialogs
                 byte[] vendorCode;
                 try
                 {
-                    var vendorCodeStr = vendorCodeTextField.Text.ToString();
+                    var vendorCodeStr = vendorCodeTextField.Text;
                     if (string.IsNullOrWhiteSpace(vendorCodeStr))
                     {
-                        MessageBox.ErrorQuery(40, 10, "Error", "Please enter vendor code!", "OK");
+                        MessageBox.ErrorQuery(app, "Error", "Please enter vendor code!", "OK");
                         return;
                     }
                     vendorCode = Convert.FromHexString(vendorCodeStr);
                 }
                 catch
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid vendor code hex format!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid vendor code hex format!", "OK");
                     return;
                 }
 
                 if (vendorCode.Length != 3)
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Vendor code must be exactly 3 bytes!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Vendor code must be exactly 3 bytes!", "OK");
                     return;
                 }
 
@@ -54,7 +57,7 @@ namespace ACUConsole.Dialogs
                 byte[] data;
                 try
                 {
-                    var dataStr = dataTextField.Text.ToString();
+                    var dataStr = dataTextField.Text;
                     if (string.IsNullOrWhiteSpace(dataStr))
                     {
                         data = Array.Empty<byte>();
@@ -66,15 +69,13 @@ namespace ACUConsole.Dialogs
                 }
                 catch
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid data hex format!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid data hex format!", "OK");
                     return;
                 }
 
-                Application.RequestStop();
-
                 // Show device selection dialog
-                var deviceSelection = DeviceSelectionDialog.Show("Manufacturer Specific", devices, deviceList);
-                
+                var deviceSelection = DeviceSelectionDialog.Show(app, "Manufacturer Specific", devices, deviceList);
+
                 if (!deviceSelection.WasCancelled)
                 {
                     // All validation passed - collect the data
@@ -83,26 +84,31 @@ namespace ACUConsole.Dialogs
                     result.DeviceAddress = deviceSelection.SelectedDeviceAddress;
                     result.WasCancelled = false;
                 }
+
+                app.RequestStop();
             }
 
             void CancelButtonClicked()
             {
                 result.WasCancelled = true;
-                Application.RequestStop();
+                app.RequestStop();
             }
 
-            var nextButton = new Button("Next", true);
-            nextButton.Clicked += NextButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += CancelButtonClicked;
+            var nextButton = new Button { Text = "Next", IsDefault = true };
+            nextButton.Accepting += (_, e) => { NextButtonClicked(); e.Handled = true; };
+            var cancelButton = new Button { Text = "Cancel" };
+            cancelButton.Accepting += (_, e) => { CancelButtonClicked(); e.Handled = true; };
 
-            var dialog = new Dialog("Manufacturer Specific Command", 70, 11, cancelButton, nextButton);
-            dialog.Add(new Label(1, 1, "Vendor Code (hex):"), vendorCodeTextField,
-                      new Label(1, 3, "Data (hex):"), dataTextField);
+            var dialog = new Dialog { Title = "Manufacturer Specific Command", Width = 70, Height = Dim.Auto() };
+            dialog.Add(new Label { X = 1, Y = 1, Text = "Vendor Code (hex):" }, vendorCodeTextField,
+                      new Label { X = 1, Y = 3, Text = "Data (hex):" }, dataTextField);
+            dialog.AddButton(cancelButton);
+            dialog.AddButton(nextButton);
             vendorCodeTextField.SetFocus();
 
-            Application.Run(dialog);
-            
+            app.Run(dialog);
+            dialog.Dispose();
+
             return result;
         }
     }

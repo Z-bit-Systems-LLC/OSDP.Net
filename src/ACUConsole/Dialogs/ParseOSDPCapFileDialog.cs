@@ -2,7 +2,9 @@ using System;
 using System.IO;
 using ACUConsole.Configuration;
 using ACUConsole.Model.DialogInputs;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace ACUConsole.Dialogs
 {
@@ -14,36 +16,44 @@ namespace ACUConsole.Dialogs
         /// <summary>
         /// Shows the parse OSDP cap file dialog and returns user input
         /// </summary>
+        /// <param name="app">The application instance</param>
         /// <param name="initialDirectory">The initial directory to show in the file dialog</param>
         /// <returns>ParseOSDPCapFileInput with user's choices</returns>
-        public static ParseOSDPCapFileInput Show(string initialDirectory = "")
+        public static ParseOSDPCapFileInput Show(IApplication app, string initialDirectory = "")
         {
             var result = new ParseOSDPCapFileInput { WasCancelled = true };
 
             // First, show file selection dialog
-            var openDialog = new OpenDialog("Load OSDPCap File", initialDirectory ?? string.Empty, new() { ".osdpcap" });
-            Application.Run(openDialog);
-
-            if (openDialog.Canceled || !File.Exists(openDialog.FilePath?.ToString()))
+            var openDialog = new OpenDialog
             {
+                Title = "Load OSDPCap File",
+                Path = initialDirectory ?? string.Empty,
+                AllowedTypes = { new AllowedType("OSDP Capture", ".osdpcap") }
+            };
+            app.Run(openDialog);
+
+            if (openDialog.Canceled || !File.Exists(openDialog.Path))
+            {
+                openDialog.Dispose();
                 return result;
             }
 
-            var filePath = openDialog.FilePath.ToString();
-            
+            var filePath = openDialog.Path;
+            openDialog.Dispose();
+
             // Then show parsing options dialog
-            var addressTextField = new TextField(30, 1, 20, string.Empty);
-            var ignorePollsAndAcksCheckBox = new CheckBox(1, 3, "Ignore Polls And Acks", false);
-            var keyTextField = new TextField(15, 5, 35, Convert.ToHexString(DeviceSetting.DefaultKey));
+            var addressTextField = new TextField { X = 30, Y = 1, Width = 20, Text = string.Empty };
+            var ignorePollsAndAcksCheckBox = new CheckBox { X = 1, Y = 3, Text = "Ignore Polls And Acks", Value = CheckState.UnChecked };
+            var keyTextField = new TextField { X = 15, Y = 5, Width = 35, Text = Convert.ToHexString(DeviceSetting.DefaultKey) };
 
             void ParseButtonClicked()
             {
                 byte? address = null;
-                if (!string.IsNullOrWhiteSpace(addressTextField.Text.ToString()))
+                if (!string.IsNullOrWhiteSpace(addressTextField.Text))
                 {
-                    if (!byte.TryParse(addressTextField.Text.ToString(), out var addr) || addr > 127)
+                    if (!byte.TryParse(addressTextField.Text, out var addr) || addr > 127)
                     {
-                        MessageBox.ErrorQuery(40, 10, "Error", "Invalid address entered!", "OK");
+                        MessageBox.ErrorQuery(app, "Error", "Invalid address entered!", "OK");
                         return;
                     }
                     address = addr;
@@ -51,43 +61,46 @@ namespace ACUConsole.Dialogs
 
                 if (keyTextField.Text != null && keyTextField.Text.Length != 32)
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid key length entered!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid key length entered!", "OK");
                     return;
                 }
 
                 byte[] key;
                 try
                 {
-                    key = keyTextField.Text != null ? Convert.FromHexString(keyTextField.Text.ToString()!) : null;
+                    key = keyTextField.Text != null ? Convert.FromHexString(keyTextField.Text!) : null;
                 }
                 catch
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid hex characters!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid hex characters!", "OK");
                     return;
                 }
 
                 // All validation passed - collect the data
                 result.FilePath = filePath;
                 result.FilterAddress = address;
-                result.IgnorePollsAndAcks = ignorePollsAndAcksCheckBox.Checked;
+                result.IgnorePollsAndAcks = ignorePollsAndAcksCheckBox.Value == CheckState.Checked;
                 result.SecureKey = key ?? [];
                 result.WasCancelled = false;
-                Application.RequestStop();
+                app.RequestStop();
             }
 
-            var parseButton = new Button("Parse", true);
-            parseButton.Clicked += ParseButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += () => Application.RequestStop();
+            var parseButton = new Button { Text = "Parse", IsDefault = true };
+            parseButton.Accepting += (_, e) => { ParseButtonClicked(); e.Handled = true; };
+            var cancelButton = new Button { Text = "Cancel" };
+            cancelButton.Accepting += (_, e) => { app.RequestStop(); e.Handled = true; };
 
-            var dialog = new Dialog("Parse settings", 60, 13, cancelButton, parseButton);
-            dialog.Add(new Label(1, 1, "Filter Specific Address:"), addressTextField,
+            var dialog = new Dialog { Title = "Parse settings", Width = 60, Height = Dim.Auto() };
+            dialog.Add(new Label { X = 1, Y = 1, Text = "Filter Specific Address:" }, addressTextField,
                       ignorePollsAndAcksCheckBox,
-                      new Label(1, 5, "Secure Key:"), keyTextField);
+                      new Label { X = 1, Y = 5, Text = "Secure Key:" }, keyTextField);
+            dialog.AddButton(cancelButton);
+            dialog.AddButton(parseButton);
             addressTextField.SetFocus();
 
-            Application.Run(dialog);
-            
+            app.Run(dialog);
+            dialog.Dispose();
+
             return result;
         }
     }

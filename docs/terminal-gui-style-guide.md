@@ -1,6 +1,13 @@
+
 # Terminal GUI Style Guide
 
-This document defines the standard patterns and conventions for creating consistent terminal-based user interfaces in PDConsole and ACUConsole using Terminal.Gui.
+This document defines the standard patterns and conventions for creating consistent terminal-based user interfaces in PDConsole and ACUConsole using **Terminal.Gui v2** (2.4.x).
+
+> **Terminal.Gui v2 note.** The consoles were migrated from Terminal.Gui v1 to v2. v2 is a near-complete API rewrite. The most important consequences for dialog code:
+> - Widgets moved out of the root `Terminal.Gui` namespace into `Terminal.Gui.App` (application/`MessageBox`), `Terminal.Gui.ViewBase` (`View`, `Pos`, `Dim`), `Terminal.Gui.Views` (all widgets), and `Terminal.Gui.Drawing` (`Color`, `Scheme`, `Attribute`, `LineStyle`).
+> - The static `Application` API (`Application.Init/Run/RequestStop/Invoke/Shutdown`) is `[Obsolete]`. Use an injected **`IApplication`** instance instead. Every `Show(...)` takes `IApplication app` as its first parameter.
+> - Positional widget constructors were removed. Every widget is created with a parameterless constructor + object initializer.
+> - `ComboBox`, `RadioGroup`, `ScrollView`, and `ColorScheme` were removed. Use `DropDownList`, `OptionSelector`, built-in view scrolling, and `Scheme`.
 
 ## Table of Contents
 
@@ -21,24 +28,28 @@ This document defines the standard patterns and conventions for creating consist
 
 ### Standard Dialog Dimensions
 
-- **Width:** 60 characters (standard for most dialogs)
-- **Height:** Varies based on content
-  - Simple forms (2-3 fields): 10 lines
-  - Medium forms (4-5 fields): 13 lines
-  - Complex forms or lists: 15+ lines
+- **Width:** 60 characters (standard for most dialogs). Wider (70–80) for dialogs with long content.
+- **Height:** Use **`Dim.Auto()`** so the dialog sizes itself to its content plus border and button row.
 
-### Dialog Constructor
+> **Always prefer `Height = Dim.Auto()` over a fixed number.** In v2 the `Dialog` button bar lives in the dialog's bottom `Padding` adornment, which is carved out of the content area (v1 drew buttons on the bottom border). A fixed height that "looked right" in v1 clips the last content line in v2. `Dim.Auto()` measures the child views plus the border/padding and can never clip. Reserve a fixed height only for dialogs that intentionally fill a region (e.g. a scrolling text view sized with `Dim.Fill`/`Dim.Percent`).
+
+### Dialog Creation
 
 ```csharp
-var dialog = new Dialog(title, width, height, cancelButton, primaryButton);
+var dialog = new Dialog
+{
+    Title = "Dialog Title",
+    Width = 60,
+    Height = Dim.Auto()
+};
+dialog.Add(/* labels, fields, checkboxes, selectors — NON-button views */);
+dialog.AddButton(cancelButton);   // secondary action first
+dialog.AddButton(primaryButton);  // primary/default action second
 ```
 
-**Parameter Order:**
-1. Title string
-2. Width (typically 60)
-3. Height (10, 13, 15, etc.)
-4. Cancel button (secondary action)
-5. Primary button (default action)
+- Non-button child views are added with `dialog.Add(...)`.
+- Buttons are added with `dialog.AddButton(...)`, in left-to-right display order (`cancel`, then primary).
+- After running, dispose the dialog you created: `app.Run(dialog); dialog.Dispose();`
 
 ---
 
@@ -49,51 +60,47 @@ var dialog = new Dialog(title, width, height, cancelButton, primaryButton);
 Terminal.Gui uses a character-based coordinate system where:
 - X axis: horizontal position (columns)
 - Y axis: vertical position (rows)
-- Origin (0,0) is top-left of container
+- Origin (0,0) is the top-left of the container's content area (inside the border)
+
+Positions and sizes are set with object-initializer properties. `int` values convert implicitly to `Pos`/`Dim`, so `X = 1` and `Width = 15` are fine.
 
 ### Standard Positioning
 
 #### Labels
 - **X position:** 1 (left margin with single space padding)
-- **Format:** Include colon in label text
-- **Example:** `new Label(1, 1, "Port:")`
+- **Format:** Include the colon in the label text
+- **Example:** `new Label { X = 1, Y = 1, Text = "Port:" }`
 
-#### Text Fields and ComboBoxes
-- **X position:** Align based on longest label length with **minimum 5 characters spacing**
-  - Calculate: x = longest_label_length + 5 (minimum)
-  - Standard positions:
-    - Short labels (up to 10 chars): x = 15
-    - Medium labels (11-15 chars): x = 20
-    - Long labels (16-20 chars): x = 25
-    - Very long labels (21-25 chars): x = 30
-    - Extra long labels (26+ chars): x = 31
+#### Text Fields and Drop-Down Lists
+- **X position:** Align based on the longest label length with **minimum 5 characters spacing** (`x = longest_label_length + 5`):
+  - Short labels (up to 10 chars): x = 15
+  - Medium labels (11–15 chars): x = 20
+  - Long labels (16–20 chars): x = 25
+  - Very long labels (21–25 chars): x = 30
+  - Extra long labels (26+ chars): x = 31
 - **Width:**
   - TextField: 15 (small values), 25, or 35 characters
-  - ComboBox: Minimum 30 characters (required for dropdown)
+  - DropDownList: minimum 30 characters so the expanded list displays cleanly; set `Height = 1` for the collapsed input row.
 
 #### CheckBoxes
-- **X position:** 1 (left-aligned, full width available for label)
-- **Format:** `new CheckBox(1, y, "Label Text", defaultChecked)`
+- **X position:** 1 (left-aligned, full width available for the label)
+- **Format:** `new CheckBox { X = 1, Y = y, Text = "Label Text", Value = CheckState.UnChecked }`
 
 ### Vertical Spacing
 
 Use consistent Y-coordinate increments:
-- **Standard spacing:** Increment by 2 (y = 1, 3, 5, 7, 9...)
+- **Standard spacing:** Increment by 2 (y = 1, 3, 5, 7, 9…)
 - **Tight spacing:** Increment by 1 for related checkboxes
-- **Section spacing:** Add extra row (+2) between logical sections
+- **Section spacing:** Add an extra row (+2) between logical sections
 
 **Example:**
 ```csharp
-// Field at y=1
-new Label(1, 1, "Field 1:"), textField1,
-// Field at y=3 (standard spacing)
-new Label(1, 3, "Field 2:"), textField2,
-// CheckBox at y=5 (standard spacing)
-new CheckBox(1, 5, "Option 1", false),
-// Related CheckBox at y=6 (tight spacing)
-new CheckBox(1, 6, "Option 2", true),
-// Next field at y=8 (section spacing)
-new Label(1, 8, "Field 3:"), textField3
+dialog.Add(
+    new Label { X = 1, Y = 1, Text = "Field 1:" }, textField1,   // y = 1
+    new Label { X = 1, Y = 3, Text = "Field 2:" }, textField2,   // y = 3 (standard)
+    new CheckBox { X = 1, Y = 5, Text = "Option 1", Value = CheckState.UnChecked },
+    new CheckBox { X = 1, Y = 6, Text = "Option 2", Value = CheckState.Checked },   // y = 6 (tight)
+    new Label { X = 1, Y = 8, Text = "Field 3:" }, textField3);  // y = 8 (section)
 ```
 
 ---
@@ -102,140 +109,116 @@ new Label(1, 8, "Field 3:"), textField3
 
 ### TextField
 
-**Format:**
 ```csharp
-var textField = new TextField(x, y, width, defaultValue);
+var textField = new TextField { X = x, Y = y, Width = width, Text = defaultValue };
 ```
 
-**Standard Widths:**
-- 15 characters: Small values (hex codes, small numbers)
-- 25 characters: Short inputs (numbers, codes)
-- 30 characters: Medium inputs (names, single-line text)
-- 35 characters: Long inputs (paths, descriptions)
+**Standard Widths:** 15 (small values), 25 (short inputs), 30 (medium), 35 (long).
 
-**Example:**
+`TextField.Text` is a plain `string` in v2 — use it directly (no `.ToString()`).
+
 ```csharp
-// Label "Object ID (hex):" (18 chars) + 5 spacing = x:23
-var hexField = new TextField(23, 1, 15, "5FC105");
-// Label "Name:" (5 chars) + 5 spacing = x:10, use minimum x:15
-var nameField = new TextField(15, 3, 35, string.Empty);
-// Label "Port:" (5 chars) + 5 spacing = x:10, use minimum x:15
-var portField = new TextField(15, 5, 30, "9600");
+// Label "Object ID (hex):" (16 chars) + 5 spacing → x = 21 (use 25)
+var hexField = new TextField { X = 25, Y = 1, Width = 15, Text = "5FC105" };
+var nameField = new TextField { X = 15, Y = 3, Width = 35, Text = string.Empty };
 ```
 
-### ComboBox
+### DropDownList (replaces v1 `ComboBox`)
 
-**Format:**
+v1's `ComboBox` was removed. Use `DropDownList`, whose current selection is exposed through its `Text` property. Its items come from a `Source`.
+
 ```csharp
-var comboBox = new ComboBox(new Rect(x, y, width, 5), items)
-    .ConfigureForOptimalUX();
+var combo = new DropDownList
+{
+    X = 20, Y = 1, Width = 30, Height = 1,
+    Source = new ListWrapper<string>(new ObservableCollection<string>(items))
+}.ConfigureForOptimalUX();
 ```
 
-**Critical Requirements:**
-1. **Minimum width:** 30 characters (enforced by extension method)
-2. **MUST use** `.ConfigureForOptimalUX()` extension method
-3. **Height parameter:** Always use 5 for dropdown display
+**Guidelines:**
+1. **Minimum width:** 30 characters so the expanded list is not clipped.
+2. **`Height = 1`** for the collapsed input row.
+3. Call **`.ConfigureForOptimalUX()`** (extension in `{Console}.Extensions`) for consistency.
 
-**Width Explanation:**
-The width parameter in `new Rect(x, y, width, 5)` determines the dropdown list display area, not just the input box. Using width less than 30 causes dropdown clipping.
-
-**Example:**
+**Setting the default selection** (by value):
 ```csharp
-// CORRECT
-var portComboBox = new ComboBox(new Rect(20, 1, 30, 5), portNames)
-    .ConfigureForOptimalUX();
-
-// INCORRECT - Will throw exception
-var portComboBox = new ComboBox(new Rect(20, 1, 20, 5), portNames)
-    .ConfigureForOptimalUX();
+combo.Text = items[Math.Max(Array.IndexOf(items, defaultValue), 0)];
 ```
 
-**Setting Default Selection:**
+**Reading the selected index:**
 ```csharp
-comboBox.SelectedItem = Math.Max(
-    Array.FindIndex(items, item => item == defaultValue),
-    0);
+var index = Array.IndexOf(items, combo.Text);
+var selectedEnum = (SomeEnum)Array.IndexOf(items, combo.Text);
+```
+
+**Reacting to selection changes** (v1 `SelectedItemChanged` → v2 `TextChanged`):
+```csharp
+combo.TextChanged += (_, _) =>
+{
+    var index = Array.IndexOf(items, combo.Text);
+    tempTimeField.Enabled = index >= 2;
+};
 ```
 
 ### CheckBox
 
-**Format:**
 ```csharp
-var checkBox = new CheckBox(x, y, "Label Text", defaultChecked);
+var checkBox = new CheckBox { X = 1, Y = y, Text = "Label Text", Value = CheckState.Checked };
 ```
 
-**Guidelines:**
-- Use x=1 for left alignment
-- Label should be descriptive and action-oriented
-- Use tight spacing (y increment by 1) for related checkboxes
+- The checked state is the **`Value`** property, of type `CheckState` (`Checked`, `UnChecked`, `None`).
+- Reading state: `checkBox.Value == CheckState.Checked`.
 
-**Example:**
 ```csharp
-var useCrcCheckBox = new CheckBox(1, 5, "Use CRC", true);
-var useSecureChannelCheckBox = new CheckBox(1, 6, "Use Secure Channel", true);
+var useCrcCheckBox = new CheckBox { X = 1, Y = 5, Text = "Use CRC", Value = CheckState.Checked };
+// ...
+result.UseCrc = useCrcCheckBox.Value == CheckState.Checked;
 ```
 
-### RadioGroup with ScrollView
+### OptionSelector (replaces v1 `RadioGroup` + `ScrollView`)
 
-Use for selecting one item from a list, especially when list may exceed visible area.
+v1 wrapped a `RadioGroup` inside a `ScrollView` for single-item selection. In v2, use a single `OptionSelector`.
 
-**Format:**
 ```csharp
-var scrollView = new ScrollView(new Rect(x, y, width, height))
+var selector = new OptionSelector
 {
-    ContentSize = new Size(contentWidth, items.Length * 2),
-    ShowVerticalScrollIndicator = items.Length > visibleItems,
-    ShowHorizontalScrollIndicator = false
+    X = 6, Y = 1, Width = 50, Height = 6,
+    Labels = deviceList,   // string[] / IReadOnlyList<string>
+    Value = 0              // selected index (int?)
 };
-
-var radioGroup = new RadioGroup(0, 0, items)
-{
-    SelectedItem = 0
-};
-scrollView.Add(radioGroup);
-dialog.Add(scrollView);
+dialog.Add(selector);
 ```
 
-**Guidelines:**
-- Use when more than 6 items (show scroll indicator)
-- Width: 50 characters for device lists
-- Height: 6 rows visible
-- ContentSize height: `items.Length * 2` (accounts for spacing)
-- Position at x=6 for slight indent
-
-**Example:**
-```csharp
-var scrollView = new ScrollView(new Rect(6, 1, 50, 6))
-{
-    ContentSize = new Size(40, deviceList.Length * 2),
-    ShowVerticalScrollIndicator = deviceList.Length > 6,
-    ShowHorizontalScrollIndicator = false
-};
-
-var deviceRadioGroup = new RadioGroup(0, 0, deviceList.Select(ustring.Make).ToArray())
-{
-    SelectedItem = 0
-};
-scrollView.Add(deviceRadioGroup);
-```
+- **Read selection:** `selector.Value ?? 0`.
+- No `ScrollView`, `RadioGroup`, or `NStack`/`ustring` is needed — `Labels` takes plain strings.
 
 ---
 
 ## Buttons
 
-### Button Types
+### Button Creation and Events
 
-**Primary Button (Default):**
+Buttons use object initializers, and their click event is **`Accepting`** (v1 `Clicked` was removed). **Every `Accepting` handler MUST set `e.Handled = true`.**
+
+> **Critical v2 gotcha.** If an `Accepting` handler does not set `e.Handled = true`, the `Accept` command bubbles up the view hierarchy and *also* invokes the dialog's `IsDefault` button. In practice this means a non-default button (e.g. "Browse", "Random") will run its own handler and then additionally trigger the primary button — closing the dialog unexpectedly. Setting `e.Handled = true` stops that propagation.
+
+**Primary Button (default):**
 ```csharp
-var primaryButton = new Button("Label", true);
-primaryButton.Clicked += PrimaryButtonClicked;
+var primaryButton = new Button { Text = "Label", IsDefault = true };
+primaryButton.Accepting += (_, e) => { PrimaryButtonClicked(); e.Handled = true; };
 ```
-The `true` parameter makes this the default button (activated by Enter key).
+`IsDefault = true` makes this the button activated by the Enter key.
 
 **Secondary Button:**
 ```csharp
-var cancelButton = new Button("Cancel");
-cancelButton.Clicked += CancelButtonClicked;
+var cancelButton = new Button { Text = "Cancel" };
+cancelButton.Accepting += (_, e) => { CancelButtonClicked(); e.Handled = true; };
+```
+
+**Non-closing Button (e.g. Browse):**
+```csharp
+var browseButton = new Button { Text = "Browse" };
+browseButton.Accepting += (_, e) => { BrowseButtonClicked(); e.Handled = true; };
 ```
 
 ### Standard Button Labels
@@ -243,42 +226,40 @@ cancelButton.Clicked += CancelButtonClicked;
 | Action | Primary Button | Secondary Button |
 |--------|---------------|------------------|
 | Connection | "Start" | "Cancel" |
-| Configuration | "Apply" | "Cancel" |
+| Configuration | "Apply" / "Update" | "Cancel" |
 | Add/Create | "Add" | "Cancel" |
 | Multi-step | "Next" | "Cancel" |
 | Final step | "Send" / "OK" | "Cancel" |
 
 ### Button Order
 
-In Dialog constructor, buttons appear right-to-left:
+Add buttons with `AddButton` in left-to-right order — cancel first, primary second:
 ```csharp
-var dialog = new Dialog(title, width, height, cancelButton, primaryButton);
+dialog.AddButton(cancelButton);
+dialog.AddButton(primaryButton);
 ```
-
 This displays as: `[Cancel] [Primary]`
 
 ### Event Handlers
 
-Define event handler methods as local functions:
+Define handlers as local functions and invoke them from the `Accepting` lambda:
 ```csharp
 void PrimaryButtonClicked()
 {
-    // Validation logic
     if (!ValidateInput())
     {
-        MessageBox.ErrorQuery(40, 10, "Error", "Invalid input!", "OK");
+        MessageBox.ErrorQuery(app, "Error", "Invalid input!", "OK");
         return;
     }
 
-    // Collect data
     result.WasCancelled = false;
-    Application.RequestStop();
+    app.RequestStop();
 }
 
 void CancelButtonClicked()
 {
     result.WasCancelled = true;
-    Application.RequestStop();
+    app.RequestStop();
 }
 ```
 
@@ -288,96 +269,74 @@ void CancelButtonClicked()
 
 ### Validation Pattern
 
-Perform validation in the primary button click handler before closing dialog:
+Validate in the primary button handler before closing the dialog:
 
 ```csharp
 void PrimaryButtonClicked()
 {
-    // Validate each input
-    if (!byte.TryParse(addressField.Text.ToString(), out var address))
+    if (!byte.TryParse(addressField.Text, out var address))
     {
-        MessageBox.ErrorQuery(40, 10, "Error", "Invalid address entered!", "OK");
+        MessageBox.ErrorQuery(app, "Error", "Invalid address entered!", "OK");
         return;
     }
 
-    // Additional validations...
-
-    // All validation passed
     result.SomeValue = address;
     result.WasCancelled = false;
-    Application.RequestStop();
+    app.RequestStop();
 }
 ```
 
 ### MessageBox Usage
 
-**Error Messages:**
+`MessageBox` lives in `Terminal.Gui.Views` and every overload takes the **`IApplication`** instance as its first argument.
+
+**Error Messages** — note there is **no width/height overload** for `ErrorQuery`:
 ```csharp
-MessageBox.ErrorQuery(width, height, title, message, buttonLabel);
+MessageBox.ErrorQuery(app, "Error", "Invalid input!", "OK");
 ```
 
-**Standard Error Format:**
+**Confirmation Dialogs** — `Query` keeps its optional width/height, but there is **no `defaultButton` index parameter**; the return value is the 0-based index of the selected button:
 ```csharp
-MessageBox.ErrorQuery(40, 10, "Error", "Invalid input!", "OK");
-```
-
-**Confirmation Dialogs:**
-```csharp
-var response = MessageBox.Query(width, height, title, message, defaultButton, ...buttons);
-```
-
-**Example:**
-```csharp
-if (MessageBox.Query(60, 10, "Overwrite",
-    "Device already exists at that address, overwrite?",
-    1, "No", "Yes") == 0)
+if (MessageBox.Query(app, 60, 10, "Overwrite",
+        "Device already exists at that address, overwrite?",
+        "No", "Yes") == 0)
 {
     return; // User selected "No"
 }
 ```
 
-**Parameters:**
-- `defaultButton`: 0-based index (0 = first button, 1 = second button)
-- Return value: Index of selected button (0, 1, 2, etc.)
-
 ### Common Validations
 
-**Numeric Input:**
 ```csharp
-if (!int.TryParse(textField.Text.ToString(), out var value))
+// Numeric input (Text is a string in v2)
+if (!int.TryParse(textField.Text, out var value))
 {
-    MessageBox.ErrorQuery(40, 10, "Error", "Invalid number entered!", "OK");
+    MessageBox.ErrorQuery(app, "Error", "Invalid number entered!", "OK");
     return;
 }
-```
 
-**Byte Range:**
-```csharp
-if (!byte.TryParse(textField.Text.ToString(), out var value) || value > 127)
+// Byte range
+if (!byte.TryParse(textField.Text, out var value) || value > 127)
 {
-    MessageBox.ErrorQuery(40, 10, "Error", "Invalid value entered!", "OK");
+    MessageBox.ErrorQuery(app, "Error", "Invalid value entered!", "OK");
     return;
 }
-```
 
-**Empty String:**
-```csharp
-if (string.IsNullOrEmpty(textField.Text.ToString()))
+// Empty string
+if (string.IsNullOrEmpty(textField.Text))
 {
-    MessageBox.ErrorQuery(40, 10, "Error", "No value entered!", "OK");
+    MessageBox.ErrorQuery(app, "Error", "No value entered!", "OK");
     return;
 }
-```
 
-**Hex String:**
-```csharp
+// Hex string
 try
 {
-    var bytes = Convert.FromHexString(textField.Text.ToString()!);
+    var bytes = Convert.FromHexString(textField.Text);
 }
 catch
 {
-    MessageBox.ErrorQuery(40, 10, "Error", "Invalid hex characters!", "OK");
+    MessageBox.ErrorQuery(app, "Error", "Invalid hex characters!", "OK");
     return;
 }
 ```
@@ -388,28 +347,34 @@ catch
 
 ### Initial Focus
 
-Set focus to the first interactive control (typically first TextField or ComboBox):
+Set focus to the first interactive control (typically the first TextField or DropDownList):
 
 ```csharp
-var nameField = new TextField(15, 1, 35, string.Empty);
-var dialog = new Dialog(title, 60, 10, cancelButton, primaryButton);
-dialog.Add(new Label(1, 1, "Name:"), nameField);
+var nameField = new TextField { X = 15, Y = 1, Width = 35, Text = string.Empty };
+var dialog = new Dialog { Title = title, Width = 60, Height = Dim.Auto() };
+dialog.Add(new Label { X = 1, Y = 1, Text = "Name:" }, nameField);
+dialog.AddButton(cancelButton);
+dialog.AddButton(primaryButton);
 nameField.SetFocus();
 
-Application.Run(dialog);
+app.Run(dialog);
+dialog.Dispose();
 ```
 
 ### Focus for Selection Dialogs
 
-For dialogs with RadioGroup/ListView, set focus to the action button:
+For dialogs whose main control is an `OptionSelector`, set focus to the action button:
 
 ```csharp
-var sendButton = new Button("Send", true);
-var dialog = new Dialog(title, 60, 13, cancelButton, sendButton);
-dialog.Add(scrollView);
+var sendButton = new Button { Text = "Send", IsDefault = true };
+var dialog = new Dialog { Title = title, Width = 60, Height = Dim.Auto() };
+dialog.Add(selector);
+dialog.AddButton(cancelButton);
+dialog.AddButton(sendButton);
 sendButton.SetFocus();
 
-Application.Run(dialog);
+app.Run(dialog);
+dialog.Dispose();
 ```
 
 ---
@@ -420,54 +385,53 @@ Use multi-step dialogs when collecting complex related data.
 
 ### Pattern
 
-1. First dialog collects primary parameters with "Next" button
-2. After validation, show second dialog
-3. If second dialog completes, collect all data
+1. First dialog collects primary parameters with a "Next" button.
+2. After validation, show the second dialog (passing `app` through).
+3. If the second dialog completes, collect all data.
 
 **Example:**
 ```csharp
-public static OutputControlInput Show(DeviceSetting[] devices, string[] deviceList)
+public static OutputControlInput Show(IApplication app, DeviceSetting[] devices, string[] deviceList)
 {
     var result = new OutputControlInput { WasCancelled = true };
 
-    var outputNumberField = new TextField(25, 1, 25, "0");
-    var activateCheckBox = new CheckBox(1, 3, "Activate Output", false);
+    var outputNumberField = new TextField { X = 25, Y = 1, Width = 25, Text = "0" };
+    var activateCheckBox = new CheckBox { X = 1, Y = 3, Text = "Activate Output", Value = CheckState.UnChecked };
 
     void NextButtonClicked()
     {
-        // Validate first dialog
-        if (!byte.TryParse(outputNumberField.Text.ToString(), out var outputNumber))
+        if (!byte.TryParse(outputNumberField.Text, out var outputNumber))
         {
-            MessageBox.ErrorQuery(40, 10, "Error", "Invalid output number entered!", "OK");
+            MessageBox.ErrorQuery(app, "Error", "Invalid output number entered!", "OK");
             return;
         }
 
-        Application.RequestStop();
+        app.RequestStop();
 
-        // Show second dialog
-        var deviceSelection = DeviceSelectionDialog.Show("Output Control", devices, deviceList);
-
+        var deviceSelection = DeviceSelectionDialog.Show(app, "Output Control", devices, deviceList);
         if (!deviceSelection.WasCancelled)
         {
-            // Collect all data
             result.OutputNumber = outputNumber;
-            result.ActivateOutput = activateCheckBox.Checked;
+            result.ActivateOutput = activateCheckBox.Value == CheckState.Checked;
             result.DeviceAddress = deviceSelection.SelectedDeviceAddress;
             result.WasCancelled = false;
         }
     }
 
-    var nextButton = new Button("Next", true);
-    nextButton.Clicked += NextButtonClicked;
-    var cancelButton = new Button("Cancel");
-    cancelButton.Clicked += CancelButtonClicked;
+    var nextButton = new Button { Text = "Next", IsDefault = true };
+    nextButton.Accepting += (_, _) => NextButtonClicked();
+    var cancelButton = new Button { Text = "Cancel" };
+    cancelButton.Accepting += (_, _) => CancelButtonClicked();
 
-    var dialog = new Dialog("Output Control", 60, 10, cancelButton, nextButton);
-    dialog.Add(new Label(1, 1, "Output Number:"), outputNumberField,
+    var dialog = new Dialog { Title = "Output Control", Width = 60, Height = Dim.Auto() };
+    dialog.Add(new Label { X = 1, Y = 1, Text = "Output Number:" }, outputNumberField,
               activateCheckBox);
+    dialog.AddButton(cancelButton);
+    dialog.AddButton(nextButton);
     outputNumberField.SetFocus();
 
-    Application.Run(dialog);
+    app.Run(dialog);
+    dialog.Dispose();
 
     return result;
 }
@@ -479,7 +443,7 @@ public static OutputControlInput Show(DeviceSetting[] devices, string[] deviceLi
 
 ### Input Model
 
-All dialogs return an Input model with `WasCancelled` property:
+All dialogs return an Input model with a `WasCancelled` property:
 
 ```csharp
 public class SomeDialogInput
@@ -493,29 +457,28 @@ public class SomeDialogInput
 ### Dialog Return Pattern
 
 ```csharp
-public static SomeDialogInput Show(...)
+public static SomeDialogInput Show(IApplication app, ...)
 {
     var result = new SomeDialogInput { WasCancelled = true };
 
     void PrimaryButtonClicked()
     {
         // Validation...
-
-        // Collect data
-        result.SomeValue = someField.Text.ToString();
+        result.SomeValue = someField.Text;
         result.AnotherValue = someValue;
         result.WasCancelled = false;
-
-        Application.RequestStop();
+        app.RequestStop();
     }
 
     void CancelButtonClicked()
     {
         result.WasCancelled = true;
-        Application.RequestStop();
+        app.RequestStop();
     }
 
     // Create and run dialog...
+    app.Run(dialog);
+    dialog.Dispose();
 
     return result;
 }
@@ -523,8 +486,10 @@ public static SomeDialogInput Show(...)
 
 ### Caller Pattern
 
+The view/presenter holds the `IApplication` instance and passes it in:
+
 ```csharp
-var input = SomeDialog.Show(...);
+var input = SomeDialog.Show(_app, ...);
 if (!input.WasCancelled)
 {
     // Use input.SomeValue, input.AnotherValue
@@ -537,21 +502,16 @@ if (!input.WasCancelled)
 
 ### File Structure
 
-**Dialogs:**
-- Location: `{Console}/Dialogs/`
-- Naming: `{Purpose}Dialog.cs` (e.g., `SerialConnectionDialog.cs`)
-- One dialog per file
-
-**Input Models:**
-- Location: `{Console}/Model/DialogInputs/`
-- Naming: `{Purpose}Input.cs` (e.g., `SerialConnectionInput.cs`)
-- One model per file
+**Dialogs:** `{Console}/Dialogs/{Purpose}Dialog.cs` — one dialog per file.
+**Input Models:** `{Console}/Model/DialogInputs/{Purpose}Input.cs` — one model per file.
 
 ### Dialog Class Structure
 
 ```csharp
 using System;
-using Terminal.Gui;
+using Terminal.Gui.App;      // IApplication, MessageBox
+using Terminal.Gui.ViewBase; // Dim, Pos (for Dim.Auto())
+using Terminal.Gui.Views;    // Dialog, Label, Button, TextField, CheckBox, DropDownList, OptionSelector
 using {Project}.Configuration;
 using {Project}.Model.DialogInputs;
 
@@ -565,50 +525,39 @@ namespace {Project}.Dialogs
         /// <summary>
         /// Shows the {purpose} dialog and returns user input
         /// </summary>
+        /// <param name="app">The Terminal.Gui application instance driving the dialog.</param>
         /// <param name="param1">Description</param>
         /// <returns>{Purpose}Input with user's choices</returns>
-        public static {Purpose}Input Show(...)
+        public static {Purpose}Input Show(IApplication app, ...)
         {
             var result = new {Purpose}Input { WasCancelled = true };
 
-            // Control definitions
+            // Control definitions (object initializers)
 
             // Event handlers as local functions
             void PrimaryButtonClicked() { ... }
             void CancelButtonClicked() { ... }
 
-            // Button definitions
+            // Button definitions (Accepting events)
 
-            // Dialog creation and layout
+            // Dialog creation (Height = Dim.Auto()), Add / AddButton
 
-            Application.Run(dialog);
+            app.Run(dialog);
+            dialog.Dispose();
 
             return result;
         }
 
-        // Private helper methods (e.g., CreateComboBox)
+        // Private helper methods (e.g., CreatePortNameDropDown)
     }
 }
 ```
 
 ### Consistent Naming
 
-**Variables:**
-- Controls: `{purpose}TextField`, `{purpose}ComboBox`, `{purpose}CheckBox`
+- Controls: `{purpose}TextField`, `{purpose}DropDownList`, `{purpose}CheckBox`, `{purpose}Selector`
 - Buttons: `{action}Button` (e.g., `startButton`, `cancelButton`)
-- Event handlers: `{Action}ButtonClicked` (e.g., `StartButtonClicked`)
-
-**Example:**
-```csharp
-var portNameComboBox = CreatePortNameComboBox(20, 1, currentSettings.PortName);
-var baudRateComboBox = CreateBaudRateComboBox(20, 3, currentSettings.BaudRate);
-
-void StartConnectionButtonClicked() { ... }
-void CancelButtonClicked() { ... }
-
-var startButton = new Button("Start", true);
-startButton.Clicked += StartConnectionButtonClicked;
-```
+- Event handler local functions: `{Action}ButtonClicked`
 
 ---
 
@@ -618,8 +567,11 @@ startButton.Clicked += StartConnectionButtonClicked;
 
 ```csharp
 using System;
+using System.Collections.ObjectModel;
 using System.IO.Ports;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 using PDConsole.Configuration;
 using PDConsole.Extensions;
 using PDConsole.Model.DialogInputs;
@@ -639,218 +591,111 @@ namespace PDConsole.Dialogs
         /// <summary>
         /// Shows the serial connection configuration dialog and returns user input
         /// </summary>
+        /// <param name="app">The Terminal.Gui application instance driving the dialog.</param>
         /// <param name="currentSettings">Current connection settings for defaults</param>
         /// <returns>SerialConnectionInput with user's choices</returns>
-        public static SerialConnectionInput Show(ConnectionSettings currentSettings)
+        public static SerialConnectionInput Show(IApplication app, ConnectionSettings currentSettings)
         {
             var result = new SerialConnectionInput { WasCancelled = true };
 
-            var portNameComboBox = CreatePortNameComboBox(15, 1, currentSettings.SerialPortName)
+            var portNameComboBox = CreatePortNameDropDown(15, 1, currentSettings.SerialPortName)
                 .ConfigureForOptimalUX();
-            var baudRateComboBox = CreateBaudRateComboBox(15, 3, currentSettings.SerialBaudRate)
+            var baudRateComboBox = CreateBaudRateDropDown(15, 3, currentSettings.SerialBaudRate)
                 .ConfigureForOptimalUX();
 
             void StartButtonClicked()
             {
-                // Validate port name
-                if (string.IsNullOrEmpty(portNameComboBox.Text.ToString()))
+                if (string.IsNullOrEmpty(portNameComboBox.Text))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "No port name selected!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "No port name selected!", "OK");
                     return;
                 }
 
-                // Validate baud rate
-                if (!int.TryParse(baudRateComboBox.Text.ToString(), out var baudRate))
+                if (!int.TryParse(baudRateComboBox.Text, out var baudRate))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid baud rate selected!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid baud rate selected!", "OK");
                     return;
                 }
 
-                // All validation passed - collect the data
-                result.PortName = portNameComboBox.Text.ToString();
+                result.PortName = portNameComboBox.Text;
                 result.BaudRate = baudRate;
                 result.WasCancelled = false;
-
-                Application.RequestStop();
+                app.RequestStop();
             }
 
             void CancelButtonClicked()
             {
                 result.WasCancelled = true;
-                Application.RequestStop();
+                app.RequestStop();
             }
 
-            var startButton = new Button("Start", true);
-            startButton.Clicked += StartButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += CancelButtonClicked;
+            var startButton = new Button { Text = "Start", IsDefault = true };
+            startButton.Accepting += (_, _) => StartButtonClicked();
+            var cancelButton = new Button { Text = "Cancel" };
+            cancelButton.Accepting += (_, _) => CancelButtonClicked();
 
-            var dialog = new Dialog("Serial Connection Settings", 60, 10, cancelButton, startButton);
-            dialog.Add(new Label(1, 1, "Port:"), portNameComboBox,
-                      new Label(1, 3, "Baud Rate:"), baudRateComboBox);
+            var dialog = new Dialog { Title = "Serial Connection Settings", Width = 60, Height = Dim.Auto() };
+            dialog.Add(new Label { X = 1, Y = 1, Text = "Port:" }, portNameComboBox,
+                      new Label { X = 1, Y = 3, Text = "Baud Rate:" }, baudRateComboBox);
+            dialog.AddButton(cancelButton);
+            dialog.AddButton(startButton);
             portNameComboBox.SetFocus();
 
-            Application.Run(dialog);
+            app.Run(dialog);
+            dialog.Dispose();
 
             return result;
         }
 
-        private static ComboBox CreatePortNameComboBox(int x, int y, string currentPortName)
+        private static DropDownList CreatePortNameDropDown(int x, int y, string currentPortName)
         {
             var portNames = SerialPort.GetPortNames();
-
             if (portNames.Length == 0)
             {
                 portNames = ["No ports available"];
             }
 
-            // IMPORTANT: Width must be at least ComboBoxExtensions.MinimumRecommendedWidth (30)
-            var portNameComboBox = new ComboBox(new Rect(x, y, 30, 5), portNames);
+            var combo = new DropDownList
+            {
+                X = x, Y = y, Width = 30, Height = 1,
+                Source = new ListWrapper<string>(new ObservableCollection<string>(portNames))
+            };
 
-            if (portNames.Length > 0 && !portNames[0].Equals("No ports available"))
+            if (!portNames[0].Equals("No ports available"))
             {
                 var index = Array.FindIndex(portNames, port =>
                     string.Equals(port, currentPortName, StringComparison.OrdinalIgnoreCase));
-                portNameComboBox.SelectedItem = Math.Max(index, 0);
+                combo.Text = portNames[Math.Max(index, 0)];
             }
 
-            return portNameComboBox;
+            return combo;
         }
 
-        private static ComboBox CreateBaudRateComboBox(int x, int y, int currentBaudRate)
+        private static DropDownList CreateBaudRateDropDown(int x, int y, int currentBaudRate)
         {
-            // IMPORTANT: Width must be at least ComboBoxExtensions.MinimumRecommendedWidth (30)
-            var baudRateComboBox = new ComboBox(new Rect(x, y, 30, 5), StandardBaudRates);
+            var combo = new DropDownList
+            {
+                X = x, Y = y, Width = 30, Height = 1,
+                Source = new ListWrapper<string>(new ObservableCollection<string>(StandardBaudRates))
+            };
 
-            var currentBaudRateString = currentBaudRate.ToString();
             var index = Array.FindIndex(StandardBaudRates, rate =>
-                string.Equals(rate, currentBaudRateString));
-            baudRateComboBox.SelectedItem = Math.Max(index, 0);
+                string.Equals(rate, currentBaudRate.ToString()));
+            combo.Text = StandardBaudRates[Math.Max(index, 0)];
 
-            return baudRateComboBox;
+            return combo;
         }
     }
 }
 ```
 
-### Complex Dialog (Multiple Controls)
-
-```csharp
-using System;
-using System.Linq;
-using Terminal.Gui;
-using ACUConsole.Configuration;
-using ACUConsole.Model.DialogInputs;
-
-namespace ACUConsole.Dialogs
-{
-    /// <summary>
-    /// Dialog for collecting device addition parameters
-    /// </summary>
-    public static class AddDeviceDialog
-    {
-        /// <summary>
-        /// Shows the add device dialog and returns user input
-        /// </summary>
-        /// <param name="existingDevices">List of existing devices to check for duplicates</param>
-        /// <returns>AddDeviceInput with user's choices</returns>
-        public static AddDeviceInput Show(DeviceSetting[] existingDevices)
-        {
-            var result = new AddDeviceInput { WasCancelled = true };
-
-            var nameTextField = new TextField(15, 1, 35, string.Empty);
-            var addressTextField = new TextField(15, 3, 35, string.Empty);
-            var useCrcCheckBox = new CheckBox(1, 5, "Use CRC", true);
-            var useSecureChannelCheckBox = new CheckBox(1, 6, "Use Secure Channel", true);
-            var keyTextField = new TextField(15, 8, 35, Convert.ToHexString(DeviceSetting.DefaultKey));
-
-            void AddDeviceButtonClicked()
-            {
-                // Validate address
-                if (!byte.TryParse(addressTextField.Text.ToString(), out var address) || address > 127)
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid address entered!", "OK");
-                    return;
-                }
-
-                // Validate key length
-                if (keyTextField.Text == null || keyTextField.Text.Length != 32)
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid key length entered!", "OK");
-                    return;
-                }
-
-                // Validate hex key format
-                byte[] key;
-                try
-                {
-                    key = Convert.FromHexString(keyTextField.Text.ToString()!);
-                }
-                catch
-                {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid hex characters!", "OK");
-                    return;
-                }
-
-                // Check for existing device at address
-                var existingDevice = existingDevices.FirstOrDefault(d => d.Address == address);
-                bool overwriteExisting = false;
-                if (existingDevice != null)
-                {
-                    if (MessageBox.Query(60, 10, "Overwrite",
-                        "Device already exists at that address, overwrite?",
-                        1, "No", "Yes") == 0)
-                    {
-                        return;
-                    }
-                    overwriteExisting = true;
-                }
-
-                // All validation passed - collect the data
-                result.Name = nameTextField.Text.ToString();
-                result.Address = address;
-                result.UseCrc = useCrcCheckBox.Checked;
-                result.UseSecureChannel = useSecureChannelCheckBox.Checked;
-                result.SecureChannelKey = key;
-                result.OverwriteExisting = overwriteExisting;
-                result.WasCancelled = false;
-
-                Application.RequestStop();
-            }
-
-            void CancelButtonClicked()
-            {
-                result.WasCancelled = true;
-                Application.RequestStop();
-            }
-
-            var addButton = new Button("Add", true);
-            addButton.Clicked += AddDeviceButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += CancelButtonClicked;
-
-            var dialog = new Dialog("Add Device", 60, 13, cancelButton, addButton);
-            dialog.Add(new Label(1, 1, "Name:"), nameTextField,
-                      new Label(1, 3, "Address:"), addressTextField,
-                      useCrcCheckBox,
-                      useSecureChannelCheckBox,
-                      new Label(1, 8, "Secure Key:"), keyTextField);
-            nameTextField.SetFocus();
-
-            Application.Run(dialog);
-
-            return result;
-        }
-    }
-}
-```
-
-### Selection Dialog with ScrollView
+### Selection Dialog (OptionSelector)
 
 ```csharp
 using System.Linq;
-using NStack;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 using ACUConsole.Configuration;
 using ACUConsole.Model.DialogInputs;
 
@@ -864,51 +709,49 @@ namespace ACUConsole.Dialogs
         /// <summary>
         /// Shows the device selection dialog and returns user selection
         /// </summary>
+        /// <param name="app">The Terminal.Gui application instance driving the dialog.</param>
         /// <param name="title">Dialog title</param>
         /// <param name="devices">Available devices to choose from</param>
         /// <param name="deviceList">Formatted device list for display</param>
         /// <returns>DeviceSelectionInput with user's choice</returns>
-        public static DeviceSelectionInput Show(string title, DeviceSetting[] devices, string[] deviceList)
+        public static DeviceSelectionInput Show(IApplication app, string title, DeviceSetting[] devices, string[] deviceList)
         {
             var result = new DeviceSelectionInput { WasCancelled = true };
 
-            var scrollView = new ScrollView(new Rect(6, 1, 50, 6))
+            var deviceSelector = new OptionSelector
             {
-                ContentSize = new Size(40, deviceList.Length * 2),
-                ShowVerticalScrollIndicator = deviceList.Length > 6,
-                ShowHorizontalScrollIndicator = false
+                X = 6, Y = 1, Width = 50, Height = 6,
+                Labels = deviceList,
+                Value = 0
             };
-
-            var deviceRadioGroup = new RadioGroup(0, 0, deviceList.Select(ustring.Make).ToArray())
-            {
-                SelectedItem = 0
-            };
-            scrollView.Add(deviceRadioGroup);
 
             void SendCommandButtonClicked()
             {
-                var selectedDevice = devices.OrderBy(device => device.Address).ToArray()[deviceRadioGroup.SelectedItem];
+                var selectedDevice = devices.OrderBy(device => device.Address).ToArray()[deviceSelector.Value ?? 0];
                 result.SelectedDeviceAddress = selectedDevice.Address;
                 result.WasCancelled = false;
-                Application.RequestStop();
+                app.RequestStop();
             }
 
             void CancelButtonClicked()
             {
                 result.WasCancelled = true;
-                Application.RequestStop();
+                app.RequestStop();
             }
 
-            var sendButton = new Button("Send", true);
-            sendButton.Clicked += SendCommandButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += CancelButtonClicked;
+            var sendButton = new Button { Text = "Send", IsDefault = true };
+            sendButton.Accepting += (_, _) => SendCommandButtonClicked();
+            var cancelButton = new Button { Text = "Cancel" };
+            cancelButton.Accepting += (_, _) => CancelButtonClicked();
 
-            var dialog = new Dialog(title, 60, 13, cancelButton, sendButton);
-            dialog.Add(scrollView);
+            var dialog = new Dialog { Title = title, Width = 60, Height = Dim.Auto() };
+            dialog.Add(deviceSelector);
+            dialog.AddButton(cancelButton);
+            dialog.AddButton(sendButton);
             sendButton.SetFocus();
 
-            Application.Run(dialog);
+            app.Run(dialog);
+            dialog.Dispose();
 
             return result;
         }
@@ -922,24 +765,28 @@ namespace ACUConsole.Dialogs
 
 When creating a new dialog, ensure:
 
-- [ ] Dialog width is 60 characters (standard)
-- [ ] Dialog height accommodates all controls with proper spacing
-- [ ] Labels positioned at x=1 with colon
-- [ ] Controls aligned consistently (x=15, 20, or 25)
+- [ ] `Show(...)` takes `IApplication app` as its first parameter
+- [ ] Widgets created with object initializers (no positional constructors)
+- [ ] Namespaces: `Terminal.Gui.App`, `Terminal.Gui.ViewBase`, `Terminal.Gui.Views` (no root `Terminal.Gui`)
+- [ ] Dialog width is 60 (standard); wider only when content requires it
+- [ ] **Dialog height is `Dim.Auto()`** (never a hand-tuned fixed number, unless intentionally filling a region)
+- [ ] Labels positioned at x=1 with a colon in the text
+- [ ] Controls aligned consistently (x=15, 20, 25, …)
 - [ ] Vertical spacing uses y increment of 2 (or 1 for related items)
-- [ ] ComboBox width is minimum 30 characters
-- [ ] ComboBox uses `.ConfigureForOptimalUX()` extension
-- [ ] TextField widths are 25, 30, or 35
-- [ ] Primary button is marked as default (second parameter true)
-- [ ] Buttons ordered as: cancelButton, primaryButton
+- [ ] DropDownList width is at least 30 and uses `.ConfigureForOptimalUX()`
+- [ ] DropDownList `Source` is a `ListWrapper<string>` over an `ObservableCollection<string>`; selection read via `.Text` / `Array.IndexOf`
+- [ ] Single-choice lists use `OptionSelector` (`Labels` + `Value`), not `RadioGroup`/`ScrollView`
+- [ ] CheckBox state uses `Value` / `CheckState`
+- [ ] Buttons use object initializers and the `Accepting` event (not `Clicked`); primary is `IsDefault = true`
+- [ ] Buttons added via `AddButton` in order: cancel, then primary
+- [ ] `MessageBox.*` calls pass `app` first; `ErrorQuery` has no width/height; `Query` has no defaultButton index
 - [ ] Event handlers are local functions
-- [ ] Validation occurs before closing dialog
-- [ ] Error messages use MessageBox.ErrorQuery
-- [ ] Result pattern uses WasCancelled property
-- [ ] First control receives focus
-- [ ] Static class with static Show() method
-- [ ] XML documentation on class and method
-- [ ] File in correct location (Dialogs/ or Model/DialogInputs/)
+- [ ] Validation occurs before closing the dialog
+- [ ] Result pattern uses the `WasCancelled` property
+- [ ] First control (or action button for selection dialogs) receives focus
+- [ ] `app.Run(dialog)` is followed by `dialog.Dispose()`
+- [ ] Static class with static `Show()` method; XML docs on class and method
+- [ ] File in the correct location (`Dialogs/` or `Model/DialogInputs/`)
 
 ---
 
@@ -947,4 +794,5 @@ When creating a new dialog, ensure:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 | 2025-10-27 | Initial version based on PDConsole and ACUConsole patterns |
+| 1.0 | 2025-10-27 | Initial version based on PDConsole and ACUConsole patterns (Terminal.Gui v1) |
+| 2.0 | 2026-07-17 | Rewritten for Terminal.Gui v2: instance `IApplication`, object initializers, `Dim.Auto()` heights, `DropDownList`, `OptionSelector`, `CheckState`, `Accepting` events, updated `MessageBox` signatures and namespaces |

@@ -73,9 +73,10 @@ foreach ($issue in $issues) {
 
 ## Terminal GUI Development
 - **Style Guide**: See `/docs/terminal-gui-style-guide.md` for comprehensive guidelines on creating dialogs and UI components
-- **Console Applications**: PDConsole and ACUConsole use Terminal.Gui for interactive terminal interfaces
+- **Console Applications**: PDConsole and ACUConsole use **Terminal.Gui v2** for interactive terminal interfaces. v2 uses split namespaces (`Terminal.Gui.App`, `Terminal.Gui.ViewBase`, `Terminal.Gui.Views`, `Terminal.Gui.Drawing`), an instance-based `IApplication` (the static `Application` API is obsolete), and object-initializer widget construction.
 - **Dialog Standards**: All dialogs must follow the established patterns for layout, spacing, validation, and user experience
-- **ComboBox Requirements**: All ComboBox instances MUST use `.ConfigureForOptimalUX()` extension and have minimum width of 30 characters
+- **Dialog Sizing**: Dialogs MUST use `Height = Dim.Auto()` (not a fixed height) so the v2 button-bar/padding row cannot clip content
+- **Drop-Down Requirements**: Use `DropDownList` (v2 replacement for the removed `ComboBox`); it MUST use the `.ConfigureForOptimalUX()` extension and a minimum width of 30 characters. Single-choice lists use `OptionSelector` (v2 replacement for `RadioGroup`/`ScrollView`).
 - **Dialog Organization**: Place dialogs in `{Console}/Dialogs/` and input models in `{Console}/Model/DialogInputs/`
 
 ## OSDP Implementation

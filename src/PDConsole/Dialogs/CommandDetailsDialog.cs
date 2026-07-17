@@ -1,5 +1,7 @@
 using System.Linq;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace PDConsole.Dialogs
 {
@@ -11,20 +13,25 @@ namespace PDConsole.Dialogs
         /// <summary>
         /// Shows the command details dialog for the specified command event
         /// </summary>
+        /// <param name="app">The Terminal.Gui application instance driving the dialog.</param>
         /// <param name="commandEvent">The command event to display details for</param>
-        public static void Show(CommandEvent commandEvent)
+        public static void Show(IApplication app, CommandEvent commandEvent)
         {
             var details = string.IsNullOrEmpty(commandEvent.Details)
                 ? "No additional details available."
                 : commandEvent.Details;
 
-            var dialog = new Dialog("Command Details")
+            var dialog = new Dialog
             {
+                Title = "Command Details",
                 Width = Dim.Percent(80),
                 Height = Dim.Percent(70)
             };
 
-            var textView = new TextView()
+            // Terminal.Gui v2 marks TextView obsolete in favor of an EditorView shipped in a
+            // separate package; TextView remains fully functional for this read-only display.
+#pragma warning disable CS0618
+            var textView = new TextView
             {
                 X = 1,
                 Y = 1,
@@ -38,19 +45,20 @@ namespace PDConsole.Dialogs
                        $"\n" +
                        string.Join("\n", details.Split('\n').Select(line => $" {line}"))
             };
+#pragma warning restore CS0618
 
-            var okButton = new Button("OK")
+            var okButton = new Button
             {
-                X = Pos.Center(),
-                Y = Pos.Bottom(dialog) - 3,
+                Text = "OK",
                 IsDefault = true
             };
-            okButton.Clicked += () => Application.RequestStop(dialog);
+            okButton.Accepting += (_, e) => { app.RequestStop(); e.Handled = true; };
 
-            dialog.Add(textView, okButton);
+            dialog.Add(textView);
             dialog.AddButton(okButton);
 
-            Application.Run(dialog);
+            app.Run(dialog);
+            dialog.Dispose();
         }
     }
 }
