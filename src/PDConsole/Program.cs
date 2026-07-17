@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using PDConsole.Configuration;
 using Terminal.Gui.App;
+using Terminal.Gui.Configuration;
 
 namespace PDConsole
 {
@@ -26,8 +27,15 @@ namespace PDConsole
                 _presenter = new PDConsolePresenter(settings);
                 _presenter.SetCurrentSettingsFilePath(settingsFilePath);
 
+                // Enable the configuration system (loads the built-in themes) before creating the app.
+                ConfigurationManager.Enable(ConfigLocations.All);
+
                 // Initialize Terminal.Gui (instance-based application)
                 using var app = Application.Create().Init();
+
+                // Use the classic Turbo Pascal theme for a familiar look.
+                ThemeManager.Theme = "TurboPascal 5";
+                ConfigurationManager.Apply();
 
                 // Terminal.Gui v2 does not install a synchronization context, so restore one that
                 // marshals async continuations back onto the UI thread (required for any UI shown
