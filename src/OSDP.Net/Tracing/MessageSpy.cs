@@ -8,6 +8,7 @@ using System.Text.Json;
 using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model;
+using OSDP.Net.Model.CommandData;
 using OSDP.Net.Utilities;
 
 namespace OSDP.Net.Tracing;
@@ -75,8 +76,26 @@ public class MessageSpy
         {
             CommandType.SessionChallenge => HandleSessionChallenge(command),
             CommandType.ServerCryptogram => HandleSCrypt(command),
+            CommandType.KeySet => HandleKeySet(command),
             _ => command
         };
+    }
+
+    private IncomingMessage HandleKeySet(IncomingMessage command)
+    {
+        // osdp_KEYSET installs a new Secure Channel Base Key. The command is delivered over the
+        // current secure channel, so once its payload has been decrypted we capture the new key and
+        // apply it to the shared security context. The ACU then tears down and re-establishes the
+        // secure channel, and that handshake must derive its session keys (S-ENC/S-MAC) from this
+        // new key rather than the one originally supplied to the parser. Without this, every
+        // encrypted payload after the re-key decodes to garbage (e.g. "missing a padding byte").
+        if (command.IsPayloadDecrypted)
+        {
+            var keyConfiguration = EncryptionKeyConfiguration.ParseData(command.Payload);
+            _context.UpdateSecurityKey(keyConfiguration.KeyData);
+        }
+
+        return command;
     }
 
     /// <summary>
