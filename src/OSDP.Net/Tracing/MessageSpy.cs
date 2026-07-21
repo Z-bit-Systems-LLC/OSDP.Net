@@ -97,6 +97,19 @@ public class MessageSpy
 
     private IncomingMessage HandleSessionChallenge(IncomingMessage command)
     {
+        // The osdp_CHLNG security block data byte is the authoritative indicator of which key the
+        // session uses: 0x00 = well-known default key (SCBK-D), anything else = per-installation key
+        // (SCBK). Record it so every subsequent secure message in this session reports the actual
+        // wire key type rather than the key that happened to be supplied to the parser.
+        if (command.SecureBlockData is { Length: > 0 })
+        {
+            bool isUsingDefaultKey = command.SecureBlockData[0] == 0x00;
+            _context.IsUsingDefaultKey = isUsingDefaultKey;
+            // The command message was constructed before the context was updated above, so re-stamp
+            // it too, keeping the osdp_CHLNG packet consistent with the rest of the session.
+            command.IsUsingDefaultKey = isUsingDefaultKey;
+        }
+
         byte[] rndA = command.Payload;
         var crypto = _context.CreateCypher(true);
         _context.Enc = SecurityContext.GenerateKey(crypto,

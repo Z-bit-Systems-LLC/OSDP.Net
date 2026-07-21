@@ -105,7 +105,12 @@ public class SecurityContext
     /// <value>
     /// <c>true</c> if the security context is using the default key; otherwise, <c>false</c>.
     /// </value>
-    public bool IsUsingDefaultKey { get; private set; }
+    /// <remarks>
+    /// For live channels this is derived from the configured security key. For passive parsing
+    /// (see <see cref="OSDP.Net.Tracing.MessageSpy"/>) it is set from the key type observed in the
+    /// secure channel handshake, which is the authoritative indicator of what the wire actually used.
+    /// </remarks>
+    public bool IsUsingDefaultKey { get; internal set; }
 
     /// <summary>
     /// Creates a new instance of AES cypher
