@@ -5,6 +5,7 @@ using System.Linq;
 using Microsoft.Extensions.Logging;
 using OSDP.Net;
 using OSDP.Net.Messages;
+using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
@@ -33,6 +34,10 @@ namespace PDConsole
         // Largest message the ACU reported it can receive (osdp_ACURXSIZE). Null until the ACU
         // sends the command, in which case no reply size limit is applied.
         private ushort? _acuMaxReceiveSize;
+
+        // Copied out of the configuration because the two secure channel versions frame messages
+        // differently, which changes how much room a reply payload has.
+        private readonly SecureChannelVersion _secureChannelVersion = config.SecureChannelVersion;
 
         public event EventHandler<CommandEvent> CommandReceived;
 
@@ -92,13 +97,14 @@ namespace PDConsole
         }
 
         // Determines whether a reply payload fits within the size the ACU reported via osdp_ACURXSIZE.
-        // Always true until the ACU sets a limit. The secure channel overhead is always subtracted so
-        // the reply fits whether or not the secure channel is established.
+        // Always true until the ACU sets a limit. The secure channel overhead of the configured version
+        // is always subtracted so the reply fits whether or not the secure channel is established.
         private bool FitsAcuReceiveBuffer(PayloadData reply)
         {
             return _acuMaxReceiveSize == null ||
                    reply.BuildData().Length <=
-                   Message.CalculateMaximumMessageSize(_acuMaxReceiveSize.Value, isEncrypted: true);
+                   Message.CalculateMaximumMessageSize(_acuMaxReceiveSize.Value, isEncrypted: true,
+                       secureChannelVersion: _secureChannelVersion);
         }
 
         protected override PayloadData HandleExtendedIdReport()

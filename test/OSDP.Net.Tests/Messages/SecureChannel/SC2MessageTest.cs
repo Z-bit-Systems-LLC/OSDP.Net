@@ -188,6 +188,36 @@ public class SC2MessageTest
         });
     }
 
+    [Test]
+    public void CalculateMaximumMessageSize_SC2Payload_FillsBufferExactly()
+    {
+        const ushort receiveBufferSize = 128;
+        var context = CreateInitializedContext();
+        var channel = new SC2ACUMessageSecureChannel(context);
+
+        var maximumPayloadSize = Message.CalculateMaximumMessageSize(receiveBufferSize, true,
+            secureChannelVersion: SecureChannelVersion.V2);
+
+        var outgoing = new OutgoingMessage(0x00, new Control(5, true, true),
+            new TestPayload(new byte[maximumPayloadSize]));
+
+        // The driver byte at [0] is line idle time, not part of the message
+        var message = outgoing.BuildMessage(channel).AsSpan(1).ToArray();
+
+        Assert.That(message.Length, Is.EqualTo(receiveBufferSize),
+            "The largest calculated payload should fill the receive buffer without exceeding it");
+    }
+
+    private class TestPayload(byte[] data) : OSDP.Net.Model.PayloadData
+    {
+        public override byte[] BuildData() => data;
+
+        public override byte Code => (byte)CommandType.ManufacturerSpecific;
+
+        public override ReadOnlySpan<byte> SecurityControlBlock() =>
+            SecurityBlock.CommandMessageWithDataSecurity;
+    }
+
     private static byte[] HexToBytes(string hex)
     {
         var bytes = new byte[hex.Length / 2];

@@ -716,6 +716,13 @@ namespace OSDP.Net
             }, cancellationToken);
         }
 
+        /// <summary>
+        /// Determines which secure channel version a reply arrived on, since the two versions frame
+        /// messages differently and therefore leave a different amount of room for the payload.
+        /// </summary>
+        private static SecureChannelVersion SecureChannelVersionOf(IncomingMessage reply) =>
+            reply.IsSecureChannelV2 ? SecureChannelVersion.V2 : SecureChannelVersion.V1;
+
         private async Task<Model.ReplyData.FileTransferStatus.StatusDetail> SendFileTransferCommands(Guid connectionId,
             byte address, byte fileType, byte[] fileData,
             ushort fragmentSize, Action<FileTransferStatus> callback, CancellationToken cancellationToken)
@@ -747,7 +754,8 @@ namespace OSDP.Net
                 if (isFirstMessage)
                 {
                     isFirstMessage = false;
-                    fragmentSize = Message.CalculateMaximumMessageSize(fragmentSize, reply.IsSecureMessage);
+                    fragmentSize = Message.CalculateMaximumMessageSize(fragmentSize, reply.IsSecureMessage,
+                        secureChannelVersion: SecureChannelVersionOf(reply));
                 }
 
                 // Update offset
@@ -780,7 +788,7 @@ namespace OSDP.Net
                     if (fileTransferStatusReply is { UpdateMessageMaximum: > 0 })
                     {
                         fragmentSize = Message.CalculateMaximumMessageSize(fileTransferStatusReply.UpdateMessageMaximum,
-                            reply.IsSecureMessage);
+                            reply.IsSecureMessage, secureChannelVersion: SecureChannelVersionOf(reply));
                     }
                 }
 

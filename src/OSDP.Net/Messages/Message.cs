@@ -2,6 +2,7 @@ using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
+using OSDP.Net.Messages.SecureChannel;
 
 namespace OSDP.Net.Messages
 {
@@ -193,18 +194,37 @@ namespace OSDP.Net.Messages
 
         /// <summary>
         /// Calculates the largest payload that fits in a message of the given total size, accounting for
-        /// the message header, security control block, message code, CRC, MAC and encryption padding.
+        /// the message header, security control block, message code, CRC, authentication tag and, for
+        /// secure channel version 1, the encryption padding.
         /// </summary>
         /// <param name="dataSize">Total size in bytes available for the message.</param>
         /// <param name="isEncrypted">True when the message is sent over an established secure channel.</param>
-        /// <param name="cryptoLength">Encryption block size used for padding.</param>
+        /// <param name="cryptoLength">Encryption block size used for padding. Only applies to version 1.</param>
+        /// <param name="secureChannelVersion">Version of the secure channel carrying the message.</param>
         /// <returns>The maximum number of payload bytes the message can carry.</returns>
-        public static ushort CalculateMaximumMessageSize(ushort dataSize, bool isEncrypted = false, ushort cryptoLength = 16)
+        public static ushort CalculateMaximumMessageSize(ushort dataSize, bool isEncrypted = false,
+            ushort cryptoLength = 16, SecureChannelVersion secureChannelVersion = SecureChannelVersion.V1)
         {
+            // 5-byte header, the message code and the CRC.
             const ushort clearTextDifference = 8;
+
+            // Version 1 adds a 2-byte security control block and a 4-byte MAC to the cleartext
+            // overhead, and pads the payload out to a whole number of encryption blocks.
             const ushort encryptedDifference = 16;
 
-            return (ushort)(dataSize - (isEncrypted ? encryptedDifference + (dataSize % cryptoLength) : clearTextDifference));
+            // Version 2 (AES-256 GCM) adds a 2-byte security control block and a 16-byte
+            // authentication tag, and carries the message code inside the ciphertext. Counted
+            // separately from the cleartext overhead because GCM requires no padding.
+            const ushort encryptedDifferenceV2 = 5 + 2 + 1 + 2 + 16;
+
+            if (!isEncrypted)
+            {
+                return (ushort)(dataSize - clearTextDifference);
+            }
+
+            return secureChannelVersion == SecureChannelVersion.V2
+                ? (ushort)(dataSize - encryptedDifferenceV2)
+                : (ushort)(dataSize - (encryptedDifference + dataSize % cryptoLength));
         }
     }
 }

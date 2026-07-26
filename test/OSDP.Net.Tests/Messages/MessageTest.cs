@@ -51,6 +51,46 @@ namespace OSDP.Net.Tests.Messages
             Assert.That(112, Is.EqualTo(actual));
         }
 
+        [Test]
+        public void CalculateMaximumMessageSize_EncryptedSecureChannelV2()
+        {
+            // Arrange
+            // Act
+            ushort actual = Message.CalculateMaximumMessageSize(128, true,
+                secureChannelVersion: SecureChannelVersion.V2);
+
+            // Assert
+            // 5-byte header, 2-byte security block, the code byte inside the ciphertext, the CRC and
+            // the 16-byte GCM tag; no padding.
+            Assert.That(102, Is.EqualTo(actual));
+        }
+
+        [Test]
+        public void CalculateMaximumMessageSize_SecureChannelV2NotPaddedToBlockSize()
+        {
+            // Arrange
+            // Act
+            // GCM handles arbitrary lengths, so a size that is not a whole number of blocks is not
+            // rounded down the way version 1 rounds it.
+            ushort actual = Message.CalculateMaximumMessageSize(129, true,
+                secureChannelVersion: SecureChannelVersion.V2);
+
+            // Assert
+            Assert.That(103, Is.EqualTo(actual));
+        }
+
+        [Test]
+        public void CalculateMaximumMessageSize_ClearIgnoresSecureChannelVersion()
+        {
+            // Arrange
+            // Act
+            ushort actual = Message.CalculateMaximumMessageSize(128,
+                secureChannelVersion: SecureChannelVersion.V2);
+
+            // Assert
+            Assert.That(120, Is.EqualTo(actual));
+        }
+
         [TestCase("05-00-10-00-12-AB",
             ExpectedResult = "05-00-10-00-12-AB-80-00-00-00-00-00-00-00-00-00")]
         [TestCase("05-00-58-00-12-AB-CC-CC-CC-CC-CC-CC-CC-CC-CC",
