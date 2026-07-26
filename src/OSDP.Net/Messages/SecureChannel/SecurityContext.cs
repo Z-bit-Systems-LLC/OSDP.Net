@@ -45,6 +45,28 @@ public class SecurityContext
     }
 
     /// <summary>
+    /// Replaces the security key without tearing down the current session state.
+    /// </summary>
+    /// <remarks>
+    /// Used when an osdp_KEYSET is observed on an established channel: the command is delivered over
+    /// the current secure session, but the newly installed key must be used to derive the session
+    /// keys of the next secure channel handshake. Unlike <see cref="Reset"/> this leaves the running
+    /// session (established flag, S-ENC, MACs) intact so the KEYSET's own reply can still be
+    /// processed; the subsequent handshake overwrites the session keys using the new value.
+    /// </remarks>
+    /// <param name="securityKey">The new security key. Ignored if null.</param>
+    internal void UpdateSecurityKey(byte[] securityKey)
+    {
+        if (securityKey == null)
+        {
+            return;
+        }
+
+        _securityKey = securityKey;
+        IsUsingDefaultKey = _securityKey.SequenceEqual(DefaultKey);
+    }
+
+    /// <summary>
     /// A flag indicating whether or not channel security has been established
     /// </summary>
     internal bool IsSecurityEstablished { get; set; }
@@ -105,7 +127,12 @@ public class SecurityContext
     /// <value>
     /// <c>true</c> if the security context is using the default key; otherwise, <c>false</c>.
     /// </value>
-    public bool IsUsingDefaultKey { get; private set; }
+    /// <remarks>
+    /// For live channels this is derived from the configured security key. For passive parsing
+    /// (see <see cref="OSDP.Net.Tracing.MessageSpy"/>) it is set from the key type observed in the
+    /// secure channel handshake, which is the authoritative indicator of what the wire actually used.
+    /// </remarks>
+    public bool IsUsingDefaultKey { get; internal set; }
 
     /// <summary>
     /// Creates a new instance of AES cypher

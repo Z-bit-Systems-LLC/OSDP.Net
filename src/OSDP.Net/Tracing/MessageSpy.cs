@@ -8,6 +8,7 @@ using System.Text.Json;
 using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model;
+using OSDP.Net.Model.CommandData;
 using OSDP.Net.Utilities;
 
 namespace OSDP.Net.Tracing;
@@ -94,8 +95,26 @@ public class MessageSpy
         {
             CommandType.SessionChallenge => HandleSessionChallenge(command),
             CommandType.ServerCryptogram => HandleSCrypt(command),
+            CommandType.KeySet => HandleKeySet(command),
             _ => command
         };
+    }
+
+    private IncomingMessage HandleKeySet(IncomingMessage command)
+    {
+        // osdp_KEYSET installs a new Secure Channel Base Key. The command is delivered over the
+        // current secure channel, so once its payload has been decrypted we capture the new key and
+        // apply it to the shared security context. The ACU then tears down and re-establishes the
+        // secure channel, and that handshake must derive its session keys (S-ENC/S-MAC) from this
+        // new key rather than the one originally supplied to the parser. Without this, every
+        // encrypted payload after the re-key decodes to garbage (e.g. "missing a padding byte").
+        if (command.IsPayloadDecrypted)
+        {
+            var keyConfiguration = EncryptionKeyConfiguration.ParseData(command.Payload);
+            _context.UpdateSecurityKey(keyConfiguration.KeyData);
+        }
+
+        return command;
     }
 
     /// <summary>
@@ -132,6 +151,22 @@ public class MessageSpy
 
         // SC1 key derivation
         _isSC2 = false;
+
+        // The osdp_CHLNG security block data byte is the authoritative indicator of which key the
+        // session uses: 0x00 = well-known default key (SCBK-D), anything else = per-installation key
+        // (SCBK). Record it so every subsequent secure message in this session reports the actual
+        // wire key type rather than the key that happened to be supplied to the parser. This byte
+        // only carries key-type meaning for SC1; the SC2 osdp_CHLNG uses it as a version marker
+        // (0x02), which is why this runs after the SC2 early return above.
+        if (command.SecureBlockData is { Length: > 0 })
+        {
+            bool isUsingDefaultKey = command.SecureBlockData[0] == 0x00;
+            _context.IsUsingDefaultKey = isUsingDefaultKey;
+            // The command message was constructed before the context was updated above, so re-stamp
+            // it too, keeping the osdp_CHLNG packet consistent with the rest of the session.
+            command.IsUsingDefaultKey = isUsingDefaultKey;
+        }
+
         byte[] rndA = command.Payload;
         var crypto = _context.CreateCypher(true);
         _context.Enc = SecurityContext.GenerateKey(crypto,
