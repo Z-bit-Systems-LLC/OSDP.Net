@@ -337,7 +337,14 @@ namespace PDConsole
         // Controller Event Handlers
         private void OnCommandReceived(object sender, CommandEvent e)
         {
-            Application.MainLoop.Invoke(UpdateCommandHistoryView);
+            Application.MainLoop.Invoke(() =>
+            {
+                UpdateCommandHistoryView();
+
+                // Commands such as osdp_ACURXSIZE change what the device status reports
+                if (_statusLabel != null)
+                    _statusLabel.Text = _controller.GetDeviceStatusText();
+            });
         }
 
         private void OnStatusChanged(object sender, string status)

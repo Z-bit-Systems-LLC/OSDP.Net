@@ -191,7 +191,15 @@ namespace OSDP.Net.Messages
             return wholeMessageSize == offset + lengthOfFragment;
         }
 
-        internal static ushort CalculateMaximumMessageSize(ushort dataSize, bool isEncrypted = false, ushort cryptoLength = 16)
+        /// <summary>
+        /// Calculates the largest payload that fits in a message of the given total size, accounting for
+        /// the message header, security control block, message code, CRC, MAC and encryption padding.
+        /// </summary>
+        /// <param name="dataSize">Total size in bytes available for the message.</param>
+        /// <param name="isEncrypted">True when the message is sent over an established secure channel.</param>
+        /// <param name="cryptoLength">Encryption block size used for padding.</param>
+        /// <returns>The maximum number of payload bytes the message can carry.</returns>
+        public static ushort CalculateMaximumMessageSize(ushort dataSize, bool isEncrypted = false, ushort cryptoLength = 16)
         {
             const ushort clearTextDifference = 8;
             const ushort encryptedDifference = 16;

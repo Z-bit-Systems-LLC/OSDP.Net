@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using OSDP.Net;
+using OSDP.Net.Messages;
 using OSDP.Net.Model;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
@@ -16,12 +17,22 @@ namespace PDConsole
     public class PDDevice(DeviceConfiguration config, DeviceSettings settings, ILoggerFactory loggerFactory = null)
         : Device(config, loggerFactory)
     {
+        /// <summary>
+        /// Smallest ACU receive buffer that can still carry a reply payload once the secure channel
+        /// message overhead is removed by <see cref="Message.CalculateMaximumMessageSize"/>.
+        /// </summary>
+        private const ushort MinimumAcuReceiveSize = 32;
+
         private readonly List<CommandEvent> _commandHistory = new();
 
         // Transparent-mode (osdp_XWR/XRD) state. Tracks whether Mode 1 (APDU passthrough)
         // has been enabled by the ACU and whether a virtual smart-card session is active.
         private byte _transparentMode;
         private bool _smartCardSessionActive;
+
+        // Largest message the ACU reported it can receive (osdp_ACURXSIZE). Null until the ACU
+        // sends the command, in which case no reply size limit is applied.
+        private ushort? _acuMaxReceiveSize;
 
         public event EventHandler<CommandEvent> CommandReceived;
 
@@ -30,7 +41,19 @@ namespace PDConsole
         /// The event argument carries the new 16-byte key.
         /// </summary>
         public event EventHandler<byte[]> EncryptionKeyChanged;
-        
+
+        /// <summary>
+        /// Raised when the ACU sets its maximum receive size via osdp_ACURXSIZE. The event argument
+        /// carries the new size in bytes.
+        /// </summary>
+        public event EventHandler<ushort> AcuMaxReceiveSizeChanged;
+
+        /// <summary>
+        /// Gets the maximum message size the ACU reported it can receive, or null if the ACU has not
+        /// sent osdp_ACURXSIZE.
+        /// </summary>
+        public ushort? AcuMaxReceiveSize => _acuMaxReceiveSize;
+
         protected override PayloadData HandleIdReport()
         {
             LogCommand("ID Report");
@@ -52,6 +75,32 @@ namespace PDConsole
             return new DeviceCapabilities(settings.Capabilities.ToArray());
         }
 
+        protected override PayloadData HandleMaxReplySize(ACUReceiveSize commandPayload)
+        {
+            LogCommand("Max Reply Size", commandPayload);
+
+            // A buffer that cannot hold even an empty reply is unusable, so reject it rather than
+            // accept a limit that would suppress every subsequent reply.
+            if (commandPayload.MaximumReceiveSize < MinimumAcuReceiveSize)
+            {
+                return new Nak(ErrorCode.UnableToProcessCommand);
+            }
+
+            _acuMaxReceiveSize = commandPayload.MaximumReceiveSize;
+            AcuMaxReceiveSizeChanged?.Invoke(this, commandPayload.MaximumReceiveSize);
+            return new Ack();
+        }
+
+        // Determines whether a reply payload fits within the size the ACU reported via osdp_ACURXSIZE.
+        // Always true until the ACU sets a limit. The secure channel overhead is always subtracted so
+        // the reply fits whether or not the secure channel is established.
+        private bool FitsAcuReceiveBuffer(PayloadData reply)
+        {
+            return _acuMaxReceiveSize == null ||
+                   reply.BuildData().Length <=
+                   Message.CalculateMaximumMessageSize(_acuMaxReceiveSize.Value, isEncrypted: true);
+        }
+
         protected override PayloadData HandleExtendedIdReport()
         {
             LogCommand("Extended ID Report");
@@ -59,12 +108,7 @@ namespace PDConsole
             // If ExtendedId settings are not configured, return a minimal response
             if (settings.ExtendedId == null)
             {
-                return new ExtendedDeviceIdentificationBuilder()
-                    .WithManufacturer("Unknown")
-                    .WithProductName(settings.Model)
-                    .WithSerialNumber(settings.SerialNumber)
-                    .WithFirmwareVersion($"{settings.FirmwareMajor}.{settings.FirmwareMinor}.{settings.FirmwareBuild}")
-                    .Build();
+                return LimitToAcuReceiveBuffer(BuildMinimalExtendedIdReport());
             }
 
             var builder = new ExtendedDeviceIdentificationBuilder()
@@ -98,7 +142,39 @@ namespace PDConsole
                 builder.WithConfigurationReference(settings.ExtendedId.ConfigurationReference);
             }
 
-            return builder.Build();
+            return LimitToAcuReceiveBuffer(builder.Build());
+        }
+
+        // The extended ID report grows with the configured text fields and can outgrow a small ACU
+        // receive buffer. Fall back to the minimal report when the configured one does not fit, and
+        // NAK when even that is too large for the ACU to receive.
+        private PayloadData LimitToAcuReceiveBuffer(PayloadData extendedIdReport)
+        {
+            if (FitsAcuReceiveBuffer(extendedIdReport))
+            {
+                return extendedIdReport;
+            }
+
+            var minimalReport = BuildMinimalExtendedIdReport();
+            if (FitsAcuReceiveBuffer(minimalReport))
+            {
+                LogCommand("Extended ID Report Truncated",
+                    new { AcuMaxReceiveSize = _acuMaxReceiveSize });
+                return minimalReport;
+            }
+
+            LogCommand("Extended ID Report Too Large", new { AcuMaxReceiveSize = _acuMaxReceiveSize });
+            return new Nak(ErrorCode.UnableToProcessCommand);
+        }
+
+        private ExtendedDeviceIdentification BuildMinimalExtendedIdReport()
+        {
+            return new ExtendedDeviceIdentificationBuilder()
+                .WithManufacturer(settings.ExtendedId?.Manufacturer ?? "Unknown")
+                .WithProductName(settings.Model)
+                .WithSerialNumber(settings.SerialNumber)
+                .WithFirmwareVersion($"{settings.FirmwareMajor}.{settings.FirmwareMinor}.{settings.FirmwareBuild}")
+                .Build();
         }
 
         protected override PayloadData HandleCommunicationSet(CommunicationConfiguration commandPayload)

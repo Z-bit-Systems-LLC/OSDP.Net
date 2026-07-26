@@ -187,7 +187,16 @@ namespace PDConsole
 
         public string GetDeviceStatusText()
         {
-            return $"Address: {_settings.Device.Address} | Security: {_settings.Security.SecureChannelMode}";
+            var status = $"Address: {_settings.Device.Address} | Security: {_settings.Security.SecureChannelMode}";
+
+            // Only shown once the ACU has reported its receive buffer size via osdp_ACURXSIZE.
+            var acuMaxReceiveSize = _device?.AcuMaxReceiveSize;
+            if (acuMaxReceiveSize != null)
+            {
+                status += $" | ACU RX Size: {acuMaxReceiveSize} bytes";
+            }
+
+            return status;
         }
 
         // Settings Management Methods
