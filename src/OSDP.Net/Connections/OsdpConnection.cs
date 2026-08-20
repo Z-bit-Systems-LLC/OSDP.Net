@@ -21,7 +21,12 @@ namespace OSDP.Net.Connections
         }   
 
         /// <inheritdoc/>
-        public int BaudRate { get; }
+        /// <remarks>
+        /// The setter is protected because most connection types fix their rate at construction.
+        /// Types that can retune a live connection, such as
+        /// <see cref="SerialPortOsdpConnection"/>, expose a public method to do so.
+        /// </remarks>
+        public int BaudRate { get; protected set; }
 
         /// <inheritdoc/>
         public virtual bool IsOpen { get; protected set; }

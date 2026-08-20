@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>default</LangVersion>
+        <AssemblyName>osdp-linequality</AssemblyName>
+        <RootNamespace>OSDP.Net.LineQuality.Cli</RootNamespace>
+
+        <!-- Packaging as a .NET global tool is milestone M7 of docs/line-quality-test-plan.md.
+             Left off for now so the existing release pipeline keeps publishing only the library. -->
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.6" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.6" />
+        <PackageReference Include="System.IO.Ports" Version="10.0.6" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\OSDP.Net\OSDP.Net.csproj" />
+    </ItemGroup>
+
+</Project>

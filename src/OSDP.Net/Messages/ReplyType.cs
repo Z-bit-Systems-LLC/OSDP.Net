@@ -111,8 +111,12 @@ namespace OSDP.Net.Messages
         ResponseToChallenge = 0x82,
 
         /// <summary>
-        /// osdp_osdp_MFGSTATR - manufacturer specific status reply
+        /// osdp_MFGREP - manufacturer specific reply
         /// </summary>
+        /// <remarks>
+        /// Per OSDP v2.2.2 Annex A.2 this code is osdp_MFGREP. osdp_MFGSTATR is a separate reply
+        /// at 0x83.
+        /// </remarks>
         ManufactureSpecific = 0x90,
 
         /// <summary>

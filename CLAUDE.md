@@ -70,6 +70,14 @@ foreach ($issue in $issues) {
 - **API Usage Guide**: See `/docs/api-usage-guide.md` for examples of ACU and PD usage
 - **Tracing Guide**: See `/docs/tracing-guide.md` for packet capture and debugging
 - **Supported Commands**: See `/docs/supported_commands.md` for OSDP v2.2 implementation status
+- **Line Quality Test Plan**: See `/docs/line-quality-test-plan.md` for the RS-485 line quality test implementation plan
+- **Line Quality CLI**: See `/src/OSDP.Net.LineQuality.Cli/README.md` for the `osdp-linequality` tool
+
+## OSDP Specification Reference
+- **IMPORTANT**: The full SIA OSDP v2.2.2 standard is available locally at `/docs/spec/SIA-OSDP-2.2-2.txt`
+- **Always consult it** when implementing or reviewing commands, replies, secure channel behavior, framing, or timing — cite section numbers rather than relying on recall
+- It is a large plain-text file; use Grep to locate sections (e.g. `Grep pattern:"osdp_MFG" path:"docs/spec"`) instead of reading it end to end
+- The file is git-ignored via `/docs/spec/.gitignore` (copyrighted SIA material) — **never commit it, quote it at length in commits, or copy it into public documentation**. Reference it by section number instead.
 
 ## Terminal GUI Development
 - **Style Guide**: See `/docs/terminal-gui-style-guide.md` for comprehensive guidelines on creating dialogs and UI components
