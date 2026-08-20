@@ -1,11 +1,12 @@
 # OSDP Line Quality Test — Implementation Plan (OSDP.Net)
 
-**Status:** M1–M6 complete on `feature/line-quality-test` · validated on real RS-485 · 2026-08-20
-**Spec:** [OSDP Line Quality Test Procedure v1.1](https://gist.github.com/bytedreamer/94d039c3eb033ec62b4806161f690125)
+**Status:** M1–M6 complete and merged to `main` (`f005a85`, 2026-08-20) · validated on real RS-485
+**Spec:** [OSDP Line Quality Test Procedure v1.2](https://gist.github.com/bytedreamer/94d039c3eb033ec62b4806161f690125)
 
 > **Implementation notes (2026-08-20)**
 >
-> M1–M6 are complete, with 56 line quality tests passing and `jb inspectcode` clean.
+> M1–M6 are complete: 71 line quality tests within a suite of 650, all passing, and
+> `jb inspectcode` clean at 0 errors and 0 warnings.
 >
 > Two things changed from the plan as written:
 >
@@ -31,13 +32,23 @@
 > Baud switching was exercised at every transition and both ends stayed in step:
 > `9600→19200→38400→57600→115200→230400→9600`.
 >
-> **Capacitor-loaded line (2026-08-20).** A series capacitor was added to simulate a dirty line.
-> The first sweep failed the transition to 230400; every subsequent run passed cleanly, including
-> Qualification at 57600/115200/230400 (2880 packets, zero failures). At this cable length the
-> added capacitance is not loading the pair enough to degrade the link measurably — but the one
-> failed transition exposed a **third bug** (below), which is the run's real value.
+> **Capacitor-loaded line (2026-08-20).** A four-decade capacitance box was fitted across the pair
+> to degrade the line under control. The break point moves monotonically, roughly one rate step per
+> doubling:
 >
-> **Three bugs only hardware could have found**, all fixed:
+> | Capacitance | Highest passing rate |
+> |---|---|
+> | none | 230400 |
+> | 100 nF | 115200 |
+> | 150 nF | 57600 |
+> | 300 nF | 19200 |
+> | 500 nF | 9600 (19200 marginal, 1 integrity error in 160) |
+> | 1000 nF | none — commands arrive at 9600, replies do not |
+>
+> Measured with no termination fitted, which is the harsh case: an unterminated line gives a given
+> capacitor a much longer time constant. The full recipe is in Appendix 8.4 and 8.5.5 of the spec.
+>
+> **Five bugs only hardware could have found**, all fixed:
 >
 > 1. **`TryReturnToBaseline` failed silently.** It ignored whether the change was acknowledged and
 >    retuned the controller anyway, leaving the responder on 230400 while the controller dropped to
@@ -45,7 +56,11 @@
 >    a warning names the rate the responder may still be on.
 > 2. **Recovery probed each rate only once.** A single missed reply made the search walk past the
 >    rate the responder was actually on and give up. Now two attempts per rate.
-> 3. **A failed baud rate change was reported as `UNTESTED`, and the run still said `PASS`.** When
+> 3. **The initial presence probe was a single shot.** The first exchange of a session is the
+>    slowest — a managed responder is still warming its reply path and can miss the 200 ms window
+>    once, sending the controller into a needless rate search. Now three attempts. Probes are not
+>    measurements, so retrying them compromises no statistic.
+> 4. **A failed baud rate change was reported as `UNTESTED`, and the run still said `PASS`.** When
 >    the capacitor made 230400 unreachable, the report showed the rate as untested and an overall
 >    verdict of PASS — materially understating the finding. Spec §6.1 counts a rate change that did
 >    not complete as a **FAIL** of that rate. `BaudRateResult` now separates `FailureReason` (the
@@ -53,11 +68,16 @@
 >    `SkipReason` (the responder said it does not support that rate → UNTESTED, since that is a
 >    property of the device rather than the cable). Both the console and Markdown reports show the
 >    two under separate headings.
+> 5. **A failed search left the controller on the highest rate it had probed**, so every later rate
+>    change went out over a link that had just proven it could not carry that rate. One real failure
+>    became a cascade of invented ones. The controller now falls back to the baseline, which is also
+>    where a responder implementing the idle revert will be.
 >
-> A third fix came from the first bench run: the initial presence probe is now retried up to three
-> times, because the first exchange of a session is the slowest — a managed responder is still
-> warming up its reply path and can miss the 200 ms window once. Probes are not measurements, so
-> retrying them does not compromise the loss statistics.
+> Separately, **the responder could be wedged permanently by line noise**: the shared `Bus` read
+> helpers report a faulted port and an idle line identically, so a receiver stuck in an error state
+> spun forever without answering or logging. It now tells a read timeout from a read error and
+> reinitialises the port after three consecutive failures. Confirmed on the bench — the 500 nF run
+> logged repeated `Serial read failed` and kept working, where the previous build died silently.
 >
 > **Empirical confirmation of the timing caveat (spec §5.2).** Max response time was 31–52 ms at
 > *every* baud rate, including 230400 where the entire exchange is about 1 ms of wire time. That
@@ -357,17 +377,26 @@ Terminal.Gui integration in ACUConsole/PDConsole is **not** planned — the CLI 
 1. **The FTDI latency timer.** Drop it to 1 ms in Device Manager and re-run; the change in reported
    response time is the portion of the measurement that belongs to the adapter rather than the
    cable. Not done here because it edits the machine's device configuration.
-2. **A line degraded enough to produce packet-level errors.** The series capacitor was not enough
-   at bench-cable length: it cost one 230400 transition and nothing else across roughly 5000
-   packets. Timeouts, integrity errors and pattern mismatches have therefore still only been
-   exercised through injected faults in the loopback tests, never against real physics. A long run,
-   a missing termination resistor, or a larger capacitor across A–B would get there.
-3. **The Extended profile** (3200 packets/rate, ~5 minutes at 230400), which is the only profile
+2. **The Extended profile** (3200 packets/rate, ~5 minutes at 230400), which is the only profile
    that can substantiate the 99.9% criterion.
 
-**Verified on hardware since:** the 30-second idle auto-revert, seen firing as
-`Idle timeout: reverted to 9600 baud` after the failed 230400 transition left the responder
-stranded — which is exactly the case it exists for.
+**Verified on hardware since:**
+
+- The 30-second idle auto-revert, seen firing as `Idle timeout: reverted to 9600 baud` after a
+  failed transition left the responder stranded — exactly the case it exists for.
+- The error taxonomy against real physics rather than injected faults: the 500 nF run produced a
+  genuine integrity error (1 in 160 at 19200, with max response elevated to 69.5 ms), and every
+  capacitance above 100 nF produced real unreachable-rate failures.
+- The responder's read-fault recovery, which logged `Serial read failed` repeatedly during the
+  500 nF run and kept answering.
+
+**Known limitation, not yet addressed.** Once a rate fails, the responder may be stranded at that
+rate and cannot be commanded back over the link that just failed — only its idle revert recovers
+it, and a sweep moves between rates faster than that timeout. Rates tested immediately after a
+failure are therefore attempted while the responder may still be deaf. The report states what
+happened rather than hiding it, but those rows are not cleanly measured. The fix would be to poll
+at the baseline for up to the revert window after a failed rate: adaptive, costing nothing when the
+responder is reachable and up to 30 s when it is stranded. Deferred as a design call, not a defect.
 
 ## 9. Deferred / follow-on
 
@@ -383,7 +412,7 @@ stranded — which is exactly the case it exists for.
 
 ## 11. Open questions
 
-1. **460800 support** — spec v1.1 reserves Baud Rate ID 0x06, but OSDP §5.2 lists only 9600 through 230400, so it is an extension rather than a standard rate. Note that `SerialPortOsdpConnection.StandardBaudRates` (`SerialPortOsdpConnection.cs:18-20`) calls it standard, which is inaccurate and worth correcting. Plan excludes it from `--rates` by default; confirm the adapters can hit it before enabling.
+1. **460800 support** — the spec reserves Baud Rate ID 0x06, but OSDP §5.2 lists only 9600 through 230400, so it is an extension rather than a standard rate. It is excluded from `--rates` by default; confirm the adapters can reach it before enabling. (The misleading doc comment on `SerialPortOsdpConnection.StandardBaudRates` calling it standard has been corrected.)
 2. **Default profile** — plan assumes Screening as the default for interactive use, Qualification for reports. Confirm before the CLI output format is fixed.
 3. **Report format** — is the `--json` shape a stable contract for OSDP-Bench to consume later, or internal-only for now? Affects how much care the `LineQualityReport` serialization needs. The Markdown renderer is already library-side and reusable, so Bench may not need the JSON at all.
 
