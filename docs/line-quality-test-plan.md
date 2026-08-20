@@ -76,8 +76,21 @@
 > Separately, **the responder could be wedged permanently by line noise**: the shared `Bus` read
 > helpers report a faulted port and an idle line identically, so a receiver stuck in an error state
 > spun forever without answering or logging. It now tells a read timeout from a read error and
-> reinitialises the port after three consecutive failures. Confirmed on the bench — the 500 nF run
-> logged repeated `Serial read failed` and kept working, where the previous build died silently.
+> reinitialises the port after three consecutive failures.
+>
+> **That fix shipped broken and was corrected afterwards.** It keyed off the exception *type*, but
+> `SerialPortOsdpConnection.ReadAsync` reports an expired read as `TimeoutException` rather than
+> `OperationCanceledException`, so every ordinary idle period was classified as a hardware fault —
+> 2067 spurious warnings in one session, and a port torn down and reopened every few seconds. The
+> `Serial read failed` lines seen during the 500 nF run were this noise, not recovery working.
+> Classification now keys off **which token fired**, not the exception type.
+>
+> The reason it escaped review is worth recording: the loopback double returned `0` on timeout,
+> while the real connection throws. No test exercised the contract the responder actually runs
+> against. `LoopbackConnection` now defaults to the serial behaviour and can emulate either, and a
+> regression test asserts that an idle line never causes the port to be reopened — an assertion on
+> `CloseCount` rather than on end-to-end success, because a responder with this bug still answers
+> correctly and would pass any functional check.
 >
 > **Empirical confirmation of the timing caveat (spec §5.2).** Max response time was 31–52 ms at
 > *every* baud rate, including 230400 where the entire exchange is about 1 ms of wire time. That

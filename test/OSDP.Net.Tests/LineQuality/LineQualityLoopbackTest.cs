@@ -177,6 +177,56 @@ namespace OSDP.Net.Tests.LineQuality
             await Task.CompletedTask;
         }
 
+        [TestCase(true, TestName = "AnIdleLine_IsNotTreatedAsAFault_TimeoutException")]
+        [TestCase(false, TestName = "AnIdleLine_IsNotTreatedAsAFault_OperationCanceled")]
+        public async Task AnIdleLine_IsNotTreatedAsAFault(bool throwsTimeoutException)
+        {
+            // The responder spends almost all of its life waiting on a quiet line. Classifying that
+            // as a hardware fault makes it reopen its port every few seconds and bury the log in
+            // warnings that mean nothing — which is what shipped, because the loopback returned 0 on
+            // timeout while the real serial connection throws TimeoutException.
+            var (controller, responderSide) = LoopbackConnection.CreatePair(9600);
+            responderSide.ThrowTimeoutExceptionOnReadTimeout = throwsTimeoutException;
+
+            var responder = new LineQualityResponder(responderSide)
+            {
+                AutoRevertTimeout = Timeout.InfiniteTimeSpan
+            };
+
+            using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var responderTask = responder.RunAsync(cancellation.Token);
+
+            try
+            {
+                // Sit idle long enough to cross the fault threshold several times over.
+                await Task.Delay(TimeSpan.FromSeconds(4), cancellation.Token).ConfigureAwait(false);
+
+                // This is the assertion that matters. A responder that misreads an idle line as a
+                // fault still answers correctly, so end-to-end success proves nothing here — the
+                // damage is that it tears down and reinitialises its port every few seconds.
+                Assert.That(responderSide.CloseCount, Is.Zero,
+                    "an idle line must not be mistaken for a faulted port");
+
+                var test = new LineQualityTest(controller);
+                var report = await test.RunAsync(new LineQualityOptions
+                {
+                    Profile = TestProfile.Screening,
+                    BaudRates = new[] { 9600 },
+                    BaudRateSettleDelay = TimeSpan.Zero,
+                    ResponseTimeout = TimeSpan.FromMilliseconds(100),
+                    ReturnToBaselineWhenDone = false
+                }, cancellation.Token).ConfigureAwait(false);
+
+                Assert.That(report.BaudRates.Single().Verdict, Is.EqualTo(LineQualityVerdict.Pass),
+                    "the responder must still answer after a long idle period");
+            }
+            finally
+            {
+                cancellation.Cancel();
+                await responderTask.ConfigureAwait(false);
+            }
+        }
+
         [Test]
         public void OversizedDeclaredLength_IsDetectableByTheResponder()
         {

@@ -241,6 +241,15 @@ namespace OSDP.Net.LineQuality
         /// <summary>
         /// Reads with a timeout, returning zero on an idle line and letting real faults through.
         /// </summary>
+        /// <remarks>
+        /// The distinction is made on <em>which token fired</em>, not on the exception type.
+        /// Connection implementations disagree about how a read timeout surfaces:
+        /// <see cref="SerialPortOsdpConnection"/> races the read against the token and throws
+        /// <see cref="TimeoutException"/>, while a cancelled stream read normally produces
+        /// <see cref="OperationCanceledException"/>. Keying off the type alone therefore classifies
+        /// an ordinary idle line as a hardware fault on the very connection this responder runs on,
+        /// which is the opposite of the intent and floods the log with warnings that mean nothing.
+        /// </remarks>
         private async Task<int> ReadWithTimeout(byte[] buffer, TimeSpan timeout, CancellationToken token)
         {
             using var timeoutSource = new CancellationTokenSource(timeout);
@@ -251,17 +260,28 @@ namespace OSDP.Net.LineQuality
             {
                 return await _connection.ReadAsync(buffer, linkedSource.Token).ConfigureAwait(false);
             }
-            catch (OperationCanceledException)
+            catch (Exception exception) when (timeoutSource.IsCancellationRequested &&
+                                              IsTimeoutSignal(exception))
             {
-                // Cancellation of the run propagates; expiry of the read timeout just means the
-                // line was quiet. Every other exception is a fault and is left to the caller.
+                // Our own read timeout expired: the line was simply quiet. Cancellation of the run
+                // still propagates; anything else is a genuine fault and is left to the caller.
                 token.ThrowIfCancellationRequested();
                 return 0;
             }
         }
 
+        /// <summary>
+        /// Determines whether an exception is how a connection reports an expired read timeout.
+        /// </summary>
+        private static bool IsTimeoutSignal(Exception exception) =>
+            exception is OperationCanceledException || exception is TimeoutException;
+
         private async Task HandleReadFault(Exception exception, CancellationToken token)
         {
+            // A read that fails while the responder is being shut down is a consequence of the
+            // shutdown, not a fault worth reopening the port over.
+            if (token.IsCancellationRequested) return;
+
             _consecutiveReadFaults++;
 
             _logger?.LogWarning(exception, "Serial read failed ({Count} in a row)",
@@ -289,7 +309,9 @@ namespace OSDP.Net.LineQuality
                 _connection.SetBaudRate(baudRate);
                 _connection.DiscardBuffersBeforeWrite = false;
 
-                _logger?.LogInformation(
+                // Warning rather than Information: reopening a port is an abnormal event, and a
+                // consumer that filters to Warning is exactly the one that needs to see it.
+                _logger?.LogWarning(
                     "Reopened the connection at {BaudRate} baud to clear repeated read failures",
                     baudRate);
             }

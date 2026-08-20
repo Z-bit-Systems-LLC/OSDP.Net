@@ -62,6 +62,19 @@ namespace OSDP.Net.Tests.LineQuality
         /// </summary>
         public Func<byte[], byte[]> WriteFilter { get; set; }
 
+        /// <summary>
+        /// Gets or sets how a read timeout is reported, so tests can cover both conventions.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="SerialPortOsdpConnection"/> races the read against the token and throws
+        /// <see cref="TimeoutException"/>; a plain cancelled stream read throws
+        /// <see cref="OperationCanceledException"/>. Code that keys off the exception type rather
+        /// than the token silently misbehaves on one of the two, which is exactly what happened in
+        /// the responder — every idle line was classified as a hardware fault. Defaulting to the
+        /// serial behaviour keeps the tests honest about the connection actually used in the field.
+        /// </remarks>
+        public bool ThrowTimeoutExceptionOnReadTimeout { get; set; } = true;
+
         /// <summary>Gets the number of frames this connection has written.</summary>
         public int FramesWritten { get; private set; }
 
@@ -85,8 +98,15 @@ namespace OSDP.Net.Tests.LineQuality
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Gets how many times the connection has been closed, which for a responder means how
+        /// many times it decided its port was faulted and reinitialised it.
+        /// </summary>
+        public int CloseCount { get; private set; }
+
         public override Task Close()
         {
+            CloseCount++;
             IsOpen = false;
             return Task.CompletedTask;
         }
@@ -118,7 +138,16 @@ namespace OSDP.Net.Tests.LineQuality
 
         public override async Task<int> ReadAsync(byte[] buffer, CancellationToken token)
         {
-            await _inboundSignal.WaitAsync(token).ConfigureAwait(false);
+            try
+            {
+                await _inboundSignal.WaitAsync(token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (ThrowTimeoutExceptionOnReadTimeout)
+            {
+                // Mirror SerialPortOsdpConnection, which surfaces an expired read as a
+                // TimeoutException rather than letting the cancellation escape.
+                throw new TimeoutException();
+            }
 
             int count = 0;
             if (_inbound.TryDequeue(out byte first))
