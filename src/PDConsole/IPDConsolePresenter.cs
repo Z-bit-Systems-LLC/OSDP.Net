@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using PDConsole.Configuration;
+using PDConsole.FileTransfer;
 
 namespace PDConsole
 {
@@ -15,6 +16,12 @@ namespace PDConsole
         event EventHandler<string> StatusChanged;
         event EventHandler<string> ConnectionStatusChanged;
         event EventHandler<Exception> ErrorOccurred;
+
+        /// <summary>
+        /// Raised as an osdp_FILETRANSFER progresses and when it finishes. Progress reports are rate
+        /// limited; completion and failure are always reported.
+        /// </summary>
+        event EventHandler<FileTransferEvent> FileTransferChanged;
 
         // Properties
         bool IsDeviceRunning { get; }

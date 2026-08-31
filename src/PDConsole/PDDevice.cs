@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +9,7 @@ using OSDP.Net.Model;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
 using PDConsole.Configuration;
+using PDConsole.FileTransfer;
 using CommunicationConfiguration = OSDP.Net.Model.CommandData.CommunicationConfiguration;
 using DeviceCapabilities = OSDP.Net.Model.ReplyData.DeviceCapabilities;
 
@@ -24,6 +25,10 @@ namespace PDConsole
         private const ushort MinimumAcuReceiveSize = 32;
 
         private readonly List<CommandEvent> _commandHistory = new();
+
+        // Reassembles osdp_FILETRANSFER fragments from the ACU and produces each osdp_FTSTAT reply.
+        private readonly FileTransferReceiver _fileTransferReceiver = new();
+        private readonly FileTransferStore _fileTransferStore = new();
 
         // Transparent-mode (osdp_XWR/XRD) state. Tracks whether Mode 1 (APDU passthrough)
         // has been enabled by the ACU and whether a virtual smart-card session is active.
@@ -49,10 +54,26 @@ namespace PDConsole
         public event EventHandler<ushort> AcuMaxReceiveSizeChanged;
 
         /// <summary>
+        /// Raised as each osdp_FILETRANSFER fragment is accepted, so the console can show progress.
+        /// </summary>
+        public event EventHandler<FileTransferEvent> FileTransferProgress;
+
+        /// <summary>
+        /// Raised when a file transfer finishes, whether the file was saved or the transfer failed.
+        /// Check <see cref="FileTransferEvent.Error"/> to tell the two apart.
+        /// </summary>
+        public event EventHandler<FileTransferEvent> FileTransferCompleted;
+
+        /// <summary>
         /// Gets the maximum message size the ACU reported it can receive, or null if the ACU has not
         /// sent osdp_ACURXSIZE.
         /// </summary>
         public ushort? AcuMaxReceiveSize => _acuMaxReceiveSize;
+
+        /// <summary>
+        /// Gets the directory that files received from the ACU are written to.
+        /// </summary>
+        public string FileTransferDirectory => _fileTransferStore.DirectoryPath;
 
         protected override PayloadData HandleIdReport()
         {
@@ -351,7 +372,127 @@ namespace PDConsole
         protected override PayloadData HandleAbortRequest()
         {
             LogCommand("Abort Request");
+
+            // osdp_ABORT terminates any file transfer currently in progress, so the partial file is
+            // discarded rather than left to collide with the next transfer (OSDP v2.2.2, 6.20).
+            if (_fileTransferReceiver.IsTransferInProgress)
+            {
+                RaiseFileTransferEvent("aborted by the ACU");
+                _fileTransferReceiver.Reset();
+            }
+
             return new Ack();
+        }
+
+        protected override PayloadData HandleFileTransfer(FileTransferFragment commandPayload)
+        {
+            // Only the start of a transfer is logged to the command history. A firmware file arriving
+            // in 128-byte fragments produces thousands of commands, which would flush the history and
+            // pin the UI thread redrawing it; per-fragment detail goes to FileTransferProgress instead.
+            if (!_fileTransferReceiver.IsTransferInProgress)
+            {
+                LogCommand("File Transfer Started", commandPayload);
+            }
+
+            // A rejected fragment resets the receiver, so the in-flight totals are captured here to
+            // report what was lost.
+            var inFlightType = _fileTransferReceiver.IsTransferInProgress
+                ? _fileTransferReceiver.FileType
+                : commandPayload.Type;
+            var inFlightTotal = _fileTransferReceiver.TotalSize;
+            var inFlightReceived = _fileTransferReceiver.ReceivedSize;
+
+            var status = _fileTransferReceiver.AcceptFragment(commandPayload);
+
+            if (status.Detail < 0)
+            {
+                var failedEvent = new FileTransferEvent
+                {
+                    FileType = inFlightType,
+                    TotalSize = inFlightTotal,
+                    ReceivedSize = inFlightReceived,
+                    Error = status.Detail.ToString()
+                };
+
+                LogCommand("File Transfer Failed", failedEvent);
+                FileTransferCompleted?.Invoke(this, failedEvent);
+                return status;
+            }
+
+            if (!_fileTransferReceiver.IsComplete)
+            {
+                FileTransferProgress?.Invoke(this, new FileTransferEvent
+                {
+                    FileType = _fileTransferReceiver.FileType,
+                    TotalSize = _fileTransferReceiver.TotalSize,
+                    ReceivedSize = _fileTransferReceiver.ReceivedSize
+                });
+
+                return status;
+            }
+
+            // The file is complete. Writing it out can fail on a full or read-only disk, and the ACU
+            // needs to hear about that rather than be told the contents were processed.
+            var completed = SaveReceivedFile();
+            _fileTransferReceiver.Reset();
+
+            return completed ? status : new FileTransferStatus(FileTransferStatus.StatusDetail.AbortFileTransfer);
+        }
+
+        /// <summary>
+        /// Writes the assembled file through <see cref="FileTransferStore"/> and reports the outcome.
+        /// </summary>
+        /// <returns><c>true</c> if the file was written; otherwise <c>false</c>.</returns>
+        private bool SaveReceivedFile()
+        {
+            var fileType = _fileTransferReceiver.FileType;
+            var totalSize = _fileTransferReceiver.TotalSize;
+
+            try
+            {
+                var savedPath = _fileTransferStore.Save(fileType, _fileTransferReceiver.GetFile());
+
+                var completedEvent = new FileTransferEvent
+                {
+                    FileType = fileType,
+                    TotalSize = totalSize,
+                    ReceivedSize = totalSize,
+                    IsComplete = true,
+                    SavedFilePath = savedPath
+                };
+
+                LogCommand("File Transfer Complete", completedEvent);
+                FileTransferCompleted?.Invoke(this, completedEvent);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                var failedEvent = new FileTransferEvent
+                {
+                    FileType = fileType,
+                    TotalSize = totalSize,
+                    ReceivedSize = totalSize,
+                    Error = $"could not be saved - {ex.Message}"
+                };
+
+                LogCommand("File Transfer Save Failed", failedEvent);
+                FileTransferCompleted?.Invoke(this, failedEvent);
+                return false;
+            }
+        }
+
+        private void RaiseFileTransferEvent(string error)
+        {
+            var failedEvent = new FileTransferEvent
+            {
+                FileType = _fileTransferReceiver.FileType,
+                TotalSize = _fileTransferReceiver.TotalSize,
+                ReceivedSize = _fileTransferReceiver.ReceivedSize,
+                Error = error
+            };
+
+            LogCommand("File Transfer Failed", failedEvent);
+            FileTransferCompleted?.Invoke(this, failedEvent);
         }
         
         // Method to send a simulated card read
@@ -443,6 +584,7 @@ namespace PDConsole
             }
             return result;
         }
+
     }
     
     public class CommandEvent

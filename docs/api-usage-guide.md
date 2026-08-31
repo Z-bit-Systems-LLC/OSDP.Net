@@ -182,6 +182,51 @@ public class MyDevice : Device
 }
 ```
 
+### Receiving a File Transfer
+
+A PD accepts `osdp_FILETRANSFER` by overriding `HandleFileTransfer`. The base implementation NAKs,
+declaring that the device accepts no file transfers. `FileTransferReceiver` does the reassembly and
+produces the `osdp_FTSTAT` reply each fragment requires, so the override is usually just a handoff.
+
+```csharp
+public class MyDevice : Device
+{
+    private readonly FileTransferReceiver _fileTransfer = new();
+
+    protected override PayloadData HandleFileTransfer(FileTransferFragment commandPayload)
+    {
+        var status = _fileTransfer.AcceptFragment(commandPayload);
+
+        if (_fileTransfer.IsComplete)
+        {
+            File.WriteAllBytes($"received-{_fileTransfer.FileType:X2}.bin", _fileTransfer.GetFile());
+            _fileTransfer.Reset();
+        }
+
+        return status;
+    }
+}
+```
+
+The receiver reports `OkToProceed` until the final byte arrives and `FileContentsProcessed` when the
+file is complete. It rejects malformed fragments with a negative status, which aborts the transfer at
+the ACU. Retransmitted or overlapping fragments are absorbed; a fragment that would leave a gap is
+rejected, because the spec requires monotonically increasing offsets and the PD cannot request a
+resend. Use `TotalSize` and `ReceivedSize` to report progress, and `Reset()` to discard a partial
+transfer (for example on `osdp_ABORT`).
+
+Constructor and property options:
+
+- `new FileTransferReceiver(maximumFileSize)` caps the size accepted, rejecting an oversized header
+  before allocating. Defaults to `FileTransferReceiver.DefaultMaximumFileSize` (16 MB).
+- `RequestedDelay` asks the ACU to wait before sending the next fragment.
+- `UpdateMessageMaximum` asks the ACU to change its fragment size.
+- `Action` sets the control flags, such as leaving the secure channel for the transfer.
+
+The ACU must know how large a message the PD can receive, so advertise
+`CapabilityFunction.ReceiveBufferSize` in the PD's capabilities. Its compliance and "number of" bytes
+are the LSB and MSB of the byte count (OSDP v2.2.2 Annex B.11), so 1024 bytes is `(0x00, 0x04)`.
+
 ## Connection Types
 
 ### Serial Connections

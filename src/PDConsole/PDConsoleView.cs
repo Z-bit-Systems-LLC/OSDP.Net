@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using PDConsole.FileTransfer;
 using Terminal.Gui;
 
 namespace PDConsole
@@ -31,6 +32,7 @@ namespace PDConsole
             _controller.CommandReceived += OnCommandReceived;
             _controller.StatusChanged += OnStatusChanged;
             _controller.ConnectionStatusChanged += OnConnectionStatusChanged;
+            _controller.FileTransferChanged += OnFileTransferChanged;
             _controller.ErrorOccurred += OnErrorOccurred;
         }
 
@@ -361,6 +363,15 @@ namespace PDConsole
             {
                 if (_connectionLabel != null)
                     _connectionLabel.Text = $"Connection: {status}";
+            });
+        }
+
+        private void OnFileTransferChanged(object sender, FileTransferEvent e)
+        {
+            Application.MainLoop.Invoke(() =>
+            {
+                if (_statusLabel != null)
+                    _statusLabel.Text = _controller.GetDeviceStatusText();
             });
         }
 
