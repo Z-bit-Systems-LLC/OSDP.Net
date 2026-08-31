@@ -80,14 +80,18 @@ namespace PDConsole
             LogCommand("ID Report");
             
             var vendorCode = ConvertHexStringToBytes(settings.VendorCode, 3);
+
+            // Arguments are named because the constructor takes serialNumber between version and
+            // the firmware triple; passing them positionally previously reported the firmware minor
+            // as the serial number and a byte of the serial string as the firmware minor.
             return new DeviceIdentification(
-                vendorCode,
-                (byte)settings.Model[0],
-                settings.FirmwareMajor,
-                settings.FirmwareMinor,
-                settings.FirmwareBuild,
-                (byte)ConvertStringToBytes(settings.SerialNumber, 4),
-                settings.FirmwareBuild);
+                vendorCode: vendorCode,
+                modelNumber: (byte)settings.Model[0],
+                version: settings.FirmwareMajor,
+                serialNumber: ParseSerialNumber(settings.SerialNumber),
+                firmwareMajor: settings.FirmwareMajor,
+                firmwareMinor: settings.FirmwareMinor,
+                firmwareBuild: settings.FirmwareBuild);
         }
         
         protected override PayloadData HandleDeviceCapabilities()
@@ -575,14 +579,24 @@ namespace PDConsole
             return bytes;
         }
         
-        private static uint ConvertStringToBytes(string str, int byteCount)
+        /// <summary>
+        /// Converts the configured serial number to the integer reported in osdp_PDID. Matches the
+        /// parsing the presenter uses for the secure channel client identification, so the PD reports
+        /// one consistent serial number.
+        /// </summary>
+        private static int ParseSerialNumber(string serialNumber)
         {
-            uint result = 0;
-            for (int i = 0; i < Math.Min(str.Length, byteCount); i++)
+            if (string.IsNullOrEmpty(serialNumber)) return 0;
+
+            if (uint.TryParse(serialNumber, out var parsed)) return unchecked((int)parsed);
+
+            uint hash = 0;
+            foreach (char c in serialNumber)
             {
-                result = (result << 8) | str[i];
+                hash = (hash * 31) + c;
             }
-            return result;
+
+            return unchecked((int)hash);
         }
 
     }

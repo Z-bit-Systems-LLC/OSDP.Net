@@ -14,10 +14,8 @@ using OSDP.Net.Messages;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
 using OSDP.Net.Tracing;
-
-#if NETSTANDARD2_0
 using OSDP.Net.Utilities;
-#endif
+
 // ReSharper disable TemplateIsNotCompileTimeConstantProblem
 
 namespace OSDP.Net
@@ -79,10 +77,8 @@ namespace OSDP.Net
             _cancellationTokenSource?.Dispose();
         }
 
-        private static TimeSpan IdleLineDelay(IOsdpConnection connection, int numberOfBytes)
-        {
-            return TimeSpan.FromSeconds((1.0 / connection.BaudRate) * (10.0 * numberOfBytes));
-        }
+        private static TimeSpan IdleLineDelay(IOsdpConnection connection, int numberOfBytes) =>
+            LineTiming.ForCharacters(connection.BaudRate, numberOfBytes);
 
         /// <summary>
         /// Closes down the connection
