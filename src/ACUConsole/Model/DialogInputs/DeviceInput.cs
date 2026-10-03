@@ -1,9 +1,9 @@
 namespace ACUConsole.Model.DialogInputs
 {
     /// <summary>
-    /// Data transfer object for add device dialog input
+    /// Data transfer object for add and edit device dialog input
     /// </summary>
-    public class AddDeviceInput
+    public class DeviceInput
     {
         public string Name { get; set; } = string.Empty;
         public byte Address { get; set; }
@@ -11,6 +11,5 @@ namespace ACUConsole.Model.DialogInputs
         public bool UseSecureChannel { get; set; }
         public byte[] SecureChannelKey { get; set; } = [];
         public bool WasCancelled { get; set; }
-        public bool OverwriteExisting { get; set; }
     }
 }

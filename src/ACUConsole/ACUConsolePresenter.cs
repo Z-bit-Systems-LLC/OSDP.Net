@@ -390,14 +390,15 @@ namespace ACUConsole
                 throw new InvalidOperationException("Start a connection before adding devices.");
             }
 
+            var existingDevice = _settings.Devices.FirstOrDefault(device => device.Address == address);
+            if (existingDevice != null)
+            {
+                throw new InvalidOperationException(
+                    $"Device '{existingDevice.Name}' already exists at address {address}. Use Devices > Edit to change it.");
+            }
+
             _lastNak.TryRemove(address, out _);
             _controlPanel.AddDevice(_connectionId, address, useCrc, useSecureChannel, secureChannelKey);
-
-            var foundDevice = _settings.Devices.FirstOrDefault(device => device.Address == address);
-            if (foundDevice != null)
-            {
-                _settings.Devices.Remove(foundDevice);
-            }
 
             _settings.Devices.Add(new DeviceSetting
             {
@@ -409,6 +410,43 @@ namespace ACUConsole
             });
 
             AddLogMessage($"Device '{name}' added at address {address}");
+        }
+
+        public void UpdateDevice(byte originalAddress, string name, byte address, bool useCrc, bool useSecureChannel,
+            byte[] secureChannelKey)
+        {
+            if (!IsConnected)
+            {
+                throw new InvalidOperationException("Start a connection before editing devices.");
+            }
+
+            var device = _settings.Devices.FirstOrDefault(d => d.Address == originalAddress)
+                         ?? throw new InvalidOperationException($"No device exists at address {originalAddress}.");
+
+            if (address != originalAddress)
+            {
+                var conflictingDevice = _settings.Devices.FirstOrDefault(d => d.Address == address);
+                if (conflictingDevice != null)
+                {
+                    throw new InvalidOperationException(
+                        $"Device '{conflictingDevice.Name}' already exists at address {address}.");
+                }
+
+                _controlPanel.RemoveDevice(_connectionId, originalAddress);
+                _lastNak.TryRemove(originalAddress, out _);
+            }
+
+            // Re-adding replaces the device on the bus, so new CRC and secure channel settings take effect
+            _lastNak.TryRemove(address, out _);
+            _controlPanel.AddDevice(_connectionId, address, useCrc, useSecureChannel, secureChannelKey);
+
+            device.Name = name;
+            device.Address = address;
+            device.UseCrc = useCrc;
+            device.UseSecureChannel = useSecureChannel;
+            device.SecureChannelKey = secureChannelKey;
+
+            AddLogMessage($"Device '{name}' updated at address {address}");
         }
 
         public void RemoveDevice(byte address)

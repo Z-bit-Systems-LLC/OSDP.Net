@@ -113,6 +113,7 @@ namespace ACUConsole
                 ]),
                 new MenuBarItem("_Devices", [
                     new MenuItem("_Add", string.Empty, AddDevice),
+                    new MenuItem("_Edit", string.Empty, EditDevice),
                     new MenuItem("_Remove", string.Empty, RemoveDevice),
                     _discoverMenuItem
                 ]),
@@ -430,7 +431,7 @@ namespace ACUConsole
                 return;
             }
 
-            var input = AddDeviceDialog.Show(_app, _presenter.Settings.Devices.ToArray());
+            var input = DeviceDialog.ShowAdd(_app, _presenter.Settings.Devices.ToArray());
 
             if (!input.WasCancelled)
             {
@@ -455,6 +456,51 @@ namespace ACUConsole
                 {
                     ShowError("Error", ex.Message);
                 }
+            }
+        }
+
+        private void EditDevice()
+        {
+            if (!_presenter.IsConnected)
+            {
+                ShowError("Information", "Start a connection before editing devices.");
+                return;
+            }
+
+            var devices = _presenter.Settings.Devices.ToArray();
+            if (devices.Length == 0)
+            {
+                ShowError("Information", "No devices to edit.");
+                return;
+            }
+
+            var selection = DeviceSelectionDialog.Show(_app, "Edit Device", devices, _presenter.GetDeviceList(), "Next");
+            if (selection.WasCancelled) return;
+
+            var device = devices.First(d => d.Address == selection.SelectedDeviceAddress);
+            var input = DeviceDialog.ShowEdit(_app, devices, device);
+            if (input.WasCancelled) return;
+
+            try
+            {
+                _presenter.UpdateDevice(selection.SelectedDeviceAddress, input.Name, input.Address, input.UseCrc,
+                    input.UseSecureChannel, input.SecureChannelKey);
+
+                // The device is re-added on the bus, so it starts out disconnected at its (possibly new) address
+                _deviceStatuses.Remove(selection.SelectedDeviceAddress);
+                _deviceStatuses[input.Address] = new DeviceConnectionStatus
+                {
+                    DeviceName = input.Name,
+                    Address = input.Address,
+                    IsConnected = false,
+                    IsSecureChannelEstablished = false
+                };
+
+                UpdateDeviceStatusDisplay();
+            }
+            catch (Exception ex)
+            {
+                ShowError("Error", ex.Message);
             }
         }
 
