@@ -85,7 +85,7 @@ public class RawCardData : PayloadData
         build.AppendLine($"Reader Number: {ReaderNumber}");
         build.AppendLine($"  Format Code: {Helpers.SplitCamelCase(FormatCode.ToString())}");
         build.AppendLine($"    Bit Count: {BitCount}");
-        build.AppendLine($"         Data: {FormatData(Data)}");
+        build.AppendLine($"  Binary Data: {FormatData(Data)}");
         build.AppendLine($"     Hex Data: {FormatHexData(Data)}");
         return build.ToString();
     }

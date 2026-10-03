@@ -45,6 +45,14 @@ namespace OSDP.Net.Tests.Model.ReplyData
         }
 
         [Test]
+        public void ToString_IncludesBinaryData()
+        {
+            var rawCardData = RawCardData.ParseData(new byte[] { 0x05, 0x00, 0x10, 0x00, 0x12, 0xab });
+
+            Assert.That(rawCardData.ToString(), Does.Contain("Binary Data: 0001001010101011"));
+        }
+
+        [Test]
         public void BuildData()
         {
             // Resharper disable once ConditionIsAlwaysTrueOrFalse
