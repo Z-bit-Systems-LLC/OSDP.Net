@@ -236,6 +236,19 @@ public class TestDevice : Device
             : base.HandleExtendedWrite(commandPayload);
     }
 
+    /// <summary>
+    /// Optional hook used by integration tests to accept <c>osdp_FILETRANSFER</c> commands. Null
+    /// until a test assigns a receiver, in which case the PD NAKs as an unimplemented command.
+    /// </summary>
+    public FileTransferReceiver FileTransferReceiver { get; set; }
+
+    protected override PayloadData HandleFileTransfer(FileTransferFragment commandPayload)
+    {
+        return FileTransferReceiver != null
+            ? FileTransferReceiver.AcceptFragment(commandPayload)
+            : base.HandleFileTransfer(commandPayload);
+    }
+
     protected override PayloadData HandleIdReport()
     {
         return new DeviceIdentification([0x01, 0x02, 0x03], 4, 5, 6, 7, 8, 9);

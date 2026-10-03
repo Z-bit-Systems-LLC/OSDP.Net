@@ -14,6 +14,7 @@ using OSDP.Net.Connections;
 using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model;
 using PDConsole.Configuration;
+using PDConsole.FileTransfer;
 using PDConsole.Model.DialogInputs;
 using PDConsole.Tracing;
 
@@ -36,11 +37,18 @@ namespace PDConsole
         private ILoggerFactory _loggerFactory;
         private PDPacketCaptureTracer _packetCaptureTracer;
 
+        // Most recent file transfer state, shown in the device status line. Progress arrives once per
+        // fragment, so redraws are rate limited to keep a large transfer from saturating the UI thread.
+        private FileTransferEvent _fileTransferState;
+        private DateTime _lastFileTransferReport = DateTime.MinValue;
+        private static readonly TimeSpan FileTransferReportInterval = TimeSpan.FromMilliseconds(250);
+
         // Events
         public event EventHandler<CommandEvent> CommandReceived;
         public event EventHandler<string> StatusChanged;
         public event EventHandler<string> ConnectionStatusChanged;
         public event EventHandler<Exception> ErrorOccurred;
+        public event EventHandler<FileTransferEvent> FileTransferChanged;
 
         // Properties
         public bool IsDeviceRunning => _device != null && _connectionListener != null;
@@ -93,6 +101,8 @@ namespace PDConsole
                 _device = new PDDevice(deviceConfig, _settings.Device, loggerFactory);
                 _device.CommandReceived += OnDeviceCommandReceived;
                 _device.EncryptionKeyChanged += OnEncryptionKeyChanged;
+                _device.FileTransferProgress += OnFileTransferProgress;
+                _device.FileTransferCompleted += OnFileTransferCompleted;
 
                 // Create a connection listener based on type, optionally wrapped with packet capture
                 var listener = CreateConnectionListener();
@@ -129,6 +139,8 @@ namespace PDConsole
                 {
                     _device.CommandReceived -= OnDeviceCommandReceived;
                     _device.EncryptionKeyChanged -= OnEncryptionKeyChanged;
+                    _device.FileTransferProgress -= OnFileTransferProgress;
+                    _device.FileTransferCompleted -= OnFileTransferCompleted;
                     await _device.StopListening();
                 }
 
@@ -194,6 +206,11 @@ namespace PDConsole
             if (acuMaxReceiveSize != null)
             {
                 status += $" | ACU RX Size: {acuMaxReceiveSize} bytes";
+            }
+
+            if (_fileTransferState != null)
+            {
+                status += $" | File: {_fileTransferState}";
             }
 
             return status;
@@ -382,6 +399,34 @@ namespace PDConsole
                 // SaveSettings already surfaced the failure via ErrorOccurred; swallow here so the
                 // KEYSET reply is still sent to the ACU.
             }
+        }
+
+        private void OnFileTransferProgress(object sender, FileTransferEvent e)
+        {
+            _fileTransferState = e;
+
+            // Raised once per fragment on the connection loop. Reporting every one would queue a UI
+            // redraw per fragment and stall the replies the ACU is waiting on.
+            var now = DateTime.UtcNow;
+            if (now - _lastFileTransferReport < FileTransferReportInterval)
+            {
+                return;
+            }
+
+            _lastFileTransferReport = now;
+            FileTransferChanged?.Invoke(this, e);
+        }
+
+        private void OnFileTransferCompleted(object sender, FileTransferEvent e)
+        {
+            _fileTransferState = e;
+            _lastFileTransferReport = DateTime.UtcNow;
+
+            StatusChanged?.Invoke(this, e.Error != null
+                ? $"File transfer failed: {e.Error}"
+                : $"File transfer complete: {e.SavedFilePath}");
+
+            FileTransferChanged?.Invoke(this, e);
         }
 
         /// <summary>

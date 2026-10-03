@@ -15,10 +15,8 @@ using OSDP.Net.Messages.SecureChannel;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
 using OSDP.Net.Tracing;
-
-#if NETSTANDARD2_0
 using OSDP.Net.Utilities;
-#endif
+
 // ReSharper disable TemplateIsNotCompileTimeConstantProblem
 
 namespace OSDP.Net
@@ -87,7 +85,7 @@ namespace OSDP.Net
             // connection that does not derive from OsdpConnection.
             return connection is OsdpConnection osdpConnection
                 ? osdpConnection.IdleLineDelay(numberOfBytes)
-                : TimeSpan.FromSeconds((1.0 / connection.BaudRate) * (10.0 * numberOfBytes));
+                : LineTiming.ForCharacters(connection.BaudRate, numberOfBytes);
         }
 
         /// <summary>

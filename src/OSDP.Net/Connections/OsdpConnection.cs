@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using OSDP.Net.Utilities;
 
 namespace OSDP.Net.Connections
 {
@@ -21,7 +22,12 @@ namespace OSDP.Net.Connections
         }   
 
         /// <inheritdoc/>
-        public int BaudRate { get; }
+        /// <remarks>
+        /// The setter is protected because most connection types fix their rate at construction.
+        /// Types that can retune a live connection, such as
+        /// <see cref="SerialPortOsdpConnection"/>, expose a public method to do so.
+        /// </remarks>
+        public int BaudRate { get; protected set; }
 
         /// <inheritdoc/>
         public virtual bool IsOpen { get; protected set; }
@@ -37,7 +43,7 @@ namespace OSDP.Net.Connections
         /// </summary>
         /// <param name="numberOfBytes">The number of bytes being transmitted.</param>
         public virtual TimeSpan IdleLineDelay(int numberOfBytes) =>
-            TimeSpan.FromSeconds((1.0 / BaudRate) * (10.0 * numberOfBytes));
+            LineTiming.ForCharacters(BaudRate, numberOfBytes);
 
         /// <inheritdoc/>
         public abstract Task Close();

@@ -1,6 +1,7 @@
 using System.IO;
 using ACUConsole.Model.DialogInputs;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.Views;
 
 namespace ACUConsole.Dialogs
 {
@@ -12,17 +13,22 @@ namespace ACUConsole.Dialogs
         /// <summary>
         /// Shows the load configuration dialog and returns user input
         /// </summary>
+        /// <param name="app">The application instance</param>
         /// <returns>LoadConfigurationInput with user's choices</returns>
-        public static LoadConfigurationInput Show()
+        public static LoadConfigurationInput Show(IApplication app)
         {
             var result = new LoadConfigurationInput { WasCancelled = true };
 
-            var openDialog = new OpenDialog("Load Configuration", string.Empty, [".config"]);
-            Application.Run(openDialog);
-
-            if (!openDialog.Canceled && !string.IsNullOrEmpty(openDialog.FilePath?.ToString()))
+            var openDialog = new OpenDialog
             {
-                var filePath = openDialog.FilePath.ToString();
+                Title = "Load Configuration",
+                AllowedTypes = { new AllowedType("Configuration", ".config") }
+            };
+            app.Run(openDialog);
+
+            if (!openDialog.Canceled && !string.IsNullOrEmpty(openDialog.Path))
+            {
+                var filePath = openDialog.Path;
 
                 if (File.Exists(filePath))
                 {
@@ -31,10 +37,11 @@ namespace ACUConsole.Dialogs
                 }
                 else
                 {
-                    MessageBox.ErrorQuery(40, 8, "Error", "Selected file does not exist", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Selected file does not exist", "OK");
                 }
             }
 
+            openDialog.Dispose();
             return result;
         }
     }

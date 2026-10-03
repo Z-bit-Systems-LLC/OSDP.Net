@@ -60,7 +60,7 @@ public static class CommandReplyExtensions
         { ReplyType.FileTransferStatus, "osdp_FTSTAT" },
         { ReplyType.PIVData, "osdp_PIVDATAR" },
         { ReplyType.ResponseToChallenge, "osdp_CRAUTHR" },
-        { ReplyType.ManufactureSpecific, "osdp_MFGSTATR" },
+        { ReplyType.ManufactureSpecific, "osdp_MFGREP" },
         { ReplyType.ExtendedRead, "osdp_XRD" }
     };
 

@@ -49,9 +49,17 @@ public class SerialPortConnectionListener : OsdpConnectionListener
     {
         try
         {
-            var connection = new SerialPortOsdpConnection(_portName, BaudRate);
+            var connection = new SerialPortOsdpConnection(_portName, BaudRate)
+            {
+                // An ACU discards its buffers before each command because it drives a strict
+                // command/reply cycle. A PD must not: this listener serves devices that reply to an
+                // incoming stream, and DiscardInBuffer throws away bytes of a command that is
+                // already arriving. Those bytes are dropped below the tracing layer, so the loss is
+                // invisible in a packet capture.
+                DiscardBuffersBeforeWrite = false
+            };
             await connection.Open();
-            
+
             Logger?.LogDebug("Serial port {Port} opened successfully", _portName);
 
             var task = Task.Run(async () =>

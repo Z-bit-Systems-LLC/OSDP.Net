@@ -1,9 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using ACUConsole.Configuration;
 using ACUConsole.Model.DialogInputs;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace ACUConsole.Dialogs
 {
@@ -15,47 +16,50 @@ namespace ACUConsole.Dialogs
         /// <summary>
         /// Shows the file transfer dialog and returns user input
         /// </summary>
+        /// <param name="app">The Terminal.Gui application instance driving the dialog.</param>
         /// <param name="devices">Available devices for selection</param>
         /// <param name="deviceList">Formatted device list for display</param>
         /// <returns>FileTransferInput with user's choices</returns>
-        public static FileTransferInput Show(DeviceSetting[] devices, string[] deviceList)
+        public static FileTransferInput Show(IApplication app, DeviceSetting[] devices, string[] deviceList)
         {
             var result = new FileTransferInput { WasCancelled = true };
 
             // First, collect file transfer parameters
-            var typeTextField = new TextField(25, 1, 25, "1");
-            var messageSizeTextField = new TextField(25, 3, 25, "128");
-            var filePathTextField = new TextField(25, 5, 40, "");
+            var typeTextField = new TextField { X = 25, Y = 1, Width = 25, Text = "1" };
+            var messageSizeTextField = new TextField { X = 25, Y = 3, Width = 25, Text = "128" };
+            var filePathTextField = new TextField { X = 25, Y = 5, Width = 40, Text = "" };
 
             void BrowseFileButtonClicked()
             {
-                var openDialog = new OpenDialog("Select File to Transfer", "", new List<string>());
-                Application.Run(openDialog);
+                var openDialog = new OpenDialog { Title = "Select File to Transfer" };
+                app.Run(openDialog);
 
-                if (!openDialog.Canceled && !string.IsNullOrEmpty(openDialog.FilePath?.ToString()))
+                if (!openDialog.Canceled && !string.IsNullOrEmpty(openDialog.Path))
                 {
-                    filePathTextField.Text = openDialog.FilePath.ToString();
+                    filePathTextField.Text = openDialog.Path;
                 }
+
+                openDialog.Dispose();
             }
 
             void NextButtonClicked()
             {
-                if (!byte.TryParse(typeTextField.Text.ToString(), out var type))
+                if (!byte.TryParse(typeTextField.Text, out var type))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid type entered!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid type entered!", "OK");
                     return;
                 }
 
-                if (!byte.TryParse(messageSizeTextField.Text.ToString(), out var messageSize))
+                if (!byte.TryParse(messageSizeTextField.Text, out var messageSize))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid message size entered!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid message size entered!", "OK");
                     return;
                 }
 
-                var filePath = filePathTextField.Text.ToString();
+                var filePath = filePathTextField.Text;
                 if (string.IsNullOrWhiteSpace(filePath))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Please enter file path!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Please enter file path!", "OK");
                     return;
                 }
 
@@ -64,22 +68,20 @@ namespace ACUConsole.Dialogs
                 {
                     if (!File.Exists(filePath))
                     {
-                        MessageBox.ErrorQuery(40, 10, "Error", "File does not exist!", "OK");
+                        MessageBox.ErrorQuery(app, "Error", "File does not exist!", "OK");
                         return;
                     }
                     fileData = File.ReadAllBytes(filePath);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(60, 10, "Error", $"Failed to read file: {ex.Message}", "OK");
+                    MessageBox.ErrorQuery(app, "Error", $"Failed to read file: {ex.Message}", "OK");
                     return;
                 }
 
-                Application.RequestStop();
-
                 // Show device selection dialog
-                var deviceSelection = DeviceSelectionDialog.Show("File Transfer", devices, deviceList);
-                
+                var deviceSelection = DeviceSelectionDialog.Show(app, "File Transfer", devices, deviceList);
+
                 if (!deviceSelection.WasCancelled)
                 {
                     // All validation passed - collect the data
@@ -90,34 +92,40 @@ namespace ACUConsole.Dialogs
                     result.DeviceAddress = deviceSelection.SelectedDeviceAddress;
                     result.WasCancelled = false;
                 }
+
+                app.RequestStop();
             }
 
             void CancelButtonClicked()
             {
                 result.WasCancelled = true;
-                Application.RequestStop();
+                app.RequestStop();
             }
 
-            var sendButton = new Button("Next", true);
-            sendButton.Clicked += NextButtonClicked;
-            var browseButton = new Button("Browse");
-            browseButton.Clicked += BrowseFileButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += CancelButtonClicked;
+            var sendButton = new Button { Text = "Next", IsDefault = true };
+            sendButton.Accepting += (_, e) => { NextButtonClicked(); e.Handled = true; };
+            var browseButton = new Button { Text = "Browse" };
+            browseButton.Accepting += (_, e) => { BrowseFileButtonClicked(); e.Handled = true; };
+            var cancelButton = new Button { Text = "Cancel" };
+            cancelButton.Accepting += (_, e) => { CancelButtonClicked(); e.Handled = true; };
 
-            var dialog = new Dialog("File Transfer", 80, 15, cancelButton, sendButton);
-            dialog.Add(new Label(1, 1, "Type:"), typeTextField,
-                      new Label(1, 3, "Message Size:"), messageSizeTextField,
-                      new Label(1, 5, "File Path:"), filePathTextField);
-            
+            var dialog = new Dialog { Title = "File Transfer", Width = 80, Height = Dim.Auto() };
+            dialog.Add(new Label { X = 1, Y = 1, Text = "Type:" }, typeTextField,
+                      new Label { X = 1, Y = 3, Text = "Message Size:" }, messageSizeTextField,
+                      new Label { X = 1, Y = 5, Text = "File Path:" }, filePathTextField);
+
             browseButton.X = Pos.Right(filePathTextField) + 2;
             browseButton.Y = 5;
             dialog.Add(browseButton);
-            
+
+            dialog.AddButton(cancelButton);
+            dialog.AddButton(sendButton);
+
             typeTextField.SetFocus();
 
-            Application.Run(dialog);
-            
+            app.Run(dialog);
+            dialog.Dispose();
+
             return result;
         }
     }

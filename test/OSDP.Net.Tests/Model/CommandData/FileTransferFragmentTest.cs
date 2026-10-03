@@ -36,6 +36,20 @@ internal class FileTransferFragmentTest
     }
 
     [Test]
+    public void ToStringShowsTheFragmentPlacement()
+    {
+        // Arrange Act - a capture is the primary tool for debugging a transfer, so the offset and
+        // sizes have to be legible in it
+        var actual = TestFileTransferFragment.ToString();
+
+        // Assert
+        Assert.That(actual, Does.Contain("0x01 (Opaque file contents)"));
+        Assert.That(actual, Does.Contain("Total Size: 10"));
+        Assert.That(actual, Does.Contain("Offset: 0"));
+        Assert.That(actual, Does.Contain("Fragment Size: 5"));
+    }
+
+    [Test]
     public void ParseData()
     {
         var actual = FileTransferFragment.ParseData(TestData);

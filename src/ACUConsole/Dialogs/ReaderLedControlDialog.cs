@@ -1,7 +1,11 @@
+using System;
+using System.Collections.ObjectModel;
 using ACUConsole.Extensions;
 using ACUConsole.Model.DialogInputs;
 using OSDP.Net.Model.CommandData;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace ACUConsole.Dialogs
 {
@@ -40,24 +44,24 @@ namespace ACUConsole.Dialogs
         /// Shows the reader LED control dialog sequence and returns user input
         /// </summary>
         /// <returns>ReaderLedControlInput with user's choices</returns>
-        public static ReaderLedControlInput Show()
+        public static ReaderLedControlInput Show(IApplication app)
         {
             var result = new ReaderLedControlInput { WasCancelled = true };
 
             // Step 1: Get reader and LED numbers
-            if (!ShowBasicSettingsDialog(result))
+            if (!ShowBasicSettingsDialog(app, result))
             {
                 return result;
             }
 
             // Step 2: Get temporary settings
-            if (!ShowTemporarySettingsDialog(result))
+            if (!ShowTemporarySettingsDialog(app, result))
             {
                 return result;
             }
 
             // Step 3: Get permanent settings
-            if (!ShowPermanentSettingsDialog(result))
+            if (!ShowPermanentSettingsDialog(app, result))
             {
                 return result;
             }
@@ -66,250 +70,289 @@ namespace ACUConsole.Dialogs
             return result;
         }
 
-        private static bool ShowBasicSettingsDialog(ReaderLedControlInput result)
+        private static bool ShowBasicSettingsDialog(IApplication app, ReaderLedControlInput result)
         {
             var completed = false;
 
             // Labels: "Reader Number:" (14 chars), "LED Number:" (11 chars)
             // x = longest_label (14) + 5 = 19, use 20
-            var readerNumberTextField = new TextField(20, 1, 25, "0");
-            var ledNumberTextField = new TextField(20, 3, 25, "0");
+            var readerNumberTextField = new TextField { X = 20, Y = 1, Width = 25, Text = "0" };
+            var ledNumberTextField = new TextField { X = 20, Y = 3, Width = 25, Text = "0" };
 
             void NextButtonClicked()
             {
-                if (!byte.TryParse(readerNumberTextField.Text.ToString(), out var readerNumber))
+                if (!byte.TryParse(readerNumberTextField.Text, out var readerNumber))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reader number!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid reader number!", "OK");
                     return;
                 }
 
-                if (!byte.TryParse(ledNumberTextField.Text.ToString(), out var ledNumber))
+                if (!byte.TryParse(ledNumberTextField.Text, out var ledNumber))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid LED number!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid LED number!", "OK");
                     return;
                 }
 
                 result.ReaderNumber = readerNumber;
                 result.LedNumber = ledNumber;
                 completed = true;
-                Application.RequestStop();
+                app.RequestStop();
             }
 
             void CancelButtonClicked()
             {
-                Application.RequestStop();
+                app.RequestStop();
             }
 
-            var nextButton = new Button("Next", true);
-            nextButton.Clicked += NextButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += CancelButtonClicked;
+            var nextButton = new Button { Text = "Next", IsDefault = true };
+            nextButton.Accepting += (_, e) => { NextButtonClicked(); e.Handled = true; };
+            var cancelButton = new Button { Text = "Cancel" };
+            cancelButton.Accepting += (_, e) => { CancelButtonClicked(); e.Handled = true; };
 
-            var dialog = new Dialog("LED Control - Step 1 of 3", 60, 10, cancelButton, nextButton);
+            var dialog = new Dialog { Title = "LED Control - Step 1 of 3", Width = 60, Height = Dim.Auto() };
             dialog.Add(
-                new Label(1, 1, "Reader Number:"), readerNumberTextField,
-                new Label(1, 3, "LED Number:"), ledNumberTextField);
+                new Label { X = 1, Y = 1, Text = "Reader Number:" }, readerNumberTextField,
+                new Label { X = 1, Y = 3, Text = "LED Number:" }, ledNumberTextField);
+            dialog.AddButton(cancelButton);
+            dialog.AddButton(nextButton);
             readerNumberTextField.SetFocus();
 
-            Application.Run(dialog);
+            app.Run(dialog);
+            dialog.Dispose();
 
             return completed;
         }
 
-        private static bool ShowTemporarySettingsDialog(ReaderLedControlInput result)
+        private static bool ShowTemporarySettingsDialog(IApplication app, ReaderLedControlInput result)
         {
             var completed = false;
 
             // Controls at x=20, custom hex fields inline at x=52
-            var modeComboBox = new ComboBox(new Rect(20, 1, 30, 5), TemporaryControlCodes)
+            var modeComboBox = new DropDownList
             {
-                SelectedItem = 1
+                X = 20,
+                Y = 1,
+                Width = 30,
+                Height = 1,
+                Source = new ListWrapper<string>(new ObservableCollection<string>(TemporaryControlCodes))
             }.ConfigureForOptimalUX();
+            modeComboBox.Text = TemporaryControlCodes[1];
 
-            var onTimeTextField = new TextField(20, 3, 15, "1");
-            var offTimeTextField = new TextField(20, 5, 15, "0");
+            var onTimeTextField = new TextField { X = 20, Y = 3, Width = 15, Text = "1" };
+            var offTimeTextField = new TextField { X = 20, Y = 5, Width = 15, Text = "0" };
 
-            var onColorHexTextField = new TextField(57, 7, 8, "01");
-            var onColorComboBox = new ComboBox(new Rect(20, 7, 30, 5), StandardColors)
+            var onColorHexTextField = new TextField { X = 57, Y = 7, Width = 8, Text = "01" };
+            var onColorComboBox = new DropDownList
             {
-                SelectedItem = 1
+                X = 20,
+                Y = 7,
+                Width = 30,
+                Height = 1,
+                Source = new ListWrapper<string>(new ObservableCollection<string>(StandardColors))
             }.ConfigureForOptimalUX();
-            onColorComboBox.SelectedItemChanged += args =>
-                onColorHexTextField.Text = IndexToHex(args.Item);
+            onColorComboBox.Text = StandardColors[1];
+            onColorComboBox.TextChanged += (_, _) =>
+                onColorHexTextField.Text = IndexToHex(Array.IndexOf(StandardColors, onColorComboBox.Text));
 
-            var offColorHexTextField = new TextField(57, 9, 8, "00");
-            var offColorComboBox = new ComboBox(new Rect(20, 9, 30, 5), StandardColors)
+            var offColorHexTextField = new TextField { X = 57, Y = 9, Width = 8, Text = "00" };
+            var offColorComboBox = new DropDownList
             {
-                SelectedItem = 0
+                X = 20,
+                Y = 9,
+                Width = 30,
+                Height = 1,
+                Source = new ListWrapper<string>(new ObservableCollection<string>(StandardColors))
             }.ConfigureForOptimalUX();
-            offColorComboBox.SelectedItemChanged += args =>
-                offColorHexTextField.Text = IndexToHex(args.Item);
+            offColorComboBox.Text = StandardColors[0];
+            offColorComboBox.TextChanged += (_, _) =>
+                offColorHexTextField.Text = IndexToHex(Array.IndexOf(StandardColors, offColorComboBox.Text));
 
-            var timerTextField = new TextField(20, 11, 15, "0");
+            var timerTextField = new TextField { X = 20, Y = 11, Width = 15, Text = "0" };
 
             void NextButtonClicked()
             {
-                if (!byte.TryParse(onTimeTextField.Text.ToString(), out var onTime))
+                if (!byte.TryParse(onTimeTextField.Text, out var onTime))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid ON time!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid ON time!", "OK");
                     return;
                 }
 
-                if (!byte.TryParse(offTimeTextField.Text.ToString(), out var offTime))
+                if (!byte.TryParse(offTimeTextField.Text, out var offTime))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid OFF time!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid OFF time!", "OK");
                     return;
                 }
 
-                if (!ushort.TryParse(timerTextField.Text.ToString(), out var timer))
+                if (!ushort.TryParse(timerTextField.Text, out var timer))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid timer value!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid timer value!", "OK");
                     return;
                 }
 
                 // Parse ON color
-                if (!TryGetColorValue(onColorComboBox.SelectedItem, onColorHexTextField.Text.ToString(),
+                if (!TryGetColorValue(Array.IndexOf(StandardColors, onColorComboBox.Text), onColorHexTextField.Text,
                         out var onColor, out var onColorError))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", onColorError, "OK");
+                    MessageBox.ErrorQuery(app, "Error", onColorError, "OK");
                     return;
                 }
 
                 // Parse OFF color
-                if (!TryGetColorValue(offColorComboBox.SelectedItem, offColorHexTextField.Text.ToString(),
+                if (!TryGetColorValue(Array.IndexOf(StandardColors, offColorComboBox.Text), offColorHexTextField.Text,
                         out var offColor, out var offColorError))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", offColorError, "OK");
+                    MessageBox.ErrorQuery(app, "Error", offColorError, "OK");
                     return;
                 }
 
-                result.TemporaryMode = (TemporaryReaderControlCode)modeComboBox.SelectedItem;
+                result.TemporaryMode = (TemporaryReaderControlCode)Array.IndexOf(TemporaryControlCodes, modeComboBox.Text);
                 result.TemporaryOnTime = onTime;
                 result.TemporaryOffTime = offTime;
                 result.TemporaryOnColor = onColor;
                 result.TemporaryOffColor = offColor;
                 result.TemporaryTimer = timer;
                 completed = true;
-                Application.RequestStop();
+                app.RequestStop();
             }
 
             void CancelButtonClicked()
             {
-                Application.RequestStop();
+                app.RequestStop();
             }
 
-            var nextButton = new Button("Next", true);
-            nextButton.Clicked += NextButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += CancelButtonClicked;
+            var nextButton = new Button { Text = "Next", IsDefault = true };
+            nextButton.Accepting += (_, e) => { NextButtonClicked(); e.Handled = true; };
+            var cancelButton = new Button { Text = "Cancel" };
+            cancelButton.Accepting += (_, e) => { CancelButtonClicked(); e.Handled = true; };
 
-            var dialog = new Dialog("LED Control - Temporary (2 of 3)", 70, 18, cancelButton, nextButton);
+            var dialog = new Dialog { Title = "LED Control - Temporary (2 of 3)", Width = 70, Height = Dim.Auto() };
             dialog.Add(
-                new Label(1, 1, "Control Code:"), modeComboBox,
-                new Label(1, 3, "ON Time (x100ms):"), onTimeTextField,
-                new Label(1, 5, "OFF Time (x100ms):"), offTimeTextField,
-                new Label(1, 7, "ON Color:"), onColorComboBox,
-                new Label(52, 7, "hex:"), onColorHexTextField,
-                new Label(1, 9, "OFF Color:"), offColorComboBox,
-                new Label(52, 9, "hex:"), offColorHexTextField,
-                new Label(1, 11, "Timer (x100ms):"), timerTextField);
+                new Label { X = 1, Y = 1, Text = "Control Code:" }, modeComboBox,
+                new Label { X = 1, Y = 3, Text = "ON Time (x100ms):" }, onTimeTextField,
+                new Label { X = 1, Y = 5, Text = "OFF Time (x100ms):" }, offTimeTextField,
+                new Label { X = 1, Y = 7, Text = "ON Color:" }, onColorComboBox,
+                new Label { X = 52, Y = 7, Text = "hex:" }, onColorHexTextField,
+                new Label { X = 1, Y = 9, Text = "OFF Color:" }, offColorComboBox,
+                new Label { X = 52, Y = 9, Text = "hex:" }, offColorHexTextField,
+                new Label { X = 1, Y = 11, Text = "Timer (x100ms):" }, timerTextField);
+            dialog.AddButton(cancelButton);
+            dialog.AddButton(nextButton);
             modeComboBox.SetFocus();
 
-            Application.Run(dialog);
+            app.Run(dialog);
+            dialog.Dispose();
 
             return completed;
         }
 
-        private static bool ShowPermanentSettingsDialog(ReaderLedControlInput result)
+        private static bool ShowPermanentSettingsDialog(IApplication app, ReaderLedControlInput result)
         {
             var completed = false;
 
             // Controls at x=20, custom hex fields inline at x=52
-            var modeComboBox = new ComboBox(new Rect(20, 1, 30, 5), PermanentControlCodes)
+            var modeComboBox = new DropDownList
             {
-                SelectedItem = 1
+                X = 20,
+                Y = 1,
+                Width = 30,
+                Height = 1,
+                Source = new ListWrapper<string>(new ObservableCollection<string>(PermanentControlCodes))
             }.ConfigureForOptimalUX();
+            modeComboBox.Text = PermanentControlCodes[1];
 
-            var onTimeTextField = new TextField(20, 3, 15, "1");
-            var offTimeTextField = new TextField(20, 5, 15, "0");
+            var onTimeTextField = new TextField { X = 20, Y = 3, Width = 15, Text = "1" };
+            var offTimeTextField = new TextField { X = 20, Y = 5, Width = 15, Text = "0" };
 
-            var onColorHexTextField = new TextField(57, 7, 8, "01");
-            var onColorComboBox = new ComboBox(new Rect(20, 7, 30, 5), StandardColors)
+            var onColorHexTextField = new TextField { X = 57, Y = 7, Width = 8, Text = "01" };
+            var onColorComboBox = new DropDownList
             {
-                SelectedItem = 1
+                X = 20,
+                Y = 7,
+                Width = 30,
+                Height = 1,
+                Source = new ListWrapper<string>(new ObservableCollection<string>(StandardColors))
             }.ConfigureForOptimalUX();
-            onColorComboBox.SelectedItemChanged += args =>
-                onColorHexTextField.Text = IndexToHex(args.Item);
+            onColorComboBox.Text = StandardColors[1];
+            onColorComboBox.TextChanged += (_, _) =>
+                onColorHexTextField.Text = IndexToHex(Array.IndexOf(StandardColors, onColorComboBox.Text));
 
-            var offColorHexTextField = new TextField(57, 9, 8, "00");
-            var offColorComboBox = new ComboBox(new Rect(20, 9, 30, 5), StandardColors)
+            var offColorHexTextField = new TextField { X = 57, Y = 9, Width = 8, Text = "00" };
+            var offColorComboBox = new DropDownList
             {
-                SelectedItem = 0
+                X = 20,
+                Y = 9,
+                Width = 30,
+                Height = 1,
+                Source = new ListWrapper<string>(new ObservableCollection<string>(StandardColors))
             }.ConfigureForOptimalUX();
-            offColorComboBox.SelectedItemChanged += args =>
-                offColorHexTextField.Text = IndexToHex(args.Item);
+            offColorComboBox.Text = StandardColors[0];
+            offColorComboBox.TextChanged += (_, _) =>
+                offColorHexTextField.Text = IndexToHex(Array.IndexOf(StandardColors, offColorComboBox.Text));
 
             void SendButtonClicked()
             {
-                if (!byte.TryParse(onTimeTextField.Text.ToString(), out var onTime))
+                if (!byte.TryParse(onTimeTextField.Text, out var onTime))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid ON time!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid ON time!", "OK");
                     return;
                 }
 
-                if (!byte.TryParse(offTimeTextField.Text.ToString(), out var offTime))
+                if (!byte.TryParse(offTimeTextField.Text, out var offTime))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid OFF time!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid OFF time!", "OK");
                     return;
                 }
 
                 // Parse ON color
-                if (!TryGetColorValue(onColorComboBox.SelectedItem, onColorHexTextField.Text.ToString(),
+                if (!TryGetColorValue(Array.IndexOf(StandardColors, onColorComboBox.Text), onColorHexTextField.Text,
                         out var onColor, out var onColorError))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", onColorError, "OK");
+                    MessageBox.ErrorQuery(app, "Error", onColorError, "OK");
                     return;
                 }
 
                 // Parse OFF color
-                if (!TryGetColorValue(offColorComboBox.SelectedItem, offColorHexTextField.Text.ToString(),
+                if (!TryGetColorValue(Array.IndexOf(StandardColors, offColorComboBox.Text), offColorHexTextField.Text,
                         out var offColor, out var offColorError))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", offColorError, "OK");
+                    MessageBox.ErrorQuery(app, "Error", offColorError, "OK");
                     return;
                 }
 
-                result.PermanentMode = (PermanentReaderControlCode)modeComboBox.SelectedItem;
+                result.PermanentMode = (PermanentReaderControlCode)Array.IndexOf(PermanentControlCodes, modeComboBox.Text);
                 result.PermanentOnTime = onTime;
                 result.PermanentOffTime = offTime;
                 result.PermanentOnColor = onColor;
                 result.PermanentOffColor = offColor;
                 completed = true;
-                Application.RequestStop();
+                app.RequestStop();
             }
 
             void CancelButtonClicked()
             {
-                Application.RequestStop();
+                app.RequestStop();
             }
 
-            var sendButton = new Button("Send", true);
-            sendButton.Clicked += SendButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += CancelButtonClicked;
+            var sendButton = new Button { Text = "Send", IsDefault = true };
+            sendButton.Accepting += (_, e) => { SendButtonClicked(); e.Handled = true; };
+            var cancelButton = new Button { Text = "Cancel" };
+            cancelButton.Accepting += (_, e) => { CancelButtonClicked(); e.Handled = true; };
 
-            var dialog = new Dialog("LED Control - Permanent (3 of 3)", 70, 16, cancelButton, sendButton);
+            var dialog = new Dialog { Title = "LED Control - Permanent (3 of 3)", Width = 70, Height = Dim.Auto() };
             dialog.Add(
-                new Label(1, 1, "Control Code:"), modeComboBox,
-                new Label(1, 3, "ON Time (x100ms):"), onTimeTextField,
-                new Label(1, 5, "OFF Time (x100ms):"), offTimeTextField,
-                new Label(1, 7, "ON Color:"), onColorComboBox,
-                new Label(52, 7, "hex:"), onColorHexTextField,
-                new Label(1, 9, "OFF Color:"), offColorComboBox,
-                new Label(52, 9, "hex:"), offColorHexTextField);
+                new Label { X = 1, Y = 1, Text = "Control Code:" }, modeComboBox,
+                new Label { X = 1, Y = 3, Text = "ON Time (x100ms):" }, onTimeTextField,
+                new Label { X = 1, Y = 5, Text = "OFF Time (x100ms):" }, offTimeTextField,
+                new Label { X = 1, Y = 7, Text = "ON Color:" }, onColorComboBox,
+                new Label { X = 52, Y = 7, Text = "hex:" }, onColorHexTextField,
+                new Label { X = 1, Y = 9, Text = "OFF Color:" }, offColorComboBox,
+                new Label { X = 52, Y = 9, Text = "hex:" }, offColorHexTextField);
+            dialog.AddButton(cancelButton);
+            dialog.AddButton(sendButton);
             modeComboBox.SetFocus();
 
-            Application.Run(dialog);
+            app.Run(dialog);
+            dialog.Dispose();
 
             return completed;
         }
@@ -354,14 +397,14 @@ namespace ACUConsole.Dialogs
 
             // Remove 0x prefix if present
             var cleanHex = hexValue.Trim();
-            if (cleanHex.StartsWith("0x", System.StringComparison.OrdinalIgnoreCase))
+            if (cleanHex.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
             {
                 cleanHex = cleanHex[2..];
             }
 
             try
             {
-                var value = System.Convert.ToByte(cleanHex, 16);
+                var value = Convert.ToByte(cleanHex, 16);
                 color = value;
                 return true;
             }

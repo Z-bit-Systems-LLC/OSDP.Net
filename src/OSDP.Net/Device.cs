@@ -271,7 +271,8 @@ public class Device : IDisposable
         [CommandType.LocalStatus] = new[] { ReplyType.LocalStatusReport },
         [CommandType.InputStatus] = new[] { ReplyType.InputStatusReport },
         [CommandType.OutputStatus] = new[] { ReplyType.OutputStatusReport },
-        [CommandType.ReaderStatus] = new[] { ReplyType.ReaderStatusReport }
+        [CommandType.ReaderStatus] = new[] { ReplyType.ReaderStatusReport },
+        [CommandType.FileTransfer] = new[] { ReplyType.FileTransferStatus }
     };
 
     /// <summary>
@@ -440,10 +441,19 @@ public class Device : IDisposable
     /// Handles the file transfer command received from the OSDP device.
     /// </summary>
     /// <param name="commandPayload">The incoming file transfer fragment command message.</param>
-    /// <returns></returns>
-    private PayloadData HandleFileTransfer(FileTransferFragment commandPayload)
+    /// <returns>
+    /// A payload data response indicating the result of accepting the fragment. Override this method
+    /// to receive files from the ACU; the spec permits only a <see cref="FileTransferStatus"/> or a
+    /// <see cref="Nak"/> in reply. <see cref="FileTransferReceiver"/> implements the reassembly and
+    /// status reporting that a conforming reply requires.
+    /// </returns>
+    /// <remarks>
+    /// The base implementation NAKs, declaring that this PD accepts no file transfers.
+    /// See OSDP v2.2.2 subclause 6.26.
+    /// </remarks>
+    protected virtual PayloadData HandleFileTransfer(FileTransferFragment commandPayload)
     {
-        _logger.LogInformation("Received a file transfer command: {CommandPayload}", commandPayload.ToString());
+        _logger?.LogInformation("Received a file transfer command: {CommandPayload}", commandPayload.ToString());
         return HandleUnknownCommand(CommandType.FileTransfer);
     }
 

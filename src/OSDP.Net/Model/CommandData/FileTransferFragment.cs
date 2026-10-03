@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using OSDP.Net.Messages;
 using OSDP.Net.Messages.SecureChannel;
 
@@ -8,7 +9,11 @@ namespace OSDP.Net.Model.CommandData;
 /// <summary>
 /// Command data to send a data fragment of a file to a PD.
 /// </summary>
-internal class FileTransferFragment : CommandData
+/// <remarks>
+/// Sent by the ACU as osdp_FILETRANSFER (0x7C) and received by a PD, which answers with an
+/// <see cref="Model.ReplyData.FileTransferStatus"/>. See OSDP v2.2.2 subclause 6.26.
+/// </remarks>
+public class FileTransferFragment : CommandData
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="FileTransferFragment"/> class.
@@ -47,6 +52,29 @@ internal class FileTransferFragment : CommandData
         data.AddRange(Fragment.BuildData().ToArray());
         return data.ToArray();
     }
+
+    /// <inheritdoc />
+    public override string ToString()
+    {
+        var build = new StringBuilder();
+        build.AppendLine($"     Transfer Type: 0x{Type:X2} ({DescribeType(Type)})");
+        build.AppendLine($"        Total Size: {Fragment.TotalSize}");
+        build.AppendLine($"            Offset: {Fragment.Offset}");
+        build.AppendLine($"     Fragment Size: {Fragment.FragmentSize}");
+        return build.ToString();
+    }
+
+    /// <summary>
+    /// Describes a file transfer type code as defined by OSDP v2.2.2 Table 34.
+    /// </summary>
+    private static string DescribeType(byte type) => type switch
+    {
+        0x01 => "Opaque file contents",
+        0x02 => "Template for the next osdp_BIOMATCH",
+        0x03 => "PD-specific opaque data for display",
+        <= 0x7F => "Reserved for future use",
+        _ => "Reserved for private use"
+    };
 
     /// <summary>Parses the message payload bytes</summary>
     /// <param name="data">Message payload as bytes</param>

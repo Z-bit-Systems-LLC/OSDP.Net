@@ -1,6 +1,8 @@
 using ACUConsole.Configuration;
 using ACUConsole.Model.DialogInputs;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace ACUConsole.Dialogs
 {
@@ -12,36 +14,37 @@ namespace ACUConsole.Dialogs
         /// <summary>
         /// Shows the TCP server connection dialog and returns user input
         /// </summary>
+        /// <param name="app">The Terminal.Gui application instance driving the dialog.</param>
         /// <param name="currentSettings">Current TCP server connection settings for defaults</param>
         /// <returns>TcpServerConnectionInput with user's choices</returns>
-        public static TcpServerConnectionInput Show(TcpServerConnectionSettings currentSettings)
+        public static TcpServerConnectionInput Show(IApplication app, TcpServerConnectionSettings currentSettings)
         {
             var result = new TcpServerConnectionInput { WasCancelled = true };
 
-            var portNumberTextField = new TextField(25, 1, 25, currentSettings.PortNumber.ToString());
-            var baudRateTextField = new TextField(25, 3, 25, currentSettings.BaudRate.ToString());
-            var replyTimeoutTextField = new TextField(25, 5, 25, currentSettings.ReplyTimeout.ToString());
+            var portNumberTextField = new TextField { X = 25, Y = 1, Width = 25, Text = currentSettings.PortNumber.ToString() };
+            var baudRateTextField = new TextField { X = 25, Y = 3, Width = 25, Text = currentSettings.BaudRate.ToString() };
+            var replyTimeoutTextField = new TextField { X = 25, Y = 5, Width = 25, Text = currentSettings.ReplyTimeout.ToString() };
 
             void StartConnectionButtonClicked()
             {
                 // Validate port number
-                if (!int.TryParse(portNumberTextField.Text.ToString(), out var portNumber))
+                if (!int.TryParse(portNumberTextField.Text, out var portNumber))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid port number entered!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid port number entered!", "OK");
                     return;
                 }
 
                 // Validate baud rate
-                if (!int.TryParse(baudRateTextField.Text.ToString(), out var baudRate))
+                if (!int.TryParse(baudRateTextField.Text, out var baudRate))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid baud rate entered!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid baud rate entered!", "OK");
                     return;
                 }
 
                 // Validate reply timeout
-                if (!int.TryParse(replyTimeoutTextField.Text.ToString(), out var replyTimeout))
+                if (!int.TryParse(replyTimeoutTextField.Text, out var replyTimeout))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reply timeout entered!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid reply timeout entered!", "OK");
                     return;
                 }
 
@@ -50,29 +53,32 @@ namespace ACUConsole.Dialogs
                 result.BaudRate = baudRate;
                 result.ReplyTimeout = replyTimeout;
                 result.WasCancelled = false;
-                
-                Application.RequestStop();
+
+                app.RequestStop();
             }
 
             void CancelButtonClicked()
             {
                 result.WasCancelled = true;
-                Application.RequestStop();
+                app.RequestStop();
             }
 
-            var startButton = new Button("Start", true);
-            startButton.Clicked += StartConnectionButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += CancelButtonClicked;
+            var startButton = new Button { Text = "Start", IsDefault = true };
+            startButton.Accepting += (_, e) => { StartConnectionButtonClicked(); e.Handled = true; };
+            var cancelButton = new Button { Text = "Cancel" };
+            cancelButton.Accepting += (_, e) => { CancelButtonClicked(); e.Handled = true; };
 
-            var dialog = new Dialog("Start TCP Server Connection", 60, 12, cancelButton, startButton);
-            dialog.Add(new Label(1, 1, "Port Number:"), portNumberTextField,
-                      new Label(1, 3, "Baud Rate:"), baudRateTextField,
-                      new Label(1, 5, "Reply Timeout(ms):"), replyTimeoutTextField);
+            var dialog = new Dialog { Title = "Start TCP Server Connection", Width = 60, Height = Dim.Auto() };
+            dialog.Add(new Label { X = 1, Y = 1, Text = "Port Number:" }, portNumberTextField,
+                      new Label { X = 1, Y = 3, Text = "Baud Rate:" }, baudRateTextField,
+                      new Label { X = 1, Y = 5, Text = "Reply Timeout(ms):" }, replyTimeoutTextField);
+            dialog.AddButton(cancelButton);
+            dialog.AddButton(startButton);
             portNumberTextField.SetFocus();
 
-            Application.Run(dialog);
-            
+            app.Run(dialog);
+            dialog.Dispose();
+
             return result;
         }
     }

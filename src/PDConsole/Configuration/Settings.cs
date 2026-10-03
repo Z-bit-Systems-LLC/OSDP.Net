@@ -30,6 +30,7 @@ namespace PDConsole.Configuration
         public string TcpServerAddress { get; set; } = "0.0.0.0";
         
         public int TcpServerPort { get; set; } = 12000;
+
     }
     
     public enum ConnectionType
@@ -64,6 +65,11 @@ namespace PDConsole.Configuration
             new DeviceCapability(CapabilityFunction.ReaderTextOutput, 1, 1),
             new DeviceCapability(CapabilityFunction.CheckCharacterSupport, 1, 0),
             new DeviceCapability(CapabilityFunction.CommunicationSecurity, 1, 1),
+            // Receive buffer and combined message sizes are the LSB/MSB of a byte count
+            // (OSDP v2.2.2 B.11/B.12). 0x0400 = 1024 bytes, which is what the ACU uses to size
+            // its osdp_FILETRANSFER fragments.
+            new DeviceCapability(CapabilityFunction.ReceiveBufferSize, 0x00, 0x04),
+            new DeviceCapability(CapabilityFunction.LargestCombinedMessageSize, 0x00, 0x04),
             new DeviceCapability(CapabilityFunction.OSDPVersion, 2, 0),
             new DeviceCapability(CapabilityFunction.ExtendedIdResponse, 1, 0)
         };
