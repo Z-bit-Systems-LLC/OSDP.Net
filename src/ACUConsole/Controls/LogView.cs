@@ -37,7 +37,16 @@ namespace ACUConsole.Controls
         public void SetLog(string text, IReadOnlyList<Attribute?> lineAttributes)
         {
             _lineAttributes = lineAttributes;
+
+            // Replacing the document scrolls the caret into view, which would yank the user back to the
+            // caret on every new event, so restore the caret and scroll position afterward
+            var caretOffset = CaretOffset;
+            var viewport = Viewport;
+
             Text = text;
+
+            CaretOffset = caretOffset;
+            Viewport = viewport;
         }
 
         private sealed class LineColorTransformer(LogView owner) : IVisualLineTransformer
