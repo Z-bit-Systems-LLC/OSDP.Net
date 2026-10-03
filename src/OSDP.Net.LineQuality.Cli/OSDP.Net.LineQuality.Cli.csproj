@@ -16,7 +16,6 @@
         <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.12" />
         <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.12" />
         <PackageReference Include="System.IO.Ports" Version="10.0.12" />
-        <PackageReference Update="Microsoft.SourceLink.GitHub" Version="10.0.401" />
     </ItemGroup>
 
     <ItemGroup>
