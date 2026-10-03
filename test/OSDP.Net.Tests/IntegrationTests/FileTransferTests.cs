@@ -114,7 +114,7 @@ public class FileTransferTests : IntegrationTestFixtureBase
         var file = TestFile(200);
 
         // Act
-        var exception = Assert.ThrowsAsync<ControlPanel.FileTransferException>(
+        var exception = await Assert.ThrowsAsync<ControlPanel.FileTransferException>(
             () => TargetPanel.FileTransfer(ConnectionId, DeviceAddress, OpaqueFileContents, file,
                 fragmentSize: 128, _ => { }));
 
@@ -135,7 +135,7 @@ public class FileTransferTests : IntegrationTestFixtureBase
         var file = TestFile(64);
 
         // Act
-        var exception = Assert.ThrowsAsync<ControlPanel.FileTransferException>(
+        var exception = await Assert.ThrowsAsync<ControlPanel.FileTransferException>(
             () => TargetPanel.FileTransfer(ConnectionId, DeviceAddress, OpaqueFileContents, file,
                 fragmentSize: 128, _ => { }));
 

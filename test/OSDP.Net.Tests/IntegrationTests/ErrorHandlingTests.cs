@@ -43,13 +43,13 @@ public class ErrorHandlingTests : IntegrationTestFixtureBase
     }
 
     [Test]
-    public void PdReturnsNak_UnknownCommandCode_ForUnimplementedBuzzerControl()
+    public async Task PdReturnsNak_UnknownCommandCode_ForUnimplementedBuzzerControl()
     {
         // OSDP 2.2.2 Section 7.16 - PD returns NAK 0x03 for unsupported commands
         // TestDevice does not override HandleBuzzerControl, so it returns NAK
         var buzzerControl = new ReaderBuzzerControl(0, ToneCode.Off, 1, 1, 1);
 
-        var exception = Assert.ThrowsAsync<NackReplyException>(
+        var exception = await Assert.ThrowsAsync<NackReplyException>(
             () => TargetPanel.ReaderBuzzerControl(ConnectionId, DeviceAddress, buzzerControl));
 
         Assert.That(exception, Is.Not.Null);
@@ -58,12 +58,12 @@ public class ErrorHandlingTests : IntegrationTestFixtureBase
     }
 
     [Test]
-    public void PdReturnsNak_UnknownCommandCode_ForUnimplementedTextOutput()
+    public async Task PdReturnsNak_UnknownCommandCode_ForUnimplementedTextOutput()
     {
         // OSDP 2.2.2 Section 7.16 - PD returns NAK 0x03 for unsupported commands
         var textOutput = new ReaderTextOutput(0, TextCommand.PermanentTextNoWrap, 0, 1, 1, "Test");
 
-        var exception = Assert.ThrowsAsync<NackReplyException>(
+        var exception = await Assert.ThrowsAsync<NackReplyException>(
             () => TargetPanel.ReaderTextOutput(ConnectionId, DeviceAddress, textOutput));
 
         Assert.That(exception, Is.Not.Null);
@@ -72,7 +72,7 @@ public class ErrorHandlingTests : IntegrationTestFixtureBase
     }
 
     [Test]
-    public void PdReturnsNak_UnknownCommandCode_ForUnimplementedLEDControl()
+    public async Task PdReturnsNak_UnknownCommandCode_ForUnimplementedLEDControl()
     {
         // OSDP 2.2.2 Section 7.16 - PD returns NAK 0x03 for unsupported commands
         var ledControls = new ReaderLedControls([
@@ -81,7 +81,7 @@ public class ErrorHandlingTests : IntegrationTestFixtureBase
                 PermanentReaderControlCode.Nop, 1, 0, LedColor.Black, LedColor.Black)
         ]);
 
-        var exception = Assert.ThrowsAsync<NackReplyException>(
+        var exception = await Assert.ThrowsAsync<NackReplyException>(
             () => TargetPanel.ReaderLedControl(ConnectionId, DeviceAddress, ledControls));
 
         Assert.That(exception, Is.Not.Null);
@@ -95,7 +95,7 @@ public class ErrorHandlingTests : IntegrationTestFixtureBase
         // OSDP 2.2.2 - PD must remain operational after sending NAK
         var buzzerControl = new ReaderBuzzerControl(0, ToneCode.Off, 1, 1, 1);
 
-        Assert.ThrowsAsync<NackReplyException>(
+        await Assert.ThrowsAsync<NackReplyException>(
             () => TargetPanel.ReaderBuzzerControl(ConnectionId, DeviceAddress, buzzerControl));
 
         // Verify PD is still responsive after NAK
@@ -109,9 +109,9 @@ public class ErrorHandlingTests : IntegrationTestFixtureBase
         var buzzerControl = new ReaderBuzzerControl(0, ToneCode.Off, 1, 1, 1);
         var textOutput = new ReaderTextOutput(0, TextCommand.PermanentTextNoWrap, 0, 1, 1, "Test");
 
-        var ex1 = Assert.ThrowsAsync<NackReplyException>(
+        var ex1 = await Assert.ThrowsAsync<NackReplyException>(
             () => TargetPanel.ReaderBuzzerControl(ConnectionId, DeviceAddress, buzzerControl));
-        var ex2 = Assert.ThrowsAsync<NackReplyException>(
+        var ex2 = await Assert.ThrowsAsync<NackReplyException>(
             () => TargetPanel.ReaderTextOutput(ConnectionId, DeviceAddress, textOutput));
 
         Assert.Multiple(() =>
@@ -199,12 +199,12 @@ public class SecurityNakTests : IntegrationTestFixtureBase
             CommandType.ReaderStatus, CommandType.OutputControl
         };
 
-        Assert.Multiple(() =>
+        await Assert.MultipleAsync(async () =>
         {
             foreach (var commandType in disallowedCommands)
             {
                 var command = BuildTestCommand(commandType);
-                var exception = Assert.ThrowsAsync<NackReplyException>(
+                var exception = await Assert.ThrowsAsync<NackReplyException>(
                     () => command.Run(), $"command: {commandType}");
                 Assert.That(exception, Is.Not.Null);
                 Assert.That(exception!.Reply.ErrorCode,
@@ -231,12 +231,12 @@ public class SecurityNakTests : IntegrationTestFixtureBase
             CommandType.IdReport, CommandType.DeviceCapabilities, CommandType.CommunicationSet
         };
 
-        Assert.Multiple(() =>
+        await Assert.MultipleAsync(async () =>
         {
             foreach (var commandType in allowedCommands)
             {
                 var command = BuildTestCommand(commandType);
-                Assert.DoesNotThrowAsync(async () =>
+                await Assert.DoesNotThrowAsync(async () =>
                 {
                     var reply = await command.Run();
                     Assert.That(reply, Is.Not.Null, $"command: {commandType}");
@@ -264,12 +264,12 @@ public class SecurityNakTests : IntegrationTestFixtureBase
             CommandType.DeviceCapabilities, CommandType.CommunicationSet
         };
 
-        Assert.Multiple(() =>
+        await Assert.MultipleAsync(async () =>
         {
             foreach (var commandType in disallowedCommands)
             {
                 var command = BuildTestCommand(commandType);
-                var exception = Assert.ThrowsAsync<NackReplyException>(
+                var exception = await Assert.ThrowsAsync<NackReplyException>(
                     () => command.Run(), $"command: {commandType}");
                 Assert.That(exception, Is.Not.Null);
                 Assert.That(exception!.Reply.ErrorCode,
@@ -301,7 +301,7 @@ public class SecurityNakTests : IntegrationTestFixtureBase
 
         AddDeviceToPanel(IntegrationConsts.NonDefaultSCBK);
 
-        var exception = Assert.ThrowsAsync<NackReplyException>(
+        var exception = await Assert.ThrowsAsync<NackReplyException>(
             () => TargetPanel.IdReport(ConnectionId, DeviceAddress));
 
         Assert.That(exception, Is.Not.Null);
@@ -331,12 +331,12 @@ public class SecurityNakTests : IntegrationTestFixtureBase
             CommandType.ReaderStatus, CommandType.OutputControl
         };
 
-        Assert.Multiple(() =>
+        await Assert.MultipleAsync(async () =>
         {
             foreach (var commandType in allCommands)
             {
                 var command = BuildTestCommand(commandType);
-                Assert.DoesNotThrowAsync(async () =>
+                await Assert.DoesNotThrowAsync(async () =>
                 {
                     var reply = await command.Run();
                     Assert.That(reply, Is.Not.Null, $"command: {commandType}");

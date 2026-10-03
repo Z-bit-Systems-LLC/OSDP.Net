@@ -30,12 +30,12 @@ namespace OSDP.Net.Tests.IntegrationTests
                 CommandType.ReaderStatus, CommandType.OutputControl
             };
 
-            Assert.Multiple(() =>
+            await Assert.MultipleAsync(async () =>
             {
                 foreach (var commandType in allowedCommands)
                 {
                     var command = BuildTestCommand(commandType);
-                    Assert.DoesNotThrowAsync(async () => {
+                    await Assert.DoesNotThrowAsync(async () => {
                         var reply = await command.Run();
                         Assert.That(reply, Is.Not.Null, $"command: {commandType}");
                     }, $"command: {commandType}");
@@ -44,7 +44,7 @@ namespace OSDP.Net.Tests.IntegrationTests
                 foreach (var commandType in disallowedCommands)
                 {
                     var command = BuildTestCommand(commandType);
-                    var exception = Assert.ThrowsAsync<NackReplyException>(() => command.Run(), $"command: {commandType}");
+                    var exception = await Assert.ThrowsAsync<NackReplyException>(() => command.Run(), $"command: {commandType}");
                     Assert.That(exception, Is.Not.Null);
                     Assert.That(
                         exception.Reply.ErrorCode,
@@ -77,7 +77,7 @@ namespace OSDP.Net.Tests.IntegrationTests
 
             AddDeviceToPanel(IntegrationConsts.NonDefaultSCBK);
 
-            var exception = Assert.ThrowsAsync<NackReplyException>(() => TargetPanel.IdReport(ConnectionId, DeviceAddress));
+            var exception = await Assert.ThrowsAsync<NackReplyException>(() => TargetPanel.IdReport(ConnectionId, DeviceAddress));
             Assert.That(exception, Is.Not.Null);
             Assert.That(
                 exception.Reply.ErrorCode,
@@ -107,12 +107,12 @@ namespace OSDP.Net.Tests.IntegrationTests
                 CommandType.DeviceCapabilities, CommandType.CommunicationSet
             };
 
-            Assert.Multiple(() =>
+            await Assert.MultipleAsync(async () =>
             {
                 foreach (var commandType in allowedCommands)
                 {
                     var command = BuildTestCommand(commandType);
-                    Assert.DoesNotThrowAsync(async () => {
+                    await Assert.DoesNotThrowAsync(async () => {
                         var reply = await command.Run();
                         Assert.That(reply, Is.Not.Null, $"command: {commandType}");
                     }, $"command: {commandType}");
@@ -121,7 +121,7 @@ namespace OSDP.Net.Tests.IntegrationTests
                 foreach (var commandType in disallowedCommands)
                 {
                     var command = BuildTestCommand(commandType);
-                    var exception = Assert.ThrowsAsync<NackReplyException>(() => command.Run(), $"command: {commandType}");
+                    var exception = await Assert.ThrowsAsync<NackReplyException>(() => command.Run(), $"command: {commandType}");
                     Assert.That(exception, Is.Not.Null);
                     Assert.That(
                         exception.Reply.ErrorCode,
@@ -151,12 +151,12 @@ namespace OSDP.Net.Tests.IntegrationTests
                 CommandType.ReaderStatus, CommandType.OutputControl
             };
 
-            Assert.Multiple(() =>
+            await Assert.MultipleAsync(async () =>
             {
                 foreach (var commandType in allowedCommands)
                 {
                     var command = BuildTestCommand(commandType);
-                    Assert.DoesNotThrowAsync(async () => {
+                    await Assert.DoesNotThrowAsync(async () => {
                         var reply = await command.Run();
                         Assert.That(reply, Is.Not.Null, $"command: {commandType}");
                     }, $"command: {commandType}");
@@ -187,12 +187,12 @@ namespace OSDP.Net.Tests.IntegrationTests
                 CommandType.ReaderStatus, CommandType.OutputControl
             };
 
-            Assert.Multiple(() =>
+            await Assert.MultipleAsync(async () =>
             {
                 foreach (var commandType in allowedCommands)
                 {
                     var command = BuildTestCommand(commandType);
-                    Assert.DoesNotThrowAsync(async () => {
+                    await Assert.DoesNotThrowAsync(async () => {
                         var reply = await command.Run();
                         Assert.That(reply, Is.Not.Null, $"command: {commandType}");
                     }, $"command: {commandType}");
@@ -226,7 +226,7 @@ namespace OSDP.Net.Tests.IntegrationTests
 
             AddDeviceToPanel(IntegrationConsts.NonDefaultSCBK);
 
-            var exception = Assert.ThrowsAsync<NackReplyException>(() => TargetPanel.IdReport(ConnectionId, DeviceAddress));
+            var exception = await Assert.ThrowsAsync<NackReplyException>(() => TargetPanel.IdReport(ConnectionId, DeviceAddress));
             Assert.That(exception, Is.Not.Null);
             Assert.That(
                 exception.Reply.ErrorCode,

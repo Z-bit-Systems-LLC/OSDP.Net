@@ -126,7 +126,7 @@ namespace OSDP.Net.Tests.LineQuality
         }
 
         [Test]
-        public void NoResponder_ReportsAClearFailureRatherThanAnEmptyReport()
+        public async Task NoResponder_ReportsAClearFailureRatherThanAnEmptyReport()
         {
             var (controller, _) = LoopbackConnection.CreatePair(9600);
             var test = new LineQualityTest(controller);
@@ -141,7 +141,7 @@ namespace OSDP.Net.Tests.LineQuality
 
             using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
-            var exception = Assert.ThrowsAsync<LineQualityException>(
+            var exception = await Assert.ThrowsAsync<LineQualityException>(
                 // ReSharper disable once AccessToDisposedClosure -- Assert.ThrowsAsync awaits the delegate before disposal
                 async () => await test.RunAsync(options, cancellation.Token));
 
@@ -169,14 +169,12 @@ namespace OSDP.Net.Tests.LineQuality
             using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(60));
 
             // With no responder at all, contact is never established and every rate is searched.
-            Assert.ThrowsAsync<LineQualityException>(
+            await Assert.ThrowsAsync<LineQualityException>(
                 // ReSharper disable once AccessToDisposedClosure -- Assert.ThrowsAsync awaits the delegate before disposal
                 async () => await test.RunAsync(options, cancellation.Token));
 
             Assert.That(controller.BaudRate, Is.EqualTo(9600),
                 "a failed search must leave the controller on the baseline, not the last rate tried");
-
-            await Task.CompletedTask;
         }
 
         [TestCase(true, TestName = "AnIdleLine_IsNotTreatedAsAFault_TimeoutException")]

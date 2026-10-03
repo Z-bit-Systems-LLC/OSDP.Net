@@ -92,12 +92,12 @@ public class OptionalFeatureTests : IntegrationTestFixtureBase
     // PD must return NAK (UnknownCommandCode) for unimplemented optional commands.
 
     [Test]
-    public void PdRejectsUnimplementedBuzzerCommand()
+    public async Task PdRejectsUnimplementedBuzzerCommand()
     {
         // TestDevice does not implement buzzer support
         var buzzerControl = new ReaderBuzzerControl(0, ToneCode.Off, 1, 1, 1);
 
-        var exception = Assert.ThrowsAsync<NackReplyException>(
+        var exception = await Assert.ThrowsAsync<NackReplyException>(
             () => TargetPanel.ReaderBuzzerControl(ConnectionId, DeviceAddress, buzzerControl));
 
         Assert.That(exception!.Reply.ErrorCode, Is.EqualTo(ErrorCode.UnknownCommandCode),
@@ -105,12 +105,12 @@ public class OptionalFeatureTests : IntegrationTestFixtureBase
     }
 
     [Test]
-    public void PdRejectsUnimplementedTextOutputCommand()
+    public async Task PdRejectsUnimplementedTextOutputCommand()
     {
         // TestDevice does not implement text output support
         var textOutput = new ReaderTextOutput(0, TextCommand.PermanentTextNoWrap, 0, 1, 1, "Test");
 
-        var exception = Assert.ThrowsAsync<NackReplyException>(
+        var exception = await Assert.ThrowsAsync<NackReplyException>(
             () => TargetPanel.ReaderTextOutput(ConnectionId, DeviceAddress, textOutput));
 
         Assert.That(exception!.Reply.ErrorCode, Is.EqualTo(ErrorCode.UnknownCommandCode),
@@ -118,7 +118,7 @@ public class OptionalFeatureTests : IntegrationTestFixtureBase
     }
 
     [Test]
-    public void PdRejectsUnimplementedLEDCommand()
+    public async Task PdRejectsUnimplementedLEDCommand()
     {
         // TestDevice reports LED capability but does not implement the handler
         var ledControls = new ReaderLedControls([
@@ -127,7 +127,7 @@ public class OptionalFeatureTests : IntegrationTestFixtureBase
                 PermanentReaderControlCode.Nop, 1, 0, LedColor.Black, LedColor.Black)
         ]);
 
-        var exception = Assert.ThrowsAsync<NackReplyException>(
+        var exception = await Assert.ThrowsAsync<NackReplyException>(
             () => TargetPanel.ReaderLedControl(ConnectionId, DeviceAddress, ledControls));
 
         Assert.That(exception!.Reply.ErrorCode, Is.EqualTo(ErrorCode.UnknownCommandCode),

@@ -203,7 +203,7 @@ namespace OSDP.Net.Tests
             }
 
             [Test]
-            public void ThrowOnNakReplyTest()
+            public async Task ThrowOnNakReplyTest()
             {
                 var panel = new ControlPanel(NullLoggerFactory.Instance);
                 var idReportCommand = new IdReport();
@@ -215,7 +215,7 @@ namespace OSDP.Net.Tests
                 Guid id = panel.StartConnection(mockConnection.Object);
                 panel.AddDevice(id, 0, true, false);
 
-                var exception = Assert.ThrowsAsync<NackReplyException>(async () => await panel.IdReport(id, 0));
+                var exception = await Assert.ThrowsAsync<NackReplyException>(async () => await panel.IdReport(id, 0));
 
                 Assert.That(exception?.Reply.ErrorCode, Is.EqualTo(ErrorCode.UnknownCommandCode));
             }

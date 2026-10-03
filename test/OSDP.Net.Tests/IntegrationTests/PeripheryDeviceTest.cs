@@ -198,7 +198,7 @@ public class PeripheryDeviceTest : IntegrationTestFixtureBase
             It.IsAny<object>(),
             It.IsAny<Device.DeviceComSetUpdatedEventArgs>()), Times.Once);
 
-        var eventArgs = (Device.DeviceComSetUpdatedEventArgs)mockComSetUpdate.Invocations.First().Arguments[1];
+        var eventArgs = (Device.DeviceComSetUpdatedEventArgs)mockComSetUpdate.Invocations.First().Arguments[1]!;
         Assert.Multiple(() =>
         {
             Assert.That(eventArgs.OldAddress, Is.EqualTo(0));
