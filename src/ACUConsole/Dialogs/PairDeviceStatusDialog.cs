@@ -33,7 +33,7 @@ namespace ACUConsole.Dialogs
 
             closeButton.Accepting += (_, e) =>
             {
-                app.RequestStop(dialog);
+                app.RequestStop();
                 e.Handled = true;
             };
 

@@ -193,8 +193,10 @@ public class PairingIntegrationTests
         await using var harness = await Harness.StartCleartextPairingDevice(_loggerFactory, pairingConfig: null);
 
         var demoCa = CertificateAuthority.Demo();
+        // ReSharper disable AccessToDisposedClosure -- Assert.ThrowsAsync awaits the delegate before disposal
         Assert.ThrowsAsync<PairingException>(async () => await harness.Panel.PairDevice(harness.ConnectionId,
             harness.Address, BuildAcuConfig(demoCa), timeout: TimeSpan.FromSeconds(5)));
+        // ReSharper restore AccessToDisposedClosure
     }
 
     [Test]
@@ -205,8 +207,10 @@ public class PairingIntegrationTests
 
         await using var harness = await Harness.StartCleartextPairingDevice(_loggerFactory, pdConfig);
 
+        // ReSharper disable AccessToDisposedClosure -- Assert.ThrowsAsync awaits the delegate before disposal
         var ex = Assert.ThrowsAsync<PairingException>(async () => await harness.Panel.PairDevice(
             harness.ConnectionId, harness.Address, BuildAcuConfig(demoCa), timeout: TimeSpan.FromSeconds(20)));
+        // ReSharper restore AccessToDisposedClosure
         Assert.That(ex!.Status, Is.EqualTo(PairingStatus.PersistenceFailed));
     }
 

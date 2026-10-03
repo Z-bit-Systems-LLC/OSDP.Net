@@ -58,11 +58,13 @@ public class IdleLineDelayTest
         var (acuConnection, deviceConnection) = LoopbackOsdpConnection.CreatePair();
         try
         {
+            // ReSharper disable AccessToDisposedClosure -- Assert.Multiple invokes synchronously before disposal
             Assert.Multiple(() =>
             {
                 Assert.That(acuConnection.IdleLineDelay(1000), Is.EqualTo(TimeSpan.Zero));
                 Assert.That(acuConnection.BaudRate, Is.EqualTo(9600), "BaudRate must be preserved for COMSET behavior");
             });
+            // ReSharper restore AccessToDisposedClosure
         }
         finally
         {
