@@ -1,6 +1,6 @@
-using System.Drawing;
 using System.Linq;
 using Terminal.Gui.App;
+using Terminal.Gui.Editor;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
@@ -36,24 +36,18 @@ namespace PDConsole.Dialogs
                 Height = Dim.Percent(70)
             };
 
-            // Read-only, scrollable text display: a Label inside a scrollable View
-            // (the v2 replacement for the now-obsolete read-only TextView).
-            var lines = text.Split('\n');
-            var contentSize = new Size(lines.Length == 0 ? 1 : lines.Max(line => line.Length), lines.Length);
-
-            var contentLabel = new Label { X = 0, Y = 0, Text = text };
-
-            var scrollView = new View
+            // Read-only editor so the details can be selected and copied (Ctrl+C with no
+            // selection copies the current line)
+            var detailsView = new Editor
             {
                 X = 1,
                 Y = 1,
                 Width = Dim.Fill(1),
                 Height = Dim.Fill(2),
-                CanFocus = true,
+                ReadOnly = true,
+                Text = text,
                 ViewportSettings = ViewportSettingsFlags.HasVerticalScrollBar | ViewportSettingsFlags.HasHorizontalScrollBar
             };
-            scrollView.SetContentSize(contentSize);
-            scrollView.Add(contentLabel);
 
             var okButton = new Button
             {
@@ -62,7 +56,7 @@ namespace PDConsole.Dialogs
             };
             okButton.Accepting += (_, e) => { app.RequestStop(); e.Handled = true; };
 
-            dialog.Add(scrollView);
+            dialog.Add(detailsView);
             dialog.AddButton(okButton);
 
             app.Run(dialog);
