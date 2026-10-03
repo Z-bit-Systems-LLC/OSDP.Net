@@ -1,63 +1,36 @@
-using System;
-using Terminal.Gui;
+using Terminal.Gui.Views;
 
 namespace PDConsole.Extensions
 {
     /// <summary>
-    /// Extension methods for Terminal.Gui ComboBox
+    /// Extension methods for Terminal.Gui <see cref="DropDownList"/> (the Terminal.Gui v2
+    /// replacement for the v1 ComboBox).
     /// </summary>
     /// <remarks>
-    /// IMPORTANT: All ComboBox instances MUST use the ConfigureForOptimalUX() extension method
-    /// to ensure proper dropdown functionality and consistent user experience across the application.
+    /// All drop-down selectors should use the <see cref="ConfigureForOptimalUX"/> extension method
+    /// to ensure consistent behavior across the application.
     ///
-    /// ComboBox Width Requirements:
-    /// - Minimum width of 30 is required for dropdown lists to display properly
-    /// - The width parameter in new ComboBox(new Rect(x, y, width, height), items) directly affects
-    ///   the dropdown list display area, not just the input box
-    /// - Using width less than 30 will cause dropdown lists to be clipped or not display correctly
-    ///
-    /// Example Usage:
-    /// var comboBox = new ComboBox(new Rect(15, 1, 30, 5), items)
-    ///     .ConfigureForOptimalUX();
+    /// Width Requirements:
+    /// - A minimum width of <see cref="MinimumRecommendedWidth"/> is recommended so the expanded
+    ///   drop-down list displays correctly.
     /// </remarks>
     public static class ComboBoxExtensions
     {
         /// <summary>
-        /// Minimum recommended width for ComboBox to ensure dropdown lists display correctly
+        /// Minimum recommended width for a drop-down list so its expanded list displays correctly.
         /// </summary>
         public const int MinimumRecommendedWidth = 30;
 
         /// <summary>
-        /// Configures the ComboBox with standard settings for better user experience.
-        /// This method ensures consistent behavior across all ComboBox instances in the application.
+        /// Configures the drop-down list with standard settings for a consistent user experience.
         /// </summary>
-        /// <param name="comboBox">The ComboBox to configure</param>
-        /// <returns>The configured ComboBox for method chaining</returns>
-        /// <remarks>
-        /// IMPORTANT: Always call this method after creating a ComboBox instance.
-        ///
-        /// This method configures:
-        /// - HideDropdownListOnClick: Automatically closes the dropdown after selection
-        ///
-        /// Width Validation:
-        /// If the ComboBox width is less than 30, the dropdown list may not display correctly.
-        /// Ensure ComboBox is created with: new ComboBox(new Rect(x, y, 30, 5), items)
-        /// </remarks>
-        public static ComboBox ConfigureForOptimalUX(this ComboBox comboBox)
+        /// <param name="dropDownList">The drop-down list to configure.</param>
+        /// <returns>The configured drop-down list for method chaining.</returns>
+        public static DropDownList ConfigureForOptimalUX(this DropDownList dropDownList)
         {
-            // Validate width to ensure dropdown functionality
-            if (comboBox.Frame.Width < MinimumRecommendedWidth)
-            {
-                throw new ArgumentException(
-                    $"ComboBox width must be at least {MinimumRecommendedWidth} for dropdown lists to display correctly. " +
-                    $"Current width is {comboBox.Frame.Width}. " +
-                    $"Use: new ComboBox(new Rect(x, y, {MinimumRecommendedWidth}, 5), items)",
-                    nameof(comboBox));
-            }
-
-            comboBox.HideDropdownListOnClick = true;
-
-            return comboBox;
+            // Terminal.Gui v2 manages the drop-down popup internally; no additional
+            // configuration is required beyond ensuring an adequate width at creation time.
+            return dropDownList;
         }
     }
 }

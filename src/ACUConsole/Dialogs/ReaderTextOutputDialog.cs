@@ -1,7 +1,11 @@
+using System;
+using System.Collections.ObjectModel;
 using ACUConsole.Extensions;
 using ACUConsole.Model.DialogInputs;
 using OSDP.Net.Model.CommandData;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace ACUConsole.Dialogs
 {
@@ -22,98 +26,107 @@ namespace ACUConsole.Dialogs
         /// Shows the reader text output dialog and returns user input
         /// </summary>
         /// <returns>ReaderTextOutputInput with user's choices</returns>
-        public static ReaderTextOutputInput Show()
+        public static ReaderTextOutputInput Show(IApplication app)
         {
             var result = new ReaderTextOutputInput { WasCancelled = true };
 
             // Labels: longest is "Temp Time (x100ms):" (20 chars), x = 25
-            var readerNumberTextField = new TextField(25, 1, 15, "0");
+            var readerNumberTextField = new TextField { X = 25, Y = 1, Width = 15, Text = "0" };
 
-            var textCommandComboBox = new ComboBox(new Rect(25, 3, 30, 5), TextCommands)
+            var textCommandComboBox = new DropDownList
             {
-                SelectedItem = 0
+                X = 25,
+                Y = 3,
+                Width = 30,
+                Height = 1,
+                Source = new ListWrapper<string>(new ObservableCollection<string>(TextCommands))
             }.ConfigureForOptimalUX();
+            textCommandComboBox.Text = TextCommands[0];
 
-            var tempTimeTextField = new TextField(25, 5, 15, "0") { Enabled = false };
+            var tempTimeTextField = new TextField { X = 25, Y = 5, Width = 15, Text = "0", Enabled = false };
 
-            textCommandComboBox.SelectedItemChanged += args =>
+            textCommandComboBox.TextChanged += (_, _) =>
             {
+                var idx = Array.IndexOf(TextCommands, textCommandComboBox.Text);
                 // Enable temporary text time only for temporary commands (index 2 and 3)
-                tempTimeTextField.Enabled = args.Item >= 2;
+                tempTimeTextField.Enabled = idx >= 2;
                 if (!tempTimeTextField.Enabled)
                 {
                     tempTimeTextField.Text = "0";
                 }
             };
 
-            var rowTextField = new TextField(25, 7, 15, "1");
-            var columnTextField = new TextField(25, 9, 15, "1");
-            var textTextField = new TextField(25, 11, 40, "Hello World");
+            var rowTextField = new TextField { X = 25, Y = 7, Width = 15, Text = "1" };
+            var columnTextField = new TextField { X = 25, Y = 9, Width = 15, Text = "1" };
+            var textTextField = new TextField { X = 25, Y = 11, Width = 40, Text = "Hello World" };
 
             void SendButtonClicked()
             {
-                if (!byte.TryParse(readerNumberTextField.Text.ToString(), out var readerNumber))
+                if (!byte.TryParse(readerNumberTextField.Text, out var readerNumber))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reader number!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid reader number!", "OK");
                     return;
                 }
 
-                if (!byte.TryParse(tempTimeTextField.Text.ToString(), out var tempTime))
+                if (!byte.TryParse(tempTimeTextField.Text, out var tempTime))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid temporary text time!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid temporary text time!", "OK");
                     return;
                 }
 
-                if (!byte.TryParse(rowTextField.Text.ToString(), out var row) || row < 1)
+                if (!byte.TryParse(rowTextField.Text, out var row) || row < 1)
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid row! Must be 1 or greater.", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid row! Must be 1 or greater.", "OK");
                     return;
                 }
 
-                if (!byte.TryParse(columnTextField.Text.ToString(), out var column) || column < 1)
+                if (!byte.TryParse(columnTextField.Text, out var column) || column < 1)
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid column! Must be 1 or greater.", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid column! Must be 1 or greater.", "OK");
                     return;
                 }
 
-                var text = textTextField.Text.ToString();
+                var text = textTextField.Text;
                 if (string.IsNullOrEmpty(text))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Please enter text to display!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Please enter text to display!", "OK");
                     return;
                 }
 
                 result.ReaderNumber = readerNumber;
-                result.TextCommand = (TextCommand)(textCommandComboBox.SelectedItem + 1);
+                result.TextCommand = (TextCommand)(Array.IndexOf(TextCommands, textCommandComboBox.Text) + 1);
                 result.TemporaryTextTime = tempTime;
                 result.Row = row;
                 result.Column = column;
                 result.Text = text;
                 result.WasCancelled = false;
-                Application.RequestStop();
+                app.RequestStop();
             }
 
             void CancelButtonClicked()
             {
-                Application.RequestStop();
+                app.RequestStop();
             }
 
-            var sendButton = new Button("Send", true);
-            sendButton.Clicked += SendButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += CancelButtonClicked;
+            var sendButton = new Button { Text = "Send", IsDefault = true };
+            sendButton.Accepting += (_, e) => { SendButtonClicked(); e.Handled = true; };
+            var cancelButton = new Button { Text = "Cancel" };
+            cancelButton.Accepting += (_, e) => { CancelButtonClicked(); e.Handled = true; };
 
-            var dialog = new Dialog("Reader Text Output", 70, 18, cancelButton, sendButton);
+            var dialog = new Dialog { Title = "Reader Text Output", Width = 70, Height = Dim.Auto() };
             dialog.Add(
-                new Label(1, 1, "Reader Number:"), readerNumberTextField,
-                new Label(1, 3, "Text Command:"), textCommandComboBox,
-                new Label(1, 5, "Temp Time (x100ms):"), tempTimeTextField,
-                new Label(1, 7, "Row:"), rowTextField,
-                new Label(1, 9, "Column:"), columnTextField,
-                new Label(1, 11, "Text:"), textTextField);
+                new Label { X = 1, Y = 1, Text = "Reader Number:" }, readerNumberTextField,
+                new Label { X = 1, Y = 3, Text = "Text Command:" }, textCommandComboBox,
+                new Label { X = 1, Y = 5, Text = "Temp Time (x100ms):" }, tempTimeTextField,
+                new Label { X = 1, Y = 7, Text = "Row:" }, rowTextField,
+                new Label { X = 1, Y = 9, Text = "Column:" }, columnTextField,
+                new Label { X = 1, Y = 11, Text = "Text:" }, textTextField);
+            dialog.AddButton(cancelButton);
+            dialog.AddButton(sendButton);
             readerNumberTextField.SetFocus();
 
-            Application.Run(dialog);
+            app.Run(dialog);
+            dialog.Dispose();
 
             return result;
         }

@@ -1,14 +1,21 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ACUConsole.Controls;
 using ACUConsole.Dialogs;
 using ACUConsole.Model;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.Drawing;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
+using Attribute = Terminal.Gui.Drawing.Attribute;
+using Color = Terminal.Gui.Drawing.Color;
 
 namespace ACUConsole
 {
@@ -18,10 +25,13 @@ namespace ACUConsole
     public class ACUConsoleView
     {
         private readonly IACUConsolePresenter _presenter;
+        private readonly IApplication _app;
 
         // UI Components
         private Window _window;
-        private ScrollView _scrollView;
+        private FrameView _logFrame;
+        private LogView _logView;
+        private bool _logRefreshPending;
         private FrameView _deviceStatusFrame;
         private ListView _deviceStatusList;
         private MenuBar _menuBar;
@@ -38,10 +48,11 @@ namespace ACUConsole
             public bool IsSecureChannelEstablished { get; set; }
         }
         
-        public ACUConsoleView(IACUConsolePresenter presenter)
+        public ACUConsoleView(IACUConsolePresenter presenter, IApplication app)
         {
             _presenter = presenter ?? throw new ArgumentNullException(nameof(presenter));
-            
+            _app = app ?? throw new ArgumentNullException(nameof(app));
+
             // Create discover menu item that can be updated
             _discoverMenuItem = new MenuItem("_Discover", string.Empty, () => _ = DiscoverDevice());
             
@@ -54,23 +65,24 @@ namespace ACUConsole
 
         public Window CreateMainWindow()
         {
-            _window = new Window("OSDP.Net ACU Console")
+            _window = new Window
             {
+                Title = "OSDP.Net ACU Console",
                 X = 0,
-                Y = 1, // Leave one row for the toplevel menu
+                Y = 0,
                 Width = Dim.Fill(),
-                Height = Dim.Fill() - 1
+                Height = Dim.Fill(),
+                BorderStyle = LineStyle.None
             };
 
             CreateMenuBar();
-            CreateScrollView();
+            _menuBar.Width = Dim.Fill();
+            CreateLogView();
             CreateDeviceStatusPanel();
 
-            // Add MenuBar to Application.Top (like PDConsole does)
-            Application.Top.Add(_menuBar);
-
-            // Add ScrollView and Device Status Panel to the window
-            _window.Add(_scrollView);
+            // Add the menu bar (top row), log view, and device status panel to the window
+            _window.Add(_menuBar);
+            _window.Add(_logFrame);
             _window.Add(_deviceStatusFrame);
 
             // Initialize device statuses from configured devices
@@ -134,27 +146,47 @@ namespace ACUConsole
         }
 
 
-        private void CreateScrollView()
+        private void CreateLogView()
         {
-            _scrollView = new ScrollView
+            // Create message log frame (fills the space left of the device status panel)
+            _logFrame = new FrameView
             {
-                X = 1,
+                Title = "Message Log",
+                X = 0,
+                Y = 1, // Leave the top row for the menu bar
+                Width = Dim.Fill(30), // Leave room for the device status panel
+                Height = Dim.Fill()
+            };
+
+            _logView = new LogView
+            {
+                X = 0,
                 Y = 0,
-                Width = Dim.Fill() - 32,  // Leave room for device status panel (30 chars + borders)
-                Height = Dim.Fill(),
-                ContentSize = new Size(500, 100),
-                ShowVerticalScrollIndicator = true,
-                ShowHorizontalScrollIndicator = true
+                Width = Dim.Fill(),
+                Height = Dim.Fill()
+            };
+
+            _logFrame.Add(_logView);
+
+            // Refreshing the log replaces its text, which would drop the user's selection, so
+            // refreshes are held while text is selected and applied once the selection is cleared.
+            _logView.SelectionChanged += (_, _) =>
+            {
+                if (_logRefreshPending && !_logView.HasSelection)
+                {
+                    UpdateMessageDisplay();
+                }
             };
         }
 
         private void CreateDeviceStatusPanel()
         {
             // Create device status frame (right side panel, 30 characters wide)
-            _deviceStatusFrame = new FrameView("Device Status")
+            _deviceStatusFrame = new FrameView
             {
+                Title = "Device Status",
                 X = Pos.AnchorEnd(30),
-                Y = 0,
+                Y = 1, // Leave the top row for the menu bar
                 Width = 30,
                 Height = Dim.Fill()
             };
@@ -190,7 +222,7 @@ namespace ACUConsole
 
         private void UpdateDeviceStatusDisplay()
         {
-            Application.MainLoop.Invoke(() =>
+            _app.Invoke(() =>
             {
                 var displayItems = new List<string>();
 
@@ -217,14 +249,14 @@ namespace ACUConsole
                     displayItems.Add("No devices configured");
                 }
 
-                _deviceStatusList.SetSource(displayItems);
+                _deviceStatusList.SetSource(new ObservableCollection<string>(displayItems));
             });
         }
 
         // System Menu Actions
-        private static void ShowAbout()
+        private void ShowAbout()
         {
-            AboutDialog.Show();
+            AboutDialog.Show(_app);
         }
 
         private void Quit()
@@ -232,7 +264,7 @@ namespace ACUConsole
             // Show save the configuration dialog before exiting
             try
             {
-                var shouldSave = MessageBox.ErrorQuery("Exit Application",
+                var shouldSave = MessageBox.ErrorQuery(_app,"Exit Application",
                     "Save configuration before exiting?",
                     "Yes", "No");
 
@@ -262,13 +294,13 @@ namespace ACUConsole
                 }
             }
 
-            Application.RequestStop();
+            _app.RequestStop();
         }
 
         // Connection Methods - Using extracted dialog classes
         private async Task StartSerialConnection()
         {
-            var input = SerialConnectionDialog.Show(_presenter.Settings.SerialConnectionSettings);
+            var input = SerialConnectionDialog.Show(_app, _presenter.Settings.SerialConnectionSettings);
             
             if (!input.WasCancelled)
             {
@@ -285,7 +317,7 @@ namespace ACUConsole
 
         private async Task StartTcpServerConnection()
         {
-            var input = TcpServerConnectionDialog.Show(_presenter.Settings.TcpServerConnectionSettings);
+            var input = TcpServerConnectionDialog.Show(_app, _presenter.Settings.TcpServerConnectionSettings);
             
             if (!input.WasCancelled)
             {
@@ -302,7 +334,7 @@ namespace ACUConsole
 
         private async Task StartTcpClientConnection()
         {
-            var input = TcpClientConnectionDialog.Show(_presenter.Settings.TcpClientConnectionSettings);
+            var input = TcpClientConnectionDialog.Show(_app, _presenter.Settings.TcpClientConnectionSettings);
             
             if (!input.WasCancelled)
             {
@@ -320,6 +352,7 @@ namespace ACUConsole
         private void UpdateConnectionSettings()
         {
             var input = ConnectionSettingsDialog.Show(
+                _app,
                 _presenter.Settings.PollingInterval,
                 _presenter.Settings.IsTracing);
 
@@ -331,7 +364,7 @@ namespace ACUConsole
 
         private void ParseOSDPCapFile()
         {
-            var input = ParseOSDPCapFileDialog.Show(_presenter.GetLastOsdpConfigDirectory());
+            var input = ParseOSDPCapFileDialog.Show(_app, _presenter.GetLastOsdpConfigDirectory());
             
             if (!input.WasCancelled)
             {
@@ -348,7 +381,7 @@ namespace ACUConsole
 
         private void LoadConfigurationSettings()
         {
-            var input = LoadConfigurationDialog.Show();
+            var input = LoadConfigurationDialog.Show(_app);
 
             if (!input.WasCancelled)
             {
@@ -359,31 +392,31 @@ namespace ACUConsole
                     // Reinitialize device statuses after loading new configuration
                     InitializeDeviceStatuses();
 
-                    MessageBox.Query(40, 6, "Load Configuration",
+                    MessageBox.Query(_app,40, 6, "Load Configuration",
                         $"Configuration loaded successfully from:\n{Path.GetFileName(input.FilePath)}", "OK");
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(40, 8, "Error", ex.Message, "OK");
+                    MessageBox.ErrorQuery(_app,"Error", ex.Message, "OK");
                 }
             }
         }
 
         private void SaveConfigurationSettings()
         {
-            var input = SaveConfigurationDialog.Show(_presenter.CurrentConfigFilePath);
+            var input = SaveConfigurationDialog.Show(_app, _presenter.CurrentConfigFilePath);
 
             if (!input.WasCancelled)
             {
                 try
                 {
                     _presenter.SaveConfiguration(input.FilePath);
-                    MessageBox.Query(40, 6, "Save Configuration",
+                    MessageBox.Query(_app,40, 6, "Save Configuration",
                         $"Configuration saved successfully to:\n{Path.GetFileName(input.FilePath)}", "OK");
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(40, 8, "Error", ex.Message, "OK");
+                    MessageBox.ErrorQuery(_app,"Error", ex.Message, "OK");
                 }
             }
         }
@@ -397,7 +430,7 @@ namespace ACUConsole
                 return;
             }
 
-            var input = AddDeviceDialog.Show(_presenter.Settings.Devices.ToArray());
+            var input = AddDeviceDialog.Show(_app, _presenter.Settings.Devices.ToArray());
 
             if (!input.WasCancelled)
             {
@@ -434,7 +467,7 @@ namespace ACUConsole
             }
 
             var deviceList = _presenter.GetDeviceList();
-            var input = RemoveDeviceDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            var input = RemoveDeviceDialog.Show(_app, _presenter.Settings.Devices.ToArray(), deviceList);
 
             if (!input.WasCancelled)
             {
@@ -457,7 +490,7 @@ namespace ACUConsole
 
         private async Task DiscoverDevice()
         {
-            var input = DiscoverDeviceDialog.Show(_presenter.Settings.SerialConnectionSettings.PortName);
+            var input = DiscoverDeviceDialog.Show(_app, _presenter.Settings.SerialConnectionSettings.PortName);
             
             if (!input.WasCancelled)
             {
@@ -519,7 +552,7 @@ namespace ACUConsole
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(40, 10, $"Error on address {address}", ex.Message, "OK");
+                    MessageBox.ErrorQuery(_app,$"Error on address {address}", ex.Message, "OK");
                 }
             });
         }
@@ -533,7 +566,7 @@ namespace ACUConsole
             }
 
             var deviceList = _presenter.GetDeviceList();
-            var input = CommunicationConfigurationDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList, _presenter.Settings.SerialConnectionSettings.BaudRate);
+            var input = CommunicationConfigurationDialog.Show(_app, _presenter.Settings.Devices.ToArray(), deviceList, _presenter.Settings.SerialConnectionSettings.BaudRate);
 
             if (!input.WasCancelled)
             {
@@ -584,7 +617,7 @@ namespace ACUConsole
             }
 
             var deviceList = _presenter.GetDeviceList();
-            var input = ACUReceiveSizeDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            var input = ACUReceiveSizeDialog.Show(_app, _presenter.Settings.Devices.ToArray(), deviceList);
 
             if (!input.WasCancelled)
             {
@@ -608,7 +641,7 @@ namespace ACUConsole
             }
 
             var deviceList = _presenter.GetDeviceList();
-            var input = OutputControlDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            var input = OutputControlDialog.Show(_app, _presenter.Settings.Devices.ToArray(), deviceList);
             
             if (!input.WasCancelled)
             {
@@ -633,7 +666,7 @@ namespace ACUConsole
 
             // First show device selection dialog
             var deviceList = _presenter.GetDeviceList();
-            var deviceSelection = DeviceSelectionDialog.Show("Reader LED Control", _presenter.Settings.Devices.ToArray(), deviceList);
+            var deviceSelection = DeviceSelectionDialog.Show(_app,"Reader LED Control", _presenter.Settings.Devices.ToArray(), deviceList);
 
             if (deviceSelection.WasCancelled)
             {
@@ -665,10 +698,10 @@ namespace ACUConsole
                 }
 
                 // Show capability notice dialog (informational only)
-                MessageBox.Query(70, 12, "LED Capability", capabilityMessage, "Continue");
+                MessageBox.Query(_app,70, 12, "LED Capability", capabilityMessage, "Continue");
 
                 // Show LED settings dialog
-                var input = ReaderLedControlDialog.Show();
+                var input = ReaderLedControlDialog.Show(_app);
 
                 if (!input.WasCancelled)
                 {
@@ -692,7 +725,7 @@ namespace ACUConsole
 
             // First show device selection dialog
             var deviceList = _presenter.GetDeviceList();
-            var deviceSelection = DeviceSelectionDialog.Show("Reader Buzzer Control", _presenter.Settings.Devices.ToArray(), deviceList);
+            var deviceSelection = DeviceSelectionDialog.Show(_app,"Reader Buzzer Control", _presenter.Settings.Devices.ToArray(), deviceList);
 
             if (deviceSelection.WasCancelled)
             {
@@ -724,10 +757,10 @@ namespace ACUConsole
                 }
 
                 // Show capability notice dialog (informational only)
-                MessageBox.Query(70, 12, "Buzzer Capability", capabilityMessage, "Continue");
+                MessageBox.Query(_app,70, 12, "Buzzer Capability", capabilityMessage, "Continue");
 
                 // Show buzzer settings dialog
-                var input = ReaderBuzzerControlDialog.Show();
+                var input = ReaderBuzzerControlDialog.Show(_app);
 
                 if (!input.WasCancelled)
                 {
@@ -751,7 +784,7 @@ namespace ACUConsole
 
             // First show device selection dialog
             var deviceList = _presenter.GetDeviceList();
-            var deviceSelection = DeviceSelectionDialog.Show("Reader Text Output", _presenter.Settings.Devices.ToArray(), deviceList);
+            var deviceSelection = DeviceSelectionDialog.Show(_app,"Reader Text Output", _presenter.Settings.Devices.ToArray(), deviceList);
 
             if (deviceSelection.WasCancelled)
             {
@@ -783,10 +816,10 @@ namespace ACUConsole
                 }
 
                 // Show capability notice dialog (informational only)
-                MessageBox.Query(70, 12, "Text Output Capability", capabilityMessage, "Continue");
+                MessageBox.Query(_app,70, 12, "Text Output Capability", capabilityMessage, "Continue");
 
                 // Show text output settings dialog
-                var input = ReaderTextOutputDialog.Show();
+                var input = ReaderTextOutputDialog.Show(_app);
 
                 if (!input.WasCancelled)
                 {
@@ -809,7 +842,7 @@ namespace ACUConsole
             }
 
             var deviceList = _presenter.GetDeviceList();
-            var input = ManufacturerSpecificDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            var input = ManufacturerSpecificDialog.Show(_app, _presenter.Settings.Devices.ToArray(), deviceList);
             
             if (!input.WasCancelled)
             {
@@ -833,7 +866,7 @@ namespace ACUConsole
             }
 
             var deviceList = _presenter.GetDeviceList();
-            var input = EncryptionKeySetDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            var input = EncryptionKeySetDialog.Show(_app, _presenter.Settings.Devices.ToArray(), deviceList);
             
             if (!input.WasCancelled)
             {
@@ -857,7 +890,7 @@ namespace ACUConsole
             }
 
             var deviceList = _presenter.GetDeviceList();
-            var input = BiometricReadDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            var input = BiometricReadDialog.Show(_app, _presenter.Settings.Devices.ToArray(), deviceList);
             
             if (!input.WasCancelled)
             {
@@ -881,7 +914,7 @@ namespace ACUConsole
             }
 
             var deviceList = _presenter.GetDeviceList();
-            var input = BiometricMatchDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            var input = BiometricMatchDialog.Show(_app, _presenter.Settings.Devices.ToArray(), deviceList);
 
             if (!input.WasCancelled)
             {
@@ -905,12 +938,12 @@ namespace ACUConsole
             }
 
             var deviceList = _presenter.GetDeviceList();
-            var input = GetPIVDataDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            var input = GetPIVDataDialog.Show(_app, _presenter.Settings.Devices.ToArray(), deviceList);
 
             if (!input.WasCancelled)
             {
                 // Prompt user to present PIV card
-                MessageBox.Query(60, 8, "Present PIV Card",
+                MessageBox.Query(_app,60, 8, "Present PIV Card",
                     "Press OK and then present card to reader.",
                     "OK");
 
@@ -934,7 +967,7 @@ namespace ACUConsole
             }
 
             var deviceList = _presenter.GetDeviceList();
-            var deviceSelection = DeviceSelectionDialog.Show("Extended ID Report", _presenter.Settings.Devices.ToArray(), deviceList);
+            var deviceSelection = DeviceSelectionDialog.Show(_app,"Extended ID Report", _presenter.Settings.Devices.ToArray(), deviceList);
 
             if (deviceSelection.WasCancelled)
             {
@@ -951,11 +984,11 @@ namespace ACUConsole
                 {
                     // Show notice dialog allowing user to continue
                     var shouldContinue = MessageBox.Query(
+                        _app,
                         70, 10,
                         "Extended ID Capability",
                         "Device does not report Extended ID capability.\n\n" +
                         "Do you want to send the command anyway?",
-                        1,
                         "Cancel",
                         "Continue");
 
@@ -977,7 +1010,7 @@ namespace ACUConsole
                     var capabilityMessage = $"Compliance Level: {complianceLevel}\n\n" +
                                             description;
 
-                    MessageBox.Query(70, 10, "Extended ID Capability", capabilityMessage, "Continue");
+                    MessageBox.Query(_app,70, 10, "Extended ID Capability", capabilityMessage, "Continue");
                 }
 
                 await _presenter.SendExtendedIdReport(deviceSelection.SelectedDeviceAddress);
@@ -998,7 +1031,7 @@ namespace ACUConsole
             }
 
             var deviceList = _presenter.GetDeviceList();
-            var input = FileTransferDialog.Show(_presenter.Settings.Devices.ToArray(), deviceList);
+            var input = FileTransferDialog.Show(_app, _presenter.Settings.Devices.ToArray(), deviceList);
 
             if (!input.WasCancelled)
             {
@@ -1019,7 +1052,7 @@ namespace ACUConsole
                     // ReSharper disable once AccessToDisposedClosure
                     if (!cancellationTokenSource.Token.IsCancellationRequested)
                     {
-                        Application.MainLoop.Invoke(() =>
+                        _app.Invoke(() =>
                         {
                             ShowInformation("File Transfer Complete", $"File transferred successfully in {result.FragmentCount} fragments.");
                         });
@@ -1030,6 +1063,7 @@ namespace ACUConsole
                 {
                     // Show the dialog and perform the transfer
                     await FileTransferStatusDialog.Show(
+                        _app,
                         () => cancellationTokenSource.Cancel(),
                         DoTransfer);
                 }
@@ -1064,7 +1098,7 @@ namespace ACUConsole
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.ErrorQuery(40, 10, $"Error on address {address}", ex.Message, "OK");
+                    MessageBox.ErrorQuery(_app,$"Error on address {address}", ex.Message, "OK");
                 }
             });
         }
@@ -1074,18 +1108,18 @@ namespace ACUConsole
         {
             if (!_presenter.IsConnected)
             {
-                MessageBox.ErrorQuery(60, 10, "Warning", "Start a connection before sending commands.", "OK");
+                MessageBox.ErrorQuery(_app,"Warning", "Start a connection before sending commands.", "OK");
             }
             else if (_presenter.Settings.Devices.Count == 0)
             {
-                MessageBox.ErrorQuery(60, 10, "Warning", "Add a device before sending commands.", "OK");
+                MessageBox.ErrorQuery(_app,"Warning", "Add a device before sending commands.", "OK");
             }
         }
 
         private async Task ShowDeviceSelectionDialog(string title, Func<byte, Task> actionFunction)
         {
             var deviceList = _presenter.GetDeviceList();
-            var deviceSelection = DeviceSelectionDialog.Show(title, _presenter.Settings.Devices.ToArray(), deviceList);
+            var deviceSelection = DeviceSelectionDialog.Show(_app,title, _presenter.Settings.Devices.ToArray(), deviceList);
             
             if (!deviceSelection.WasCancelled)
             {
@@ -1138,85 +1172,95 @@ namespace ACUConsole
 
         private void OnErrorOccurred(object sender, Exception ex)
         {
-            Application.MainLoop.Invoke(() =>
+            _app.Invoke(() =>
             {
-                MessageBox.ErrorQuery("Error", ex.Message, "OK");
+                MessageBox.ErrorQuery(_app,"Error", ex.Message, "OK");
             });
         }
 
         private void UpdateMessageDisplay()
         {
-            Application.MainLoop.Invoke(() =>
+            _app.Invoke(() =>
             {
                 if (!_window.HasFocus && _menuBar.HasFocus)
                 {
                     return;
                 }
 
-                _scrollView.RemoveAll();
+                if (_logView.HasSelection)
+                {
+                    _logRefreshPending = true;
+                    return;
+                }
 
-                int index = 0;
+                _logRefreshPending = false;
+
+                var lines = new List<string>();
+                var lineAttributes = new List<Attribute?>();
                 foreach (var message in _presenter.MessageHistory.Reverse())
                 {
                     var messageText = message.ToString().TrimEnd();
-                    var label = new Label(0, index, messageText);
-                    index += label.Bounds.Height;
 
                     // Color code messages based on type
+                    Attribute? attribute = null;
                     if (messageText.Contains("| WARN |") || messageText.Contains("NAK") || message.Type == ACUEventType.Warning)
                     {
-                        label.ColorScheme = new ColorScheme
-                            { Normal = Terminal.Gui.Attribute.Make(Color.Black, Color.BrightYellow) };
+                        attribute = new Attribute(Color.Black, Color.BrightYellow);
                     }
                     else if (messageText.Contains("| ERROR |") || message.Type == ACUEventType.Error)
                     {
-                        label.ColorScheme = new ColorScheme
-                            { Normal = Terminal.Gui.Attribute.Make(Color.White, Color.BrightRed) };
+                        attribute = new Attribute(Color.White, Color.BrightRed);
                     }
 
-                    _scrollView.Add(label);
+                    foreach (var line in messageText.Split('\n'))
+                    {
+                        lines.Add(line.TrimEnd('\r'));
+                        lineAttributes.Add(attribute);
+                    }
                 }
+
+                _logView.SetLog(string.Join("\n", lines), lineAttributes);
             });
         }
 
         // IACUConsoleView interface implementation
         public void ShowInformation(string title, string message)
         {
-            Application.MainLoop.Invoke(() =>
+            _app.Invoke(() =>
             {
-                MessageBox.Query(60, 8, title, message, "OK");
+                MessageBox.Query(_app,60, 8, title, message, "OK");
             });
         }
 
         public void ShowError(string title, string message)
         {
-            Application.MainLoop.Invoke(() =>
+            _app.Invoke(() =>
             {
-                MessageBox.ErrorQuery(60, 8, title, message, "OK");
+                MessageBox.ErrorQuery(_app,title, message, "OK");
             });
         }
 
         public void ShowWarning(string title, string message)
         {
-            Application.MainLoop.Invoke(() =>
+            _app.Invoke(() =>
             {
-                MessageBox.Query(60, 8, title, message, "OK");
+                MessageBox.Query(_app,60, 8, title, message, "OK");
             });
         }
 
         public bool AskYesNo(string title, string message)
         {
             var result = false;
-            Application.MainLoop.Invoke(() =>
+            _app.Invoke(() =>
             {
-                result = MessageBox.Query(60, 8, title, message, 1, "No", "Yes") == 1;
+                result = MessageBox.Query(_app,60, 8, title, message, "No", "Yes") == 1;
             });
             return result;
         }
 
         public void UpdateDiscoverMenuItem(string title, Action action)
         {
-            Application.MainLoop.Invoke(() =>
+            _app.Invoke(() =>
             {
                 _discoverMenuItem.Title = title;
                 _discoverMenuItem.Action = action;
@@ -1230,7 +1274,7 @@ namespace ACUConsole
 
         public void Shutdown()
         {
-            Application.Shutdown();
+            _app.RequestStop();
         }
     }
 }

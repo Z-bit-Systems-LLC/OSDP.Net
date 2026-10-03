@@ -142,6 +142,7 @@ namespace OSDP.Net.Tests.LineQuality
             using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
             var exception = Assert.ThrowsAsync<LineQualityException>(
+                // ReSharper disable once AccessToDisposedClosure -- Assert.ThrowsAsync awaits the delegate before disposal
                 async () => await test.RunAsync(options, cancellation.Token));
 
             Assert.That(exception?.Message, Does.Contain("No line quality responder"));
@@ -169,6 +170,7 @@ namespace OSDP.Net.Tests.LineQuality
 
             // With no responder at all, contact is never established and every rate is searched.
             Assert.ThrowsAsync<LineQualityException>(
+                // ReSharper disable once AccessToDisposedClosure -- Assert.ThrowsAsync awaits the delegate before disposal
                 async () => await test.RunAsync(options, cancellation.Token));
 
             Assert.That(controller.BaudRate, Is.EqualTo(9600),

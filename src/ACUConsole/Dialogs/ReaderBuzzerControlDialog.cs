@@ -1,7 +1,11 @@
+using System;
+using System.Collections.ObjectModel;
 using ACUConsole.Extensions;
 using ACUConsole.Model.DialogInputs;
 using OSDP.Net.Model.CommandData;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace ACUConsole.Dialogs
 {
@@ -20,77 +24,85 @@ namespace ACUConsole.Dialogs
         /// Shows the reader buzzer control dialog and returns user input
         /// </summary>
         /// <returns>ReaderBuzzerControlInput with user's choices</returns>
-        public static ReaderBuzzerControlInput Show()
+        public static ReaderBuzzerControlInput Show(IApplication app)
         {
             var result = new ReaderBuzzerControlInput { WasCancelled = true };
 
             // Labels: longest is "OFF Time (x100ms):" (18 chars), x = 18 + 2 = 20
-            var readerNumberTextField = new TextField(20, 1, 25, "0");
+            var readerNumberTextField = new TextField { X = 20, Y = 1, Width = 25, Text = "0" };
 
-            var toneCodeComboBox = new ComboBox(new Rect(20, 3, 30, 5), ToneCodes)
+            var toneCodeComboBox = new DropDownList
             {
-                SelectedItem = 1
+                X = 20,
+                Y = 3,
+                Width = 30,
+                Height = 1,
+                Source = new ListWrapper<string>(new ObservableCollection<string>(ToneCodes))
             }.ConfigureForOptimalUX();
+            toneCodeComboBox.Text = ToneCodes[1];
 
-            var onTimeTextField = new TextField(20, 5, 25, "2");
-            var offTimeTextField = new TextField(20, 7, 25, "2");
-            var countTextField = new TextField(20, 9, 25, "1");
+            var onTimeTextField = new TextField { X = 20, Y = 5, Width = 25, Text = "2" };
+            var offTimeTextField = new TextField { X = 20, Y = 7, Width = 25, Text = "2" };
+            var countTextField = new TextField { X = 20, Y = 9, Width = 25, Text = "1" };
 
             void SendButtonClicked()
             {
-                if (!byte.TryParse(readerNumberTextField.Text.ToString(), out var readerNumber))
+                if (!byte.TryParse(readerNumberTextField.Text, out var readerNumber))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid reader number!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid reader number!", "OK");
                     return;
                 }
 
-                if (!byte.TryParse(onTimeTextField.Text.ToString(), out var onTime))
+                if (!byte.TryParse(onTimeTextField.Text, out var onTime))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid ON time!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid ON time!", "OK");
                     return;
                 }
 
-                if (!byte.TryParse(offTimeTextField.Text.ToString(), out var offTime))
+                if (!byte.TryParse(offTimeTextField.Text, out var offTime))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid OFF time!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid OFF time!", "OK");
                     return;
                 }
 
-                if (!byte.TryParse(countTextField.Text.ToString(), out var count))
+                if (!byte.TryParse(countTextField.Text, out var count))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid count!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid count!", "OK");
                     return;
                 }
 
                 result.ReaderNumber = readerNumber;
-                result.ToneCode = toneCodeComboBox.SelectedItem == 0 ? ToneCode.Off : ToneCode.Default;
+                result.ToneCode = Array.IndexOf(ToneCodes, toneCodeComboBox.Text) == 0 ? ToneCode.Off : ToneCode.Default;
                 result.OnTime = onTime;
                 result.OffTime = offTime;
                 result.Count = count;
                 result.WasCancelled = false;
-                Application.RequestStop();
+                app.RequestStop();
             }
 
             void CancelButtonClicked()
             {
-                Application.RequestStop();
+                app.RequestStop();
             }
 
-            var sendButton = new Button("Send", true);
-            sendButton.Clicked += SendButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += CancelButtonClicked;
+            var sendButton = new Button { Text = "Send", IsDefault = true };
+            sendButton.Accepting += (_, e) => { SendButtonClicked(); e.Handled = true; };
+            var cancelButton = new Button { Text = "Cancel" };
+            cancelButton.Accepting += (_, e) => { CancelButtonClicked(); e.Handled = true; };
 
-            var dialog = new Dialog("Reader Buzzer Control", 60, 16, cancelButton, sendButton);
+            var dialog = new Dialog { Title = "Reader Buzzer Control", Width = 60, Height = Dim.Auto() };
             dialog.Add(
-                new Label(1, 1, "Reader Number:"), readerNumberTextField,
-                new Label(1, 3, "Tone Code:"), toneCodeComboBox,
-                new Label(1, 5, "ON Time (x100ms):"), onTimeTextField,
-                new Label(1, 7, "OFF Time (x100ms):"), offTimeTextField,
-                new Label(1, 9, "Count:"), countTextField);
+                new Label { X = 1, Y = 1, Text = "Reader Number:" }, readerNumberTextField,
+                new Label { X = 1, Y = 3, Text = "Tone Code:" }, toneCodeComboBox,
+                new Label { X = 1, Y = 5, Text = "ON Time (x100ms):" }, onTimeTextField,
+                new Label { X = 1, Y = 7, Text = "OFF Time (x100ms):" }, offTimeTextField,
+                new Label { X = 1, Y = 9, Text = "Count:" }, countTextField);
+            dialog.AddButton(cancelButton);
+            dialog.AddButton(sendButton);
             readerNumberTextField.SetFocus();
 
-            Application.Run(dialog);
+            app.Run(dialog);
+            dialog.Dispose();
 
             return result;
         }

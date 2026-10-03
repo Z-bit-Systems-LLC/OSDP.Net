@@ -3,7 +3,8 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using PDConsole.Configuration;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.Configuration;
 
 namespace PDConsole
 {
@@ -25,19 +26,23 @@ namespace PDConsole
                 // Create controller (ViewModel)
                 _presenter = new PDConsolePresenter(settings);
                 _presenter.SetCurrentSettingsFilePath(settingsFilePath);
-                
-                // Initialize Terminal.Gui
-                Application.Init();
-                
+
+                // Initialize Terminal.Gui (instance-based application)
+                using var app = Application.Create().Init();
+
+                // Use the classic Turbo Pascal theme for a familiar look. The built-in themes are
+                // loaded by Terminal.Gui's shared TuiConfigurationBuilder at module initialization.
+                ThemeManager.Theme = "TurboPascal 5";
+
                 // Create view
-                _view = new PDConsoleView(_presenter);
-                
-                // Create and add a main window
+                _view = new PDConsoleView(_presenter, app);
+
+                // Create the main window (hosts the menu bar and content)
                 var mainWindow = _view.CreateMainWindow();
-                Application.Top.Add(mainWindow);
-                
+
                 // Run the application
-                Application.Run();
+                app.Run(mainWindow);
+                mainWindow.Dispose();
             }
             catch (Exception ex)
             {
@@ -101,7 +106,6 @@ namespace PDConsole
             try
             {
                 _presenter?.Dispose();
-                Application.Shutdown();
             }
             catch (Exception ex)
             {

@@ -56,6 +56,7 @@ namespace OSDP.Net.Tests.Messages.SecureChannel
             Assert.Multiple(() =>
             {
                 Assert.That(context.IsUsingDefaultKey, Is.True);
+                // ReSharper disable once AccessToDisposedClosure -- Assert.Multiple invokes synchronously before disposal
                 Assert.That(cypher.Key, Is.EqualTo(SecurityContext.DefaultKey));
             });
         }

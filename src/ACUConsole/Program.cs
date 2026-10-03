@@ -1,5 +1,6 @@
 using System;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.Configuration;
 
 namespace ACUConsole
 {
@@ -19,19 +20,22 @@ namespace ACUConsole
                 // Create presenter (handles business logic)
                 _presenter = new ACUConsolePresenter();
 
-                // Initialize Terminal.Gui FIRST (like PDConsole does)
-                Application.Init();
+                // Initialize Terminal.Gui (instance-based application)
+                using var app = Application.Create().Init();
+
+                // Use the classic Turbo Pascal theme for a familiar look. The built-in themes are
+                // loaded by Terminal.Gui's shared TuiConfigurationBuilder at module initialization.
+                ThemeManager.Theme = "TurboPascal 5";
 
                 // Create view (handles UI)
-                _view = new ACUConsoleView(_presenter);
+                _view = new ACUConsoleView(_presenter, app);
 
-                // Create and add the main window (like PDConsole)
+                // Create the main window (hosts the menu bar and content)
                 var mainWindow = _view.CreateMainWindow();
 
-                Application.Top.Add(mainWindow);
-
                 // Run the application
-                Application.Run();
+                app.Run(mainWindow);
+                mainWindow.Dispose();
             }
             catch (Exception ex)
             {
@@ -48,7 +52,6 @@ namespace ACUConsole
             try
             {
                 _presenter?.Dispose();
-                Application.Shutdown();
             }
             catch (Exception ex)
             {

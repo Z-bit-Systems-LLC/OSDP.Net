@@ -1,11 +1,14 @@
 using System;
+using System.Collections.ObjectModel;
 using System.IO.Ports;
 using System.Linq;
 using OSDP.Net.Connections;
 using PDConsole.Configuration;
 using PDConsole.Extensions;
 using PDConsole.Model.DialogInputs;
-using Terminal.Gui;
+using Terminal.Gui.App;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 
 namespace PDConsole.Dialogs
 {
@@ -20,9 +23,10 @@ namespace PDConsole.Dialogs
         /// <summary>
         /// Shows the serial connection configuration dialog and returns user input
         /// </summary>
+        /// <param name="app">The Terminal.Gui application instance driving the dialog.</param>
         /// <param name="currentSettings">Current connection settings for defaults</param>
         /// <returns>SerialConnectionInput with user's choices</returns>
-        public static SerialConnectionInput Show(ConnectionSettings currentSettings)
+        public static SerialConnectionInput Show(IApplication app, ConnectionSettings currentSettings)
         {
             var result = new SerialConnectionInput { WasCancelled = true };
 
@@ -34,49 +38,57 @@ namespace PDConsole.Dialogs
             void ApplyButtonClicked()
             {
                 // Validate port name
-                if (string.IsNullOrEmpty(portNameComboBox.Text.ToString()))
+                if (string.IsNullOrEmpty(portNameComboBox.Text))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "No port name selected!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "No port name selected!", "OK");
                     return;
                 }
 
                 // Validate baud rate
-                if (!int.TryParse(baudRateComboBox.Text.ToString(), out var baudRate))
+                if (!int.TryParse(baudRateComboBox.Text, out var baudRate))
                 {
-                    MessageBox.ErrorQuery(40, 10, "Error", "Invalid baud rate selected!", "OK");
+                    MessageBox.ErrorQuery(app, "Error", "Invalid baud rate selected!", "OK");
                     return;
                 }
 
                 // All validation passed - collect the data
-                result.PortName = portNameComboBox.Text.ToString();
+                result.PortName = portNameComboBox.Text;
                 result.BaudRate = baudRate;
                 result.WasCancelled = false;
 
-                Application.RequestStop();
+                app.RequestStop();
             }
 
             void CancelButtonClicked()
             {
                 result.WasCancelled = true;
-                Application.RequestStop();
+                app.RequestStop();
             }
 
-            var applyButton = new Button("Start", true);
-            applyButton.Clicked += ApplyButtonClicked;
-            var cancelButton = new Button("Cancel");
-            cancelButton.Clicked += CancelButtonClicked;
+            var applyButton = new Button { Text = "Start", IsDefault = true };
+            applyButton.Accepting += (_, e) => { ApplyButtonClicked(); e.Handled = true; };
+            var cancelButton = new Button { Text = "Cancel" };
+            cancelButton.Accepting += (_, e) => { CancelButtonClicked(); e.Handled = true; };
 
-            var dialog = new Dialog("Serial Connection Settings", 60, 10, cancelButton, applyButton);
-            dialog.Add(new Label(1, 1, "Port:"), portNameComboBox,
-                      new Label(1, 3, "Baud Rate:"), baudRateComboBox);
+            var dialog = new Dialog
+            {
+                Title = "Serial Connection Settings",
+                Width = 60,
+                Height = Dim.Auto()
+            };
+            dialog.Add(new Label { X = 1, Y = 1, Text = "Port:" }, portNameComboBox,
+                      new Label { X = 1, Y = 3, Text = "Baud Rate:" }, baudRateComboBox);
+            dialog.AddButton(cancelButton);
+            dialog.AddButton(applyButton);
             portNameComboBox.SetFocus();
 
-            Application.Run(dialog);
+            app.Run(dialog);
+            dialog.Dispose();
 
             return result;
         }
 
-        private static ComboBox CreatePortNameComboBox(int x, int y, string currentPortName)
+        private static DropDownList CreatePortNameComboBox(int x, int y, string currentPortName)
         {
             var portNames = SerialPort.GetPortNames();
 
@@ -86,32 +98,42 @@ namespace PDConsole.Dialogs
                 portNames = ["No ports available"];
             }
 
-            // IMPORTANT: Width must be at least ComboBoxExtensions.MinimumRecommendedWidth (30)
-            // for dropdown list to display correctly. See ComboBoxExtensions documentation.
-            var portNameComboBox = new ComboBox(new Rect(x, y, 30, 5), portNames);
+            var portNameComboBox = new DropDownList
+            {
+                X = x,
+                Y = y,
+                Width = 30,
+                Height = 1,
+                Source = new ListWrapper<string>(new ObservableCollection<string>(portNames))
+            };
 
             // Select default port name
-            if (portNames.Length > 0 && !portNames[0].Equals("No ports available"))
+            if (!portNames[0].Equals("No ports available"))
             {
                 var index = Array.FindIndex(portNames, port =>
                     string.Equals(port, currentPortName, StringComparison.OrdinalIgnoreCase));
-                portNameComboBox.SelectedItem = Math.Max(index, 0);
+                portNameComboBox.Text = portNames[Math.Max(index, 0)];
             }
 
             return portNameComboBox;
         }
 
-        private static ComboBox CreateBaudRateComboBox(int x, int y, int currentBaudRate)
+        private static DropDownList CreateBaudRateComboBox(int x, int y, int currentBaudRate)
         {
-            // IMPORTANT: Width must be at least ComboBoxExtensions.MinimumRecommendedWidth (30)
-            // for dropdown list to display correctly. See ComboBoxExtensions documentation.
-            var baudRateComboBox = new ComboBox(new Rect(x, y, 30, 5), StandardBaudRates);
+            var baudRateComboBox = new DropDownList
+            {
+                X = x,
+                Y = y,
+                Width = 30,
+                Height = 1,
+                Source = new ListWrapper<string>(new ObservableCollection<string>(StandardBaudRates))
+            };
 
             // Select default baud rate
             var currentBaudRateString = currentBaudRate.ToString();
             var index = Array.FindIndex(StandardBaudRates, rate =>
                 string.Equals(rate, currentBaudRateString));
-            baudRateComboBox.SelectedItem = Math.Max(index, 0);
+            baudRateComboBox.Text = StandardBaudRates[Math.Max(index, 0)];
 
             return baudRateComboBox;
         }
