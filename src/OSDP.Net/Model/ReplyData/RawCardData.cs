@@ -86,6 +86,7 @@ public class RawCardData : PayloadData
         build.AppendLine($"  Format Code: {Helpers.SplitCamelCase(FormatCode.ToString())}");
         build.AppendLine($"    Bit Count: {BitCount}");
         build.AppendLine($"         Data: {FormatData(Data)}");
+        build.AppendLine($"     Hex Data: {FormatHexData(Data)}");
         return build.ToString();
     }
 
@@ -98,6 +99,24 @@ public class RawCardData : PayloadData
         }
 
         return builder.ToString();
+    }
+
+    /// <summary>
+    /// Formats the bits as hex in the same byte layout used on the wire: the first bit is the
+    /// most significant bit of the first byte, and the last byte is padded with zero bits.
+    /// </summary>
+    internal static string FormatHexData(BitArray bitArray)
+    {
+        var bytes = new byte[(bitArray.Length + 7) / 8];
+        for (int index = 0; index < bitArray.Length; index++)
+        {
+            if (bitArray[index])
+            {
+                bytes[index / 8] |= (byte)(0x80 >> (index % 8));
+            }
+        }
+
+        return BitConverter.ToString(bytes).Replace("-", string.Empty);
     }
 
     private static void Reverse(BitArray array)
