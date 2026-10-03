@@ -10,6 +10,9 @@ namespace OSDP.Net.Connections
     /// <summary>Connect using a serial port.</summary>
     public class SerialPortOsdpConnection : OsdpConnection, IRetunableOsdpConnection
     {
+        private static readonly TimeSpan OpenRetryTimeout = TimeSpan.FromSeconds(1);
+        private static readonly TimeSpan OpenRetryInterval = TimeSpan.FromMilliseconds(25);
+
         private readonly string _portName;
         private SerialPort _serialPort;
 
@@ -63,16 +66,40 @@ namespace OSDP.Net.Connections
         public bool DiscardBuffersBeforeWrite { get; set; } = true;
 
         /// <inheritdoc />
-        public override Task Open()
+        /// <remarks>
+        /// Windows can keep a serial port locked for a short time after it is closed, so opening it
+        /// again straight away fails with <see cref="UnauthorizedAccessException"/>. That happens
+        /// whenever a connection is stopped and restarted on the same port, which device discovery
+        /// does for every baud rate it tries. The open is retried for up to a second before giving
+        /// up, so a port held by another process still fails, just slightly later.
+        /// </remarks>
+        public override async Task Open()
         {
-            if (_serialPort == null)
-            {
-                _serialPort = new(_portName, BaudRate);
-                _serialPort.Open();
-                IsOpen = true;
-            }
+            if (_serialPort != null) return;
 
-            return Task.CompletedTask;
+            var deadline = DateTime.UtcNow + OpenRetryTimeout;
+            while (true)
+            {
+                var serialPort = new SerialPort(_portName, BaudRate);
+                try
+                {
+                    serialPort.Open();
+                    _serialPort = serialPort;
+                    IsOpen = true;
+                    return;
+                }
+                catch (UnauthorizedAccessException) when (DateTime.UtcNow < deadline)
+                {
+                    serialPort.Dispose();
+                }
+                catch
+                {
+                    serialPort.Dispose();
+                    throw;
+                }
+
+                await Task.Delay(OpenRetryInterval).ConfigureAwait(false);
+            }
         }
 
         /// <summary>
