@@ -29,6 +29,7 @@ namespace ACUConsole
 
         // UI Components
         private Window _window;
+        private FrameView _logFrame;
         private LogView _logView;
         private bool _logRefreshPending;
         private FrameView _deviceStatusFrame;
@@ -81,7 +82,7 @@ namespace ACUConsole
 
             // Add the menu bar (top row), log view, and device status panel to the window
             _window.Add(_menuBar);
-            _window.Add(_logView);
+            _window.Add(_logFrame);
             _window.Add(_deviceStatusFrame);
 
             // Initialize device statuses from configured devices
@@ -147,13 +148,25 @@ namespace ACUConsole
 
         private void CreateLogView()
         {
-            _logView = new LogView
+            // Create message log frame (fills the space left of the device status panel)
+            _logFrame = new FrameView
             {
-                X = 1,
+                Title = "Message Log",
+                X = 0,
                 Y = 1, // Leave the top row for the menu bar
-                Width = Dim.Fill() - 32,  // Leave room for device status panel (30 chars + borders)
+                Width = Dim.Fill(30), // Leave room for the device status panel
                 Height = Dim.Fill()
             };
+
+            _logView = new LogView
+            {
+                X = 0,
+                Y = 0,
+                Width = Dim.Fill(),
+                Height = Dim.Fill()
+            };
+
+            _logFrame.Add(_logView);
 
             // Refreshing the log replaces its text, which would drop the user's selection, so
             // refreshes are held while text is selected and applied once the selection is cleared.
