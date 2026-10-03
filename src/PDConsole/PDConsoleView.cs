@@ -5,9 +5,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using PDConsole.FileTransfer;
 using Terminal.Gui.App;
+using Terminal.Gui.Configuration;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace PDConsole
 {
@@ -181,6 +183,16 @@ namespace PDConsole
                 Y = 3
             };
             _sendKeypadButton.Accepting += (_, e) => { SendKeypadClicked(); e.Handled = true; };
+
+            // The theme's Base scheme only defines Normal (yellow on blue), so Terminal.Gui derives the
+            // Editable role as yellow on dimmed yellow, which is hard to read. Use the classic
+            // Turbo Pascal input colors instead.
+            var inputScheme = new Scheme(SchemeManager.GetScheme(Schemes.Base))
+            {
+                Editable = new Attribute(Color.Black, Color.Cyan)
+            };
+            _cardDataField.SetScheme(inputScheme);
+            _keypadField.SetScheme(inputScheme);
 
             frame.Add(cardDataLabel, _cardDataField, _sendCardButton,
                      keypadLabel, _keypadField, _sendKeypadButton);

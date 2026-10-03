@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ACUConsole.Controls;
 using ACUConsole.Dialogs;
 using ACUConsole.Model;
 using OSDP.Net.Model.CommandData;
@@ -29,7 +29,9 @@ namespace ACUConsole
 
         // UI Components
         private Window _window;
-        private View _scrollView;
+        private FrameView _logFrame;
+        private LogView _logView;
+        private bool _logRefreshPending;
         private FrameView _deviceStatusFrame;
         private ListView _deviceStatusList;
         private MenuBar _menuBar;
@@ -75,12 +77,12 @@ namespace ACUConsole
 
             CreateMenuBar();
             _menuBar.Width = Dim.Fill();
-            CreateScrollView();
+            CreateLogView();
             CreateDeviceStatusPanel();
 
-            // Add the menu bar (top row), scroll view, and device status panel to the window
+            // Add the menu bar (top row), log view, and device status panel to the window
             _window.Add(_menuBar);
-            _window.Add(_scrollView);
+            _window.Add(_logFrame);
             _window.Add(_deviceStatusFrame);
 
             // Initialize device statuses from configured devices
@@ -145,17 +147,37 @@ namespace ACUConsole
         }
 
 
-        private void CreateScrollView()
+        private void CreateLogView()
         {
-            _scrollView = new View
+            // Create message log frame (fills the space left of the device status panel)
+            _logFrame = new FrameView
             {
-                X = 1,
+                Title = "Message Log",
+                X = 0,
                 Y = 1, // Leave the top row for the menu bar
-                Width = Dim.Fill() - 32,  // Leave room for device status panel (30 chars + borders)
-                Height = Dim.Fill(),
-                ViewportSettings = ViewportSettingsFlags.HasVerticalScrollBar | ViewportSettingsFlags.HasHorizontalScrollBar
+                Width = Dim.Fill(30), // Leave room for the device status panel
+                Height = Dim.Fill()
             };
-            _scrollView.SetContentSize(new Size(500, 100));
+
+            _logView = new LogView
+            {
+                X = 0,
+                Y = 0,
+                Width = Dim.Fill(),
+                Height = Dim.Fill()
+            };
+
+            _logFrame.Add(_logView);
+
+            // Refreshing the log replaces its text, which would drop the user's selection, so
+            // refreshes are held while text is selected and applied once the selection is cleared.
+            _logView.SelectionChanged += (_, _) =>
+            {
+                if (_logRefreshPending && !_logView.HasSelection)
+                {
+                    UpdateMessageDisplay();
+                }
+            };
         }
 
         private void CreateDeviceStatusPanel()
@@ -1191,32 +1213,39 @@ namespace ACUConsole
                     return;
                 }
 
-                _scrollView.RemoveAll();
+                if (_logView.HasSelection)
+                {
+                    _logRefreshPending = true;
+                    return;
+                }
 
-                int index = 0;
+                _logRefreshPending = false;
+
+                var lines = new List<string>();
+                var lineAttributes = new List<Attribute?>();
                 foreach (var message in _presenter.MessageHistory.Reverse())
                 {
                     var messageText = message.ToString().TrimEnd();
-                    var label = new Label
-                    {
-                        X = 0,
-                        Y = index,
-                        Text = messageText
-                    };
-                    index += messageText.Split('\n').Length;
 
                     // Color code messages based on type
+                    Attribute? attribute = null;
                     if (messageText.Contains("| WARN |") || messageText.Contains("NAK") || message.Type == ACUEventType.Warning)
                     {
-                        label.SetScheme(new Scheme(new Attribute(Color.Black, Color.BrightYellow)));
+                        attribute = new Attribute(Color.Black, Color.BrightYellow);
                     }
                     else if (messageText.Contains("| ERROR |") || message.Type == ACUEventType.Error)
                     {
-                        label.SetScheme(new Scheme(new Attribute(Color.White, Color.BrightRed)));
+                        attribute = new Attribute(Color.White, Color.BrightRed);
                     }
 
-                    _scrollView.Add(label);
+                    foreach (var line in messageText.Split('\n'))
+                    {
+                        lines.Add(line.TrimEnd('\r'));
+                        lineAttributes.Add(attribute);
+                    }
                 }
+
+                _logView.SetLog(string.Join("\n", lines), lineAttributes);
             });
         }
 
