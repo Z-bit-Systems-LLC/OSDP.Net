@@ -29,7 +29,7 @@ namespace ACUConsole
 
         // UI Components
         private Window _window;
-        private LogTextView _logView;
+        private LogView _logView;
         private bool _logRefreshPending;
         private FrameView _deviceStatusFrame;
         private ListView _deviceStatusList;
@@ -147,7 +147,7 @@ namespace ACUConsole
 
         private void CreateLogView()
         {
-            _logView = new LogTextView
+            _logView = new LogView
             {
                 X = 1,
                 Y = 1, // Leave the top row for the menu bar
@@ -157,9 +157,9 @@ namespace ACUConsole
 
             // Refreshing the log replaces its text, which would drop the user's selection, so
             // refreshes are held while text is selected and applied once the selection is cleared.
-            _logView.UnwrappedCursorPositionChanged += (_, _) =>
+            _logView.SelectionChanged += (_, _) =>
             {
-                if (_logRefreshPending && _logView.SelectedLength == 0)
+                if (_logRefreshPending && !_logView.HasSelection)
                 {
                     UpdateMessageDisplay();
                 }
@@ -1174,7 +1174,7 @@ namespace ACUConsole
                     return;
                 }
 
-                if (_logView.SelectedLength > 0 || _logView.IsSelecting)
+                if (_logView.HasSelection)
                 {
                     _logRefreshPending = true;
                     return;
