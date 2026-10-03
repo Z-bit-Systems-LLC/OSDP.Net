@@ -1,13 +1,15 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using OSDP.Net;
+using OSDP.Net.Messages;
 using OSDP.Net.Model;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
 using PDConsole.Configuration;
+using PDConsole.FileTransfer;
 using CommunicationConfiguration = OSDP.Net.Model.CommandData.CommunicationConfiguration;
 using DeviceCapabilities = OSDP.Net.Model.ReplyData.DeviceCapabilities;
 
@@ -16,12 +18,26 @@ namespace PDConsole
     public class PDDevice(DeviceConfiguration config, DeviceSettings settings, ILoggerFactory loggerFactory = null)
         : Device(config, loggerFactory)
     {
+        /// <summary>
+        /// Smallest ACU receive buffer that can still carry a reply payload once the secure channel
+        /// message overhead is removed by <see cref="Message.CalculateMaximumMessageSize"/>.
+        /// </summary>
+        private const ushort MinimumAcuReceiveSize = 32;
+
         private readonly List<CommandEvent> _commandHistory = new();
+
+        // Reassembles osdp_FILETRANSFER fragments from the ACU and produces each osdp_FTSTAT reply.
+        private readonly FileTransferReceiver _fileTransferReceiver = new();
+        private readonly FileTransferStore _fileTransferStore = new();
 
         // Transparent-mode (osdp_XWR/XRD) state. Tracks whether Mode 1 (APDU passthrough)
         // has been enabled by the ACU and whether a virtual smart-card session is active.
         private byte _transparentMode;
         private bool _smartCardSessionActive;
+
+        // Largest message the ACU reported it can receive (osdp_ACURXSIZE). Null until the ACU
+        // sends the command, in which case no reply size limit is applied.
+        private ushort? _acuMaxReceiveSize;
 
         public event EventHandler<CommandEvent> CommandReceived;
 
@@ -30,26 +46,84 @@ namespace PDConsole
         /// The event argument carries the new 16-byte key.
         /// </summary>
         public event EventHandler<byte[]> EncryptionKeyChanged;
-        
+
+        /// <summary>
+        /// Raised when the ACU sets its maximum receive size via osdp_ACURXSIZE. The event argument
+        /// carries the new size in bytes.
+        /// </summary>
+        public event EventHandler<ushort> AcuMaxReceiveSizeChanged;
+
+        /// <summary>
+        /// Raised as each osdp_FILETRANSFER fragment is accepted, so the console can show progress.
+        /// </summary>
+        public event EventHandler<FileTransferEvent> FileTransferProgress;
+
+        /// <summary>
+        /// Raised when a file transfer finishes, whether the file was saved or the transfer failed.
+        /// Check <see cref="FileTransferEvent.Error"/> to tell the two apart.
+        /// </summary>
+        public event EventHandler<FileTransferEvent> FileTransferCompleted;
+
+        /// <summary>
+        /// Gets the maximum message size the ACU reported it can receive, or null if the ACU has not
+        /// sent osdp_ACURXSIZE.
+        /// </summary>
+        public ushort? AcuMaxReceiveSize => _acuMaxReceiveSize;
+
+        /// <summary>
+        /// Gets the directory that files received from the ACU are written to.
+        /// </summary>
+        public string FileTransferDirectory => _fileTransferStore.DirectoryPath;
+
         protected override PayloadData HandleIdReport()
         {
             LogCommand("ID Report");
             
             var vendorCode = ConvertHexStringToBytes(settings.VendorCode, 3);
+
+            // Arguments are named because the constructor takes serialNumber between version and
+            // the firmware triple; passing them positionally previously reported the firmware minor
+            // as the serial number and a byte of the serial string as the firmware minor.
             return new DeviceIdentification(
-                vendorCode,
-                (byte)settings.Model[0],
-                settings.FirmwareMajor,
-                settings.FirmwareMinor,
-                settings.FirmwareBuild,
-                (byte)ConvertStringToBytes(settings.SerialNumber, 4),
-                settings.FirmwareBuild);
+                vendorCode: vendorCode,
+                modelNumber: (byte)settings.Model[0],
+                version: settings.FirmwareMajor,
+                serialNumber: ParseSerialNumber(settings.SerialNumber),
+                firmwareMajor: settings.FirmwareMajor,
+                firmwareMinor: settings.FirmwareMinor,
+                firmwareBuild: settings.FirmwareBuild);
         }
         
         protected override PayloadData HandleDeviceCapabilities()
         {
             LogCommand("Device Capabilities");
             return new DeviceCapabilities(settings.Capabilities.ToArray());
+        }
+
+        protected override PayloadData HandleMaxReplySize(ACUReceiveSize commandPayload)
+        {
+            LogCommand("Max Reply Size", commandPayload);
+
+            // A buffer that cannot hold even an empty reply is unusable, so reject it rather than
+            // accept a limit that would suppress every subsequent reply.
+            if (commandPayload.MaximumReceiveSize < MinimumAcuReceiveSize)
+            {
+                return new Nak(ErrorCode.UnableToProcessCommand);
+            }
+
+            _acuMaxReceiveSize = commandPayload.MaximumReceiveSize;
+            AcuMaxReceiveSizeChanged?.Invoke(this, commandPayload.MaximumReceiveSize);
+            return new Ack();
+        }
+
+        // Determines whether a reply payload fits within the size the ACU reported via osdp_ACURXSIZE.
+        // Always true until the ACU sets a limit. The secure channel overhead is always subtracted so
+        // the reply fits whether or not the secure channel is established.
+        private bool FitsAcuReceiveBuffer(PayloadData reply)
+        {
+            return _acuMaxReceiveSize == null ||
+                   reply.BuildData().Length <=
+                   Message.CalculateMaximumMessageSize(_acuMaxReceiveSize.Value, isEncrypted: true);
         }
 
         protected override PayloadData HandleExtendedIdReport()
@@ -59,12 +133,7 @@ namespace PDConsole
             // If ExtendedId settings are not configured, return a minimal response
             if (settings.ExtendedId == null)
             {
-                return new ExtendedDeviceIdentificationBuilder()
-                    .WithManufacturer("Unknown")
-                    .WithProductName(settings.Model)
-                    .WithSerialNumber(settings.SerialNumber)
-                    .WithFirmwareVersion($"{settings.FirmwareMajor}.{settings.FirmwareMinor}.{settings.FirmwareBuild}")
-                    .Build();
+                return LimitToAcuReceiveBuffer(BuildMinimalExtendedIdReport());
             }
 
             var builder = new ExtendedDeviceIdentificationBuilder()
@@ -98,7 +167,39 @@ namespace PDConsole
                 builder.WithConfigurationReference(settings.ExtendedId.ConfigurationReference);
             }
 
-            return builder.Build();
+            return LimitToAcuReceiveBuffer(builder.Build());
+        }
+
+        // The extended ID report grows with the configured text fields and can outgrow a small ACU
+        // receive buffer. Fall back to the minimal report when the configured one does not fit, and
+        // NAK when even that is too large for the ACU to receive.
+        private PayloadData LimitToAcuReceiveBuffer(PayloadData extendedIdReport)
+        {
+            if (FitsAcuReceiveBuffer(extendedIdReport))
+            {
+                return extendedIdReport;
+            }
+
+            var minimalReport = BuildMinimalExtendedIdReport();
+            if (FitsAcuReceiveBuffer(minimalReport))
+            {
+                LogCommand("Extended ID Report Truncated",
+                    new { AcuMaxReceiveSize = _acuMaxReceiveSize });
+                return minimalReport;
+            }
+
+            LogCommand("Extended ID Report Too Large", new { AcuMaxReceiveSize = _acuMaxReceiveSize });
+            return new Nak(ErrorCode.UnableToProcessCommand);
+        }
+
+        private ExtendedDeviceIdentification BuildMinimalExtendedIdReport()
+        {
+            return new ExtendedDeviceIdentificationBuilder()
+                .WithManufacturer(settings.ExtendedId?.Manufacturer ?? "Unknown")
+                .WithProductName(settings.Model)
+                .WithSerialNumber(settings.SerialNumber)
+                .WithFirmwareVersion($"{settings.FirmwareMajor}.{settings.FirmwareMinor}.{settings.FirmwareBuild}")
+                .Build();
         }
 
         protected override PayloadData HandleCommunicationSet(CommunicationConfiguration commandPayload)
@@ -275,7 +376,127 @@ namespace PDConsole
         protected override PayloadData HandleAbortRequest()
         {
             LogCommand("Abort Request");
+
+            // osdp_ABORT terminates any file transfer currently in progress, so the partial file is
+            // discarded rather than left to collide with the next transfer (OSDP v2.2.2, 6.20).
+            if (_fileTransferReceiver.IsTransferInProgress)
+            {
+                RaiseFileTransferEvent("aborted by the ACU");
+                _fileTransferReceiver.Reset();
+            }
+
             return new Ack();
+        }
+
+        protected override PayloadData HandleFileTransfer(FileTransferFragment commandPayload)
+        {
+            // Only the start of a transfer is logged to the command history. A firmware file arriving
+            // in 128-byte fragments produces thousands of commands, which would flush the history and
+            // pin the UI thread redrawing it; per-fragment detail goes to FileTransferProgress instead.
+            if (!_fileTransferReceiver.IsTransferInProgress)
+            {
+                LogCommand("File Transfer Started", commandPayload);
+            }
+
+            // A rejected fragment resets the receiver, so the in-flight totals are captured here to
+            // report what was lost.
+            var inFlightType = _fileTransferReceiver.IsTransferInProgress
+                ? _fileTransferReceiver.FileType
+                : commandPayload.Type;
+            var inFlightTotal = _fileTransferReceiver.TotalSize;
+            var inFlightReceived = _fileTransferReceiver.ReceivedSize;
+
+            var status = _fileTransferReceiver.AcceptFragment(commandPayload);
+
+            if (status.Detail < 0)
+            {
+                var failedEvent = new FileTransferEvent
+                {
+                    FileType = inFlightType,
+                    TotalSize = inFlightTotal,
+                    ReceivedSize = inFlightReceived,
+                    Error = status.Detail.ToString()
+                };
+
+                LogCommand("File Transfer Failed", failedEvent);
+                FileTransferCompleted?.Invoke(this, failedEvent);
+                return status;
+            }
+
+            if (!_fileTransferReceiver.IsComplete)
+            {
+                FileTransferProgress?.Invoke(this, new FileTransferEvent
+                {
+                    FileType = _fileTransferReceiver.FileType,
+                    TotalSize = _fileTransferReceiver.TotalSize,
+                    ReceivedSize = _fileTransferReceiver.ReceivedSize
+                });
+
+                return status;
+            }
+
+            // The file is complete. Writing it out can fail on a full or read-only disk, and the ACU
+            // needs to hear about that rather than be told the contents were processed.
+            var completed = SaveReceivedFile();
+            _fileTransferReceiver.Reset();
+
+            return completed ? status : new FileTransferStatus(FileTransferStatus.StatusDetail.AbortFileTransfer);
+        }
+
+        /// <summary>
+        /// Writes the assembled file through <see cref="FileTransferStore"/> and reports the outcome.
+        /// </summary>
+        /// <returns><c>true</c> if the file was written; otherwise <c>false</c>.</returns>
+        private bool SaveReceivedFile()
+        {
+            var fileType = _fileTransferReceiver.FileType;
+            var totalSize = _fileTransferReceiver.TotalSize;
+
+            try
+            {
+                var savedPath = _fileTransferStore.Save(fileType, _fileTransferReceiver.GetFile());
+
+                var completedEvent = new FileTransferEvent
+                {
+                    FileType = fileType,
+                    TotalSize = totalSize,
+                    ReceivedSize = totalSize,
+                    IsComplete = true,
+                    SavedFilePath = savedPath
+                };
+
+                LogCommand("File Transfer Complete", completedEvent);
+                FileTransferCompleted?.Invoke(this, completedEvent);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                var failedEvent = new FileTransferEvent
+                {
+                    FileType = fileType,
+                    TotalSize = totalSize,
+                    ReceivedSize = totalSize,
+                    Error = $"could not be saved - {ex.Message}"
+                };
+
+                LogCommand("File Transfer Save Failed", failedEvent);
+                FileTransferCompleted?.Invoke(this, failedEvent);
+                return false;
+            }
+        }
+
+        private void RaiseFileTransferEvent(string error)
+        {
+            var failedEvent = new FileTransferEvent
+            {
+                FileType = _fileTransferReceiver.FileType,
+                TotalSize = _fileTransferReceiver.TotalSize,
+                ReceivedSize = _fileTransferReceiver.ReceivedSize,
+                Error = error
+            };
+
+            LogCommand("File Transfer Failed", failedEvent);
+            FileTransferCompleted?.Invoke(this, failedEvent);
         }
         
         // Method to send a simulated card read
@@ -358,15 +579,26 @@ namespace PDConsole
             return bytes;
         }
         
-        private static uint ConvertStringToBytes(string str, int byteCount)
+        /// <summary>
+        /// Converts the configured serial number to the integer reported in osdp_PDID. Matches the
+        /// parsing the presenter uses for the secure channel client identification, so the PD reports
+        /// one consistent serial number.
+        /// </summary>
+        private static int ParseSerialNumber(string serialNumber)
         {
-            uint result = 0;
-            for (int i = 0; i < Math.Min(str.Length, byteCount); i++)
+            if (string.IsNullOrEmpty(serialNumber)) return 0;
+
+            if (uint.TryParse(serialNumber, out var parsed)) return unchecked((int)parsed);
+
+            uint hash = 0;
+            foreach (char c in serialNumber)
             {
-                result = (result << 8) | str[i];
+                hash = (hash * 31) + c;
             }
-            return result;
+
+            return unchecked((int)hash);
         }
+
     }
     
     public class CommandEvent

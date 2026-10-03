@@ -132,7 +132,7 @@ namespace OSDP.Net.Messages
         /// This property is true if the incoming message is using the default key; otherwise, false.
         /// The default key is a pre-configured key that is used for cryptographic operations.
         /// </remarks>
-        public bool IsUsingDefaultKey { get; }
+        public bool IsUsingDefaultKey { get; internal set; }
 
         /// <summary>
         /// Determines whether the incoming message has secure data.

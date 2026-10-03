@@ -2,22 +2,51 @@ using System;
 using System.Linq;
 using System.Text;
 using OSDP.Net.Messages;
+using OSDP.Net.Messages.SecureChannel;
 
 namespace OSDP.Net.Model.ReplyData
 {
     /// <summary>
     /// The PD file transfer status sent as a reply.
     /// </summary>
-    public class FileTransferStatus
+    /// <remarks>
+    /// Sent by a PD as osdp_FTSTAT (0x7A) in response to an
+    /// <see cref="CommandData.FileTransferFragment"/>. See OSDP v2.2.2 subclause 7.25.
+    /// An ACU parses an incoming reply with <see cref="ParseData"/>; a PD builds an outgoing
+    /// reply with the public constructor.
+    /// </remarks>
+    public class FileTransferStatus : PayloadData
     {
+        /// <summary>
+        /// Number of bytes in an osdp_FTSTAT data block.
+        /// </summary>
+        private const int DataLength = 7;
+
         /// <summary>
         /// Control Flags
         /// </summary>
         [Flags]
-        internal enum ControlFlags
+        public enum ControlFlags
         {
+            /// <summary>
+            /// No control flags set; the PD is dedicated to the file transfer, stays in the secure
+            /// channel, and has no separate poll response available.
+            /// </summary>
+            None = 0x0,
+
+            /// <summary>
+            /// The ACU may interleave other messages with the file transfer.
+            /// </summary>
             Interleave = 0x1,
+
+            /// <summary>
+            /// The ACU shall leave the secure channel for the duration of the file transfer.
+            /// </summary>
             LeaveSecureChannel = 0x2,
+
+            /// <summary>
+            /// A separate poll response is available.
+            /// </summary>
             PollResponseAvailable = 0x4
         }
 
@@ -71,8 +100,31 @@ namespace OSDP.Net.Model.ReplyData
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="FileTransferStatus"/> class to be sent by a PD
+        /// in reply to an osdp_FILETRANSFER command.
+        /// </summary>
+        /// <param name="detail">The status of the file transfer.</param>
+        /// <param name="action">Control flags requesting a change in the ACU's communication procedure.</param>
+        /// <param name="requestedDelay">
+        /// Delay in milliseconds the ACU should wait before sending the next osdp_FILETRANSFER command,
+        /// or zero for no delay.
+        /// </param>
+        /// <param name="updateMessageMaximum">
+        /// Alternate maximum fragment size the ACU should use for the remainder of the transfer,
+        /// or zero to request no change.
+        /// </param>
+        public FileTransferStatus(StatusDetail detail, ControlFlags action = ControlFlags.None,
+            ushort requestedDelay = 0, ushort updateMessageMaximum = 0)
+        {
+            Detail = detail;
+            Action = action;
+            RequestedDelay = requestedDelay;
+            UpdateMessageMaximum = updateMessageMaximum;
+        }
+
         /// <summary>Gets the control flags.</summary>
-        internal ControlFlags Action { get; private set; }
+        public ControlFlags Action { get; private set; }
 
         /// <summary>Gets the request ACU time delay in milliseconds before next osdp_FILETRANSFER command.</summary>
         public ushort RequestedDelay { get;private set;  }
@@ -83,13 +135,42 @@ namespace OSDP.Net.Model.ReplyData
         /// <summary>Gets the alternative maximum message size.</summary>
         public ushort UpdateMessageMaximum { get; private set; }
 
+        /// <inheritdoc />
+        public override byte Code => (byte)ReplyType.FileTransferStatus;
+
+        /// <inheritdoc />
+        public override ReadOnlySpan<byte> SecurityControlBlock() => SecurityBlock.ReplyMessageWithDataSecurity;
+
+        /// <inheritdoc />
+        public override byte[] BuildData()
+        {
+            var data = new byte[DataLength];
+            data[0] = (byte)Action;
+
+            var delay = Message.ConvertShortToBytes(RequestedDelay);
+            data[1] = delay[0];
+            data[2] = delay[1];
+
+            // StatusDetail travels as a signed little-endian short, so the enum value is reinterpreted
+            // rather than clamped; negative values are the PD's error codes.
+            var detail = Message.ConvertShortToBytes(unchecked((ushort)(short)Detail));
+            data[3] = detail[0];
+            data[4] = detail[1];
+
+            var messageMaximum = Message.ConvertShortToBytes(UpdateMessageMaximum);
+            data[5] = messageMaximum[0];
+            data[6] = messageMaximum[1];
+
+            return data;
+        }
+
         /// <summary>Parses the message payload bytes</summary>
         /// <param name="data">Message payload as bytes</param>
         /// <returns>An instance of FileTransferStatus representing the message payload</returns>
         internal static FileTransferStatus ParseData(ReadOnlySpan<byte> data)
         {
             var dataArray = data.ToArray();
-            if (dataArray.Length != 7)
+            if (dataArray.Length != DataLength)
             {
                 throw new Exception("Invalid size for the data");
             }

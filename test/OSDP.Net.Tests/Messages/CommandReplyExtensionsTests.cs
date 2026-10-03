@@ -62,7 +62,7 @@ public class CommandReplyExtensionsTests
     [TestCase(ReplyType.FileTransferStatus, "osdp_FTSTAT")]
     [TestCase(ReplyType.PIVData, "osdp_PIVDATAR")]
     [TestCase(ReplyType.ResponseToChallenge, "osdp_CRAUTHR")]
-    [TestCase(ReplyType.ManufactureSpecific, "osdp_MFGSTATR")]
+    [TestCase(ReplyType.ManufactureSpecific, "osdp_MFGREP")]
     [TestCase(ReplyType.ExtendedRead, "osdp_XRD")]
     public void GetDisplayName_ReplyType_ReturnsProtocolName(ReplyType replyType, string expected)
     {

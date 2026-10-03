@@ -55,6 +55,29 @@ public class DeviceReplyValidationTest
     }
 
     [Test]
+    public void EnsureValidReply_FileTransferWithStatus_PassesThrough()
+    {
+        var device = CreateDevice();
+
+        var result = device.EnsureValidReply(
+            CommandType.FileTransfer,
+            new FileTransferStatus(FileTransferStatus.StatusDetail.OkToProceed));
+
+        Assert.That((ReplyType)result.Code, Is.EqualTo(ReplyType.FileTransferStatus));
+    }
+
+    [Test]
+    public void EnsureValidReply_FileTransferWithAck_SubstitutesNak()
+    {
+        var device = CreateDevice();
+
+        // The spec allows only osdp_FTSTAT or osdp_NAK in reply to osdp_FILETRANSFER (6.26).
+        var result = device.EnsureValidReply(CommandType.FileTransfer, new Ack());
+
+        Assert.That((ReplyType)result.Code, Is.EqualTo(ReplyType.Nak));
+    }
+
+    [Test]
     public void EnsureValidReply_NonMandatedCommand_PassesAckThrough()
     {
         var device = CreateDevice();

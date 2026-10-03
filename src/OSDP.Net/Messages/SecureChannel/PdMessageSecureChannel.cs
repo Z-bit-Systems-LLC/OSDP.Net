@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using OSDP.Net.Connections;
 using OSDP.Net.Model;
 using OSDP.Net.Model.CommandData;
 using OSDP.Net.Model.ReplyData;
+using OSDP.Net.Utilities;
 
 namespace OSDP.Net.Messages.SecureChannel
 {
@@ -52,6 +54,10 @@ namespace OSDP.Net.Messages.SecureChannel
         private byte[] _securityKey;
         private readonly byte[] _clientUID;
 
+        // When the last byte of the current command finished arriving, used to time the idle line
+        // delay owed before the reply may drive the channel.
+        private long _commandReceivedTimestamp;
+
         public PdMessageSecureChannel(IOsdpConnection connection, byte[] securityKey, byte[] clientUID, ILoggerFactory loggerFactory = null)
             : this(connection, context: null, loggerFactory)
         {
@@ -74,6 +80,12 @@ namespace OSDP.Net.Messages.SecureChannel
 
         public CommandType[] AllowUnsecured { get; set; } = [];
 
+        /// <summary>
+        /// Idle line time observed after a command before the reply may drive the channel, derived
+        /// from the connection's line rate per OSDP v2.2.2 subclause 5.7.
+        /// </summary>
+        private TimeSpan ReplyIdleLineDelay => LineTiming.IdleLine(connection.BaudRate);
+
         public async Task<IncomingMessage> ReadNextCommand(CancellationToken cancellationToken = default)
         {
             var commandBuffer = new Collection<byte>();
@@ -95,6 +107,10 @@ namespace OSDP.Net.Messages.SecureChannel
                 throw new TimeoutException("Timeout waiting for command of reply message");
             }
 
+            // Stamped before any parsing so the idle line delay is measured from the wire, not from
+            // however long this PD's handlers take.
+            _commandReceivedTimestamp = Stopwatch.GetTimestamp();
+
             var command = new IncomingMessage(commandBuffer.ToArray().AsSpan(), this);
 
             if (command.Type != (byte)CommandType.Poll)
@@ -115,6 +131,11 @@ namespace OSDP.Net.Messages.SecureChannel
             }
 
             var replyBuffer = reply.BuildMessage(sendUnsecured ? null : this);
+
+            // The line must be seen idle for two character times before this PD may drive it, or the
+            // ACU's transceiver may still be turning around when the reply's first bytes land.
+            await LineTiming.WaitAsync(ReplyIdleLineDelay, _commandReceivedTimestamp)
+                .ConfigureAwait(false);
 
             if (reply.Command.Type != (byte)CommandType.Poll)
             {

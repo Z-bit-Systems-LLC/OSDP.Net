@@ -158,6 +158,39 @@ public class MessageSpyParsingTest
     }
 
     [Test]
+    public void ParsePacket_ChallengeWithDefaultKey_ReportsDefaultKey()
+    {
+        // Arrange - osdp_CHLNG (SCS_11) with SEC_BLK_DATA 0x00 (default key, SCBK-D)
+        var testData = BinaryUtils
+            .HexToBytes("53-00-13-00-0C-03-11-00-76-EB-2E-29-0A-42-8C-92-0B-23-FD").ToArray();
+        var messageSpy = new MessageSpy();
+
+        // Act
+        var actual = messageSpy.ParsePacket(testData);
+
+        // Assert
+        Assert.That(actual.CommandType, Is.EqualTo(CommandType.SessionChallenge));
+        Assert.That(actual.IsUsingDefaultKey, Is.True);
+    }
+
+    [Test]
+    public void ParsePacket_ChallengeWithConfiguredKey_ReportsConfiguredKey()
+    {
+        // Arrange - osdp_CHLNG (SCS_11) with SEC_BLK_DATA 0x01 (per-installation key, SCBK). The
+        // parser is given the default key, so a stale key-derived flag would wrongly report default.
+        var testData = BinaryUtils
+            .HexToBytes("53-00-13-00-0C-03-11-01-76-EB-2E-29-0A-42-8C-92-0B-89-D1").ToArray();
+        var messageSpy = new MessageSpy();
+
+        // Act
+        var actual = messageSpy.ParsePacket(testData);
+
+        // Assert
+        Assert.That(actual.CommandType, Is.EqualTo(CommandType.SessionChallenge));
+        Assert.That(actual.IsUsingDefaultKey, Is.False);
+    }
+
+    [Test]
     public void TryParsePacket_EmptyData_ReturnsFalse()
     {
         // Arrange

@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using PDConsole.FileTransfer;
 using Terminal.Gui.App;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.ViewBase;
@@ -37,6 +38,7 @@ namespace PDConsole
             _controller.CommandReceived += OnCommandReceived;
             _controller.StatusChanged += OnStatusChanged;
             _controller.ConnectionStatusChanged += OnConnectionStatusChanged;
+            _controller.FileTransferChanged += OnFileTransferChanged;
             _controller.ErrorOccurred += OnErrorOccurred;
         }
 
@@ -358,7 +360,14 @@ namespace PDConsole
         // Controller Event Handlers
         private void OnCommandReceived(object sender, CommandEvent e)
         {
-            _app.Invoke(UpdateCommandHistoryView);
+            _app.Invoke(() =>
+            {
+                UpdateCommandHistoryView();
+
+                // Commands such as osdp_ACURXSIZE change what the device status reports
+                if (_statusLabel != null)
+                    _statusLabel.Text = _controller.GetDeviceStatusText();
+            });
         }
 
         private void OnStatusChanged(object sender, string status)
@@ -375,6 +384,15 @@ namespace PDConsole
             {
                 if (_connectionLabel != null)
                     _connectionLabel.Text = $"Connection: {status}";
+            });
+        }
+
+        private void OnFileTransferChanged(object sender, FileTransferEvent e)
+        {
+            _app.Invoke(() =>
+            {
+                if (_statusLabel != null)
+                    _statusLabel.Text = _controller.GetDeviceStatusText();
             });
         }
 

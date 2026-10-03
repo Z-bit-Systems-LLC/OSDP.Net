@@ -106,7 +106,7 @@ namespace OSDP.Net.Model.ReplyData
         /// </summary>
         BadChecksumOrCrc = 0x1,
         /// <summary>
-        /// Unknown Command Code � Command not implemented by PD
+        /// Command length error
         /// </summary>
         InvalidCommandLength = 0x2,
         /// <summary>
