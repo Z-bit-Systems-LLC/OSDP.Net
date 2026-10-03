@@ -1,13 +1,15 @@
 
 # Terminal GUI Style Guide
 
-This document defines the standard patterns and conventions for creating consistent terminal-based user interfaces in PDConsole and ACUConsole using **Terminal.Gui v2** (2.4.x).
+This document defines the standard patterns and conventions for creating consistent terminal-based user interfaces in PDConsole and ACUConsole using **Terminal.Gui v2** (2.5.x).
 
 > **Terminal.Gui v2 note.** The consoles were migrated from Terminal.Gui v1 to v2. v2 is a near-complete API rewrite. The most important consequences for dialog code:
 > - Widgets moved out of the root `Terminal.Gui` namespace into `Terminal.Gui.App` (application/`MessageBox`), `Terminal.Gui.ViewBase` (`View`, `Pos`, `Dim`), `Terminal.Gui.Views` (all widgets), and `Terminal.Gui.Drawing` (`Color`, `Scheme`, `Attribute`, `LineStyle`).
 > - The static `Application` API (`Application.Init/Run/RequestStop/Invoke/Shutdown`) is `[Obsolete]`. Use an injected **`IApplication`** instance instead. Every `Show(...)` takes `IApplication app` as its first parameter.
 > - Positional widget constructors were removed. Every widget is created with a parameterless constructor + object initializer.
 > - `ComboBox`, `RadioGroup`, `ScrollView`, and `ColorScheme` were removed. Use `DropDownList`, `OptionSelector`, built-in view scrolling, and `Scheme`.
+> - `IApplication.Run` installs a `SynchronizationContext` that marshals `await` continuations back onto the UI thread, so async handlers can update views directly after an `await`.
+> - The legacy `ConfigurationManager` was removed in 2.5. Built-in themes are loaded automatically; select one with `ThemeManager.Theme` after `Init()`.
 
 ## Table of Contents
 
@@ -796,3 +798,4 @@ When creating a new dialog, ensure:
 |---------|------|---------|
 | 1.0 | 2025-10-27 | Initial version based on PDConsole and ACUConsole patterns (Terminal.Gui v1) |
 | 2.0 | 2026-07-17 | Rewritten for Terminal.Gui v2: instance `IApplication`, object initializers, `Dim.Auto()` heights, `DropDownList`, `OptionSelector`, `CheckState`, `Accepting` events, updated `MessageBox` signatures and namespaces |
+| 2.1 | 2026-10-03 | Updated for Terminal.Gui 2.5: `ConfigurationManager` removed, built-in `SynchronizationContext` replaces the custom one |

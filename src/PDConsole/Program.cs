@@ -27,25 +27,12 @@ namespace PDConsole
                 _presenter = new PDConsolePresenter(settings);
                 _presenter.SetCurrentSettingsFilePath(settingsFilePath);
 
-                // Enable the configuration system (loads the built-in themes) before creating the app.
-                // NOTE: ConfigurationManager is deprecated in Terminal.Gui 2.4 in favor of
-                // TuiConfigurationBuilder, but remains functional; migrate when it is removed.
-#pragma warning disable CS0618
-                ConfigurationManager.Enable(ConfigLocations.All);
-
                 // Initialize Terminal.Gui (instance-based application)
                 using var app = Application.Create().Init();
 
-                // Use the classic Turbo Pascal theme for a familiar look.
+                // Use the classic Turbo Pascal theme for a familiar look. The built-in themes are
+                // loaded by Terminal.Gui's shared TuiConfigurationBuilder at module initialization.
                 ThemeManager.Theme = "TurboPascal 5";
-                ConfigurationManager.Apply();
-#pragma warning restore CS0618
-
-                // Terminal.Gui v2 does not install a synchronization context, so restore one that
-                // marshals async continuations back onto the UI thread (required for any UI shown
-                // after an await).
-                System.Threading.SynchronizationContext.SetSynchronizationContext(
-                    new TerminalGuiSynchronizationContext(app));
 
                 // Create view
                 _view = new PDConsoleView(_presenter, app);
