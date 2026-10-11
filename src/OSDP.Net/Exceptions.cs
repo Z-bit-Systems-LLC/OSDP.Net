@@ -44,8 +44,9 @@ namespace OSDP.Net
         /// <param name="message">Optional message to be included with the exception</param>
         public NackReplyException(Nak replyData, string message = null) : base(message)
         {
-            Message =
-                $"Received NAK error '{Helpers.SplitCamelCase(replyData.ErrorCode.ToString())}'.{(string.IsNullOrEmpty(message) ? string.Empty : $" {message}")}";
+            // Not a nested interpolated string: Doxygen can't parse those and drops every class in this file.
+            var suffix = string.IsNullOrEmpty(message) ? string.Empty : " " + message;
+            Message = $"Received NAK error '{Helpers.SplitCamelCase(replyData.ErrorCode.ToString())}'.{suffix}";
             Reply = replyData;
         }
 
