@@ -1,0 +1,343 @@
+/* z-bitco.com theme for the OSDP.Net API reference.
+   Loaded after doxygen.css through HTML_EXTRA_STYLESHEET. Doxygen styles almost everything through the
+   custom properties on html, so most of the theme is a remap of those onto the site's tokens. The rest
+   gives the title area and the bottom path bar the site's dark header and footer bands.
+
+   HTML_COLORSTYLE stays AUTO_LIGHT: LIGHT bakes literal colors into doxygen.css, leaving nothing to override.
+   Doxygen's dark scheme sets its properties on html:not(.dark-mode) inside a prefers-color-scheme query;
+   repeating that selector here, later and at equal specificity, keeps the reference light like the site. */
+
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Roboto:wght@400;500;700&family=Rubik:wght@400;500;700&display=swap");
+
+html,
+html:not(.dark-mode) {
+    /* z-bitco.com tokens */
+    --zb-ink: #0f1419;
+    --zb-ink-muted: #56606b;
+    --zb-link: #0b7a54;
+    --zb-paper: #ffffff;
+    --zb-paper-2: #f4f6f8;
+    --zb-line: #e1e5ea;
+    --zb-night: #0b1016;
+    --zb-night-3: #17212d;
+    --zb-night-line: #243243;
+    --zb-on-night: #e6edf3;
+    --zb-on-night-muted: #9aabbb;
+    --zb-signal: #3ddc97; /* accent on dark backgrounds only */
+    --zb-link-tint: #e7f3ee;
+    --zb-font-body: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --zb-font-head: "Rubik", var(--zb-font-body);
+    --zb-font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+
+    /* page */
+    --page-background-color: var(--zb-paper);
+    --page-foreground-color: var(--zb-ink);
+    --page-link-color: var(--zb-link);
+    --page-visited-link-color: var(--zb-link);
+    --page-external-link-color: var(--zb-link);
+
+    /* index */
+    --index-odd-item-bg-color: var(--zb-paper-2);
+    --index-even-item-bg-color: var(--zb-paper);
+    --index-header-color: var(--zb-ink);
+    --index-separator-color: var(--zb-line);
+
+    /* headers */
+    --header-background-color: var(--zb-paper);
+    --header-separator-color: var(--zb-line);
+    --group-header-separator-color: var(--zb-line);
+    --group-header-color: var(--zb-ink);
+    --inherit-header-color: var(--zb-ink-muted);
+    --footer-foreground-color: var(--zb-on-night-muted);
+    --title-background-color: var(--zb-night);
+    --title-separator-color: var(--zb-night-line);
+    --directory-separator-color: var(--zb-line);
+    --separator-color: var(--zb-line);
+    --blockquote-background-color: var(--zb-paper-2);
+    --blockquote-border-color: var(--zb-line);
+    --scrollbar-thumb-color: #c5ccd4;
+    --scrollbar-background-color: var(--zb-paper-2);
+
+    /* icons and labels */
+    --icon-background-color: var(--zb-link);
+    --icon-foreground-color: var(--zb-paper);
+    --icon-folder-open-fill-color: var(--zb-link-tint);
+    --icon-folder-fill-color: var(--zb-paper-2);
+    --icon-folder-border-color: var(--zb-link);
+    --icon-doc-fill-color: var(--zb-paper-2);
+    --icon-doc-border-color: var(--zb-link);
+    --label-background-color: var(--zb-link);
+    --label-left-top-border-color: var(--zb-link);
+    --label-right-bottom-border-color: var(--zb-link);
+    --label-foreground-color: var(--zb-paper);
+
+    /* member lists */
+    --memdecl-background-color: var(--zb-paper);
+    --memdecl-separator-color: var(--zb-line);
+    --memdecl-foreground-color: var(--zb-ink-muted);
+    --memdecl-template-color: var(--zb-link);
+    --memdecl-border-color: var(--zb-line);
+    --memdef-border-color: var(--zb-line);
+    --memdef-title-background-color: var(--zb-paper-2);
+    --memdef-proto-background-color: var(--zb-paper-2);
+    --memdef-proto-text-color: var(--zb-ink);
+    --memdef-doc-background-color: var(--zb-paper);
+    --memdef-param-name-color: #8a3b12;
+    --memdef-template-color: var(--zb-link);
+
+    /* tables */
+    --table-cell-border-color: var(--zb-line);
+    --table-header-background-color: var(--zb-night-3);
+    --table-header-foreground-color: var(--zb-on-night);
+
+    /* navigation: top menu, tree and breadcrumbs */
+    --nav-background-color: var(--zb-paper-2);
+    --nav-foreground-color: var(--zb-ink);
+    --nav-border-color: var(--zb-line);
+    --nav-breadcrumb-separator-color: var(--zb-line);
+    --nav-breadcrumb-active-bg: var(--zb-link-tint); /* also the page outline's visible-section highlight */
+    --nav-breadcrumb-color: var(--zb-ink);
+    --nav-breadcrumb-border-color: var(--zb-line);
+    --nav-splitbar-bg-color: var(--zb-line);
+    --nav-splitbar-handle-color: #c5ccd4;
+    --nav-text-normal-color: var(--zb-ink);
+    --nav-text-hover-color: var(--zb-paper);
+    --nav-text-active-color: var(--zb-paper);
+    --nav-menu-button-color: var(--zb-ink);
+    --nav-menu-background-color: var(--zb-paper);
+    --nav-menu-foreground-color: var(--zb-ink);
+    --nav-menu-active-bg: var(--zb-paper-2);
+    --nav-menu-active-color: var(--zb-link);
+    --nav-arrow-color: #a9b2bc;
+    --nav-arrow-selected-color: var(--zb-link);
+
+    --sync-icon-border-color: var(--zb-line);
+    --sync-icon-background-color: var(--zb-paper-2);
+    --sync-icon-selected-background-color: var(--zb-link-tint);
+    --sync-icon-color: #a9b2bc;
+    --sync-icon-selected-color: var(--zb-link);
+
+    --toc-background-color: var(--zb-paper-2);
+    --toc-border-color: var(--zb-line);
+    --toc-header-color: var(--zb-ink);
+
+    /* search */
+    --search-filter-highlight-bg-color: var(--zb-link);
+    --search-results-foreground-color: var(--zb-link);
+    --search-box-border-color: var(--zb-line);
+
+    /* code */
+    --code-link-color: var(--zb-link);
+    --code-external-link-color: var(--zb-link);
+    --fragment-background-color: var(--zb-paper-2);
+    --fragment-border-color: var(--zb-line);
+    --fragment-lineno-border-color: var(--zb-link);
+    --fragment-lineno-background-color: var(--zb-line);
+    --fragment-lineno-link-fg-color: var(--zb-link);
+    --fragment-lineno-link-hover-fg-color: var(--zb-link);
+    --tooltip-link-color: var(--zb-link);
+
+    /* fonts */
+    --font-family-normal: var(--zb-font-body);
+    --font-family-title: var(--zb-font-head);
+    --font-family-nav: var(--zb-font-body);
+    --font-family-toc: var(--zb-font-body);
+    --font-family-search: var(--zb-font-body);
+    --font-family-tooltip: var(--zb-font-body);
+    --font-family-monospace: var(--zb-font-mono);
+
+    /* Doxygen 1.15 light defaults for everything its dark scheme changes that the theme does not set above.
+       Regenerate this list when upgrading Doxygen. */
+    --footer-logo-width: 75px;
+    --citation-label-color: #334975;
+    --glow-color: cyan;
+    --nav-font-size-level1: 13px;
+    --nav-font-size-level2: 10px;
+    --nav-font-size-level3: 9px;
+    --nav-menu-toggle-color: rgba(255, 255, 255, 0.5);
+    --toc-down-arrow-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' version='1.1' height='10px' width='5px' fill='grey'><text x='0' y='5' font-size='10'>&%238595;</text></svg>");
+    --search-background-color: white;
+    --search-foreground-color: #909090;
+    --search-active-color: black;
+    --search-filter-background-color: rgba(255,255,255,.7);
+    --search-filter-backdrop-filter: blur(4px);
+    --search-filter-foreground-color: black;
+    --search-filter-border-color: rgba(150,150,150,.4);
+    --search-filter-highlight-text-color: white;
+    --search-results-background-color: rgba(255,255,255,.8);
+    --search-results-backdrop-filter: blur(4px);
+    --search-results-border-color: rgba(150,150,150,.4);
+    --search-close-icon-bg-color: #A0A0A0;
+    --search-close-icon-fg-color: white;
+    --code-keyword-color: #008000;
+    --code-type-keyword-color: #604020;
+    --code-flow-keyword-color: #E08000;
+    --code-comment-color: #800000;
+    --code-preprocessor-color: #806020;
+    --code-string-literal-color: #002080;
+    --code-char-literal-color: #008080;
+    --code-xml-cdata-color: black;
+    --code-vhdl-digit-color: #FF00FF;
+    --code-vhdl-char-color: #000000;
+    --code-vhdl-keyword-color: #700070;
+    --code-vhdl-logic-color: #FF0000;
+    --fragment-foreground-color: black;
+    --fragment-lineno-foreground-color: black;
+    --fragment-lineno-link-bg-color: #D8D8D8;
+    --fragment-lineno-link-hover-bg-color: #C8C8C8;
+    --fragment-copy-ok-color: #2EC82E;
+    --fragment-highlight-filter: -3;
+    --tooltip-foreground-color: black;
+    --tooltip-background-color: rgba(255,255,255,0.8);
+    --tooltip-arrow-background-color: white;
+    --tooltip-border-color: rgba(150,150,150,0.7);
+    --tooltip-backdrop-filter: blur(3px);
+    --tooltip-doc-color: grey;
+    --tooltip-declaration-color: #006318;
+    --tooltip-shadow: 0 4px 8px 0 rgba(0,0,0,.25);
+    --fold-line-color: #808080;
+    --font-family-icon: Arial,Helvetica;
+    --warning-color-bg: #f8d1cc;
+    --warning-color-hl: #b61825;
+    --warning-color-text: #75070f;
+    --note-color-bg: #faf3d8;
+    --note-color-hl: #f3a600;
+    --note-color-text: #5f4204;
+    --todo-color-bg: #e4f3ff;
+    --todo-color-hl: #1879C4;
+    --todo-color-text: #274a5c;
+    --test-color-bg: #e8e8ff;
+    --test-color-hl: #3939C4;
+    --test-color-text: #1a1a5c;
+    --deprecated-color-bg: #ecf0f3;
+    --deprecated-color-hl: #5b6269;
+    --deprecated-color-text: #43454a;
+    --bug-color-bg: #e4dafd;
+    --bug-color-hl: #5b2bdd;
+    --bug-color-text: #2a0d72;
+    --invariant-color-bg: #d8f1e3;
+    --invariant-color-hl: #44b86f;
+    --invariant-color-text: #265532;
+}
+
+body {
+    color: var(--zb-ink);
+}
+
+a {
+    text-underline-offset: 3px;
+}
+
+a:hover {
+    text-decoration-thickness: 2px;
+}
+
+h1, h2, h3, h4, .title, h2.groupheader {
+    font-family: var(--zb-font-head);
+    letter-spacing: -0.01em;
+}
+
+.title {
+    font-weight: 700;
+}
+
+h2.groupheader {
+    font-weight: 500;
+}
+
+/* Title area: the site's dark header band */
+#titlearea {
+    background: var(--zb-night);
+    border-bottom: 1px solid var(--zb-night-line);
+    padding: 6px 0;
+}
+
+#titlearea table {
+    padding-left: 10px;
+}
+
+#projectname {
+    font-family: var(--zb-font-head);
+    font-weight: 700;
+    color: var(--zb-on-night);
+}
+
+#projectnumber {
+    font-family: var(--zb-font-mono);
+    font-size: 55%;
+    font-weight: 500;
+    color: var(--zb-signal);
+}
+
+#projectbrief {
+    color: var(--zb-on-night-muted);
+}
+
+#projectname a,
+#projectname a:visited {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* Bottom path bar: the site's dark footer band */
+#nav-path ul {
+    background: var(--zb-night);
+    border-bottom-color: var(--zb-night-line);
+    color: var(--zb-on-night-muted);
+}
+
+#nav-path li.navelem:after {
+    background: var(--zb-night);
+    box-shadow: 2px -2px 0 2px var(--zb-night-line);
+}
+
+#nav-path li.navelem:hover,
+#nav-path li.navelem:hover:after {
+    background-color: var(--zb-night-3);
+}
+
+.navpath li.navelem a,
+.navpath li.navelem a:visited {
+    color: var(--zb-on-night);
+}
+
+.navpath li.navelem a:hover {
+    color: var(--zb-signal);
+}
+
+.navpath li.footer a {
+    color: var(--zb-on-night);
+}
+
+/* Doxygen's logo is dark ink; it would vanish on the dark band */
+.navpath img.footer {
+    filter: brightness(0) invert(1);
+    opacity: 0.7;
+}
+
+.navpath li.zb-site {
+    list-style-type: none;
+    float: right;
+    padding: 0 15px 0 10px;
+    font-size: 9pt;
+}
+
+.navpath li.zb-site a,
+.navpath li.zb-site a:visited {
+    color: var(--zb-signal);
+    text-decoration: none;
+}
+
+.navpath li.zb-site a:hover {
+    text-decoration: underline;
+}
+
+/* Footer when the tree view is off */
+address.footer a {
+    color: var(--zb-link);
+}
+
+:focus-visible {
+    outline: 2px solid var(--zb-link);
+    outline-offset: 2px;
+}
