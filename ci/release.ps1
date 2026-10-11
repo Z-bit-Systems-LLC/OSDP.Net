@@ -135,6 +135,7 @@ Write-Info "- Run tests"
 Write-Info "- Build NuGet packages"
 Write-Info "- Build console applications for multiple platforms"
 Write-Info "- Publish artifacts"
+Write-Info "- Build and publish the API docs to z-bitco.com/osdp-net/api/"
 Write-Info ""
 
 if (-not $DryRun) {
@@ -254,6 +255,7 @@ if ($DryRun) {
     Write-Info "3. Build console applications for multiple platforms"
     Write-Info "4. Publish artifacts"
     Write-Info "5. Publish to NuGet (if configured)"
+    Write-Info "6. Build and publish the API docs to z-bitco.com/osdp-net/api/"
     Write-Info ""
     Write-Info "Monitor the pipeline at: https://dev.azure.com/Z-bitSystems/OSDP.Net/_build"
 }

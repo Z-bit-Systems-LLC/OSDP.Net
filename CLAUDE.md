@@ -72,6 +72,7 @@ foreach ($issue in $issues) {
 - **Supported Commands**: See `/docs/supported_commands.md` for OSDP v2.2 implementation status
 - **Line Quality Test Plan**: See `/docs/line-quality-test-plan.md` for the RS-485 line quality test implementation plan
 - **Line Quality CLI**: See `/src/OSDP.Net.LineQuality.Cli/README.md` for the `osdp-linequality` tool
+- **API Reference**: Built by the `docs` CI job (`ci/docs.yml`) on each `v*` tag and published to https://z-bitco.com/osdp-net/api/. `scripts/Test-DocLinks.ps1` checks the links from the Markdown docs into it, and `pwsh -File scripts/Publish-Documentation.ps1` runs it after a local build
 
 ## OSDP Specification Reference
 - **IMPORTANT**: The full SIA OSDP v2.2.2 standard is available locally at `/docs/spec/SIA-OSDP-2.2-2.txt`
@@ -114,5 +115,5 @@ foreach ($issue in $issues) {
 
 ## Prompt Aliases
 When the user says these phrases, interpret them as the corresponding command:
-- **"release the code"** / **"release the library"** → Perform a full library release in three steps: (1) regenerate and publish Doxygen documentation by running `pwsh -File scripts/Publish-Documentation.ps1`; (2) run `pwsh -File ci/release.ps1 -AutoConfirm` to bump the version, tag, and push; (3) create a corresponding GitHub release at https://github.com/Z-bit-Systems-LLC/OSDP.Net/releases using `gh release create v<new-version> --repo Z-bit-Systems-LLC/OSDP.Net --title "v<new-version>" --notes "<changelog>"`, where the changelog is built from the commits since the previous tag
+- **"release the code"** / **"release the library"** → Perform a full library release in three steps: (1) regenerate the Doxygen documentation locally and check the links into it by running `pwsh -File scripts/Publish-Documentation.ps1` (CI publishes the API reference from the tag); (2) run `pwsh -File ci/release.ps1 -AutoConfirm` to bump the version, tag, and push; (3) create a corresponding GitHub release at https://github.com/Z-bit-Systems-LLC/OSDP.Net/releases using `gh release create v<new-version> --repo Z-bit-Systems-LLC/OSDP.Net --title "v<new-version>" --notes "<changelog>"`, where the changelog is built from the commits since the previous tag
 - **"inspect the code"** → Run ReSharper code inspection and analyze results using the commands in the "Code Inspection" section above: run `jb inspectcode OSDP.Net.sln --output=inspectcode-results.xml`, then use the PowerShell commands to check for errors/warnings and display details

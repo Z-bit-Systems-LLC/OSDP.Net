@@ -49,4 +49,3 @@ memory/
 # Doxygen generated documentation
 docs/html/
 docs/*.zip
-Doxyfile

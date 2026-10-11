@@ -1,0 +1,43 @@
+steps:
+  - bash: |
+      set -euo pipefail
+      curl -fsSL -o "$(Agent.TempDirectory)/doxygen.tar.gz" "$(doxygenUrl)"
+      echo "$(doxygenSha256)  $(Agent.TempDirectory)/doxygen.tar.gz" | sha256sum -c -
+      tar -xzf "$(Agent.TempDirectory)/doxygen.tar.gz" -C "$(Agent.TempDirectory)"
+      echo "##vso[task.prependpath]$(Agent.TempDirectory)/doxygen-$(doxygenVersion)/bin"
+    displayName: 'Install Doxygen $(doxygenVersion)'
+
+  - bash: |
+      set -euo pipefail
+      VERSION=${BUILD_SOURCEBRANCHNAME#v}
+      OUT="$(Build.ArtifactStagingDirectory)/api-docs"
+      mkdir -p "$OUT"
+      doxygen --version
+
+      # Overrides on stdin, so the Doxyfile stays usable for local builds
+      ( cat Doxyfile
+        echo "PROJECT_NUMBER=$VERSION"
+        echo "OUTPUT_DIRECTORY=$OUT"
+      ) | doxygen - 2>&1 | tee "$(Agent.TempDirectory)/doxygen.log"
+
+      if [[ ! -f "$OUT/html/index.html" ]]; then
+        echo "##vso[task.logissue type=error]Doxygen did not produce html/index.html"
+        exit 1
+      fi
+      # Warnings about undocumented members are fine; errors are not
+      if grep -E '(^|: )error:' "$(Agent.TempDirectory)/doxygen.log"; then
+        echo "##vso[task.logissue type=error]Doxygen reported errors"
+        exit 1
+      fi
+
+      cp ci/deploy-api-docs.sh "$OUT/"
+    displayName: 'Generate API docs'
+
+  - pwsh: ./scripts/Test-DocLinks.ps1 -HtmlPath "$(Build.ArtifactStagingDirectory)/api-docs/html"
+    displayName: 'Check links into the API docs'
+
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish api-docs artifact'
+    inputs:
+      targetPath: '$(Build.ArtifactStagingDirectory)/api-docs'
+      artifactName: api-docs

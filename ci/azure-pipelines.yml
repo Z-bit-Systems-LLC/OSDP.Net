@@ -37,4 +37,19 @@ jobs:
       - checkout: self
         persistCredentials: true
         clean: true
-      - template: package.yml  
+      - template: package.yml
+
+  - job: docs
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
+    pool:
+      vmImage: 'ubuntu-latest'
+    dependsOn:
+      build
+    variables:
+      doxygenVersion: '1.15.0'
+      doxygenUrl: 'https://github.com/doxygen/doxygen/releases/download/Release_1_15_0/doxygen-1.15.0.linux.bin.tar.gz'
+      doxygenSha256: '0ec2e5b2c3cd82b7106d19cb42d8466450730b8cb7a9e85af712be38bf4523a1'
+    steps:
+      - checkout: self
+        clean: true
+      - template: docs.yml
