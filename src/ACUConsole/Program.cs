@@ -1,6 +1,5 @@
 using System;
 using Terminal.Gui.App;
-using Terminal.Gui.Configuration;
 
 namespace ACUConsole
 {
@@ -22,10 +21,6 @@ namespace ACUConsole
 
                 // Initialize Terminal.Gui (instance-based application)
                 using var app = Application.Create().Init();
-
-                // Use the classic Turbo Pascal theme for a familiar look. The built-in themes are
-                // loaded by Terminal.Gui's shared TuiConfigurationBuilder at module initialization.
-                ThemeManager.Theme = "TurboPascal 5";
 
                 // Create view (handles UI)
                 _view = new ACUConsoleView(_presenter, app);

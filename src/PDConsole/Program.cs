@@ -4,7 +4,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using PDConsole.Configuration;
 using Terminal.Gui.App;
-using Terminal.Gui.Configuration;
 
 namespace PDConsole
 {
@@ -29,10 +28,6 @@ namespace PDConsole
 
                 // Initialize Terminal.Gui (instance-based application)
                 using var app = Application.Create().Init();
-
-                // Use the classic Turbo Pascal theme for a familiar look. The built-in themes are
-                // loaded by Terminal.Gui's shared TuiConfigurationBuilder at module initialization.
-                ThemeManager.Theme = "TurboPascal 5";
 
                 // Create view
                 _view = new PDConsoleView(_presenter, app);
