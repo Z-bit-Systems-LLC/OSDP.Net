@@ -1,0 +1,60 @@
+steps:
+  - task: UseDotNet@2
+    displayName: 'Install .NET 10 SDK'
+    inputs:
+      packageType: 'sdk'
+      version: '10.x'
+
+  - task: DotNetCoreCLI@2
+    displayName: 'dotnet build'
+    inputs:
+      command: 'build'
+      projects: 'OSDP.Net.sln'
+      arguments: '--configuration $(buildConfiguration)'
+
+  # Installs on first use and updates afterwards; a tool path avoids relying on ~/.dotnet/tools being on the agent's PATH
+  - bash: dotnet tool update --tool-path "$(Agent.ToolsDirectory)/resharper" JetBrains.ReSharper.GlobalTools
+    displayName: 'Install ReSharper Tools'
+
+  - bash: >
+      "$(Agent.ToolsDirectory)/resharper/jb" inspectcode OSDP.Net.sln --no-build
+      --caches-home="$(Agent.ToolsDirectory)/resharper-caches"
+      -o="$(Build.ArtifactStagingDirectory)/Resharper.sarif"
+    displayName: 'Perform code inspection'
+
+  - task: PublishPipelineArtifact@1
+    inputs:
+      targetPath: '$(Build.ArtifactStagingDirectory)'
+      artifactName: CodeAnalysisLogs
+
+  - task: PowerShell@2
+    displayName: 'Check inspection results and fail if needed'
+    inputs:
+      pwsh: true
+      targetType: 'inline'
+      script: |
+        $sarifPath = "$(Build.ArtifactStagingDirectory)/Resharper.sarif"
+        $sarif = Get-Content $sarifPath | ConvertFrom-Json
+
+        $errorCount = 0
+        $warningCount = 0
+
+        foreach ($run in $sarif.runs) {
+            if ($run.results) {
+                foreach ($result in $run.results) {
+                    if ($result.level -eq "error") {
+                        $errorCount++
+                    } elseif ($result.level -eq "warning") {
+                        $warningCount++
+                    }
+                }
+            }
+        }
+
+        Write-Host "Found $errorCount errors and $warningCount warnings"
+
+        # Fail on both errors and warnings
+        if ($errorCount -gt 0 -or $warningCount -gt 0) {
+            Write-Host "##vso[task.logissue type=error]Code inspection found $errorCount errors and $warningCount warnings"
+            exit 1
+        }

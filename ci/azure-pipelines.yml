@@ -1,8 +1,3 @@
-# ASP.NET Core (.NET Framework)
-# Build and test ASP.NET Core projects targeting the full .NET Framework.
-# Add steps that publish symbols, save build artifacts, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
-
 trigger:
   branches:
     include:
@@ -11,28 +6,31 @@ trigger:
     include:
     - v*
 
+# Self-hosted agents; the SDK, NuGet and ReSharper caches persist between runs
 pool:
-  vmImage: 'windows-latest'
+  name: Default
+  demands:
+  - Agent.OS -equals Linux
 
 variables:
-  solution: '**/*.sln'
-  buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
 
 jobs:
   - job: build
-    pool:
-      vmImage: 'windows-latest'
     steps:
       - checkout: self
       - template: build.yml
-        
+
+  - job: inspect
+    steps:
+      - checkout: self
+      - template: inspect.yml
+
   - job: package
     condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
-    pool:
-      vmImage: 'windows-latest'
     dependsOn:
-      build
+      - build
+      - inspect
     steps:
       - checkout: self
         persistCredentials: true
@@ -41,10 +39,9 @@ jobs:
 
   - job: docs
     condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
-    pool:
-      vmImage: 'ubuntu-latest'
     dependsOn:
-      build
+      - build
+      - inspect
     variables:
       doxygenVersion: '1.15.0'
       doxygenUrl: 'https://github.com/doxygen/doxygen/releases/download/Release_1_15_0/doxygen-1.15.0.linux.bin.tar.gz'
