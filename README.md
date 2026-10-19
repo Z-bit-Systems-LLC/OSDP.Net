@@ -170,7 +170,7 @@ It simply requires the installation of a new NuGet package. The code needs to be
 
 ## Test Console
 
-**Current Version 5.2.1 released October 11th, 2026**
+**Current Version 5.2.2 released October 19th, 2026**
 
 There are compiled versions of the test console applications (ACU Console and PD Console) for all the major platforms available for download. 
 They have all the required assemblies included to run as a self-contained executable. 
