@@ -55,6 +55,7 @@ namespace PDConsole
                 Height = Dim.Fill(),
                 BorderStyle = LineStyle.None
             };
+            _mainWindow.IsRunningChanged += OnMainWindowIsRunningChanged;
 
             // Create the menu bar (hosted at the top of the main window)
             var menuBar = CreateMenuBar();
@@ -368,6 +369,18 @@ namespace PDConsole
             }
         }
 
+        private void OnMainWindowIsRunningChanged(object sender, EventArgs<bool> e)
+        {
+            if (e.Value) return;
+
+            // The controller stops the device while it shuts down, after the application has been
+            // disposed, so stop its events reaching the view once the window stops
+            _controller.CommandReceived -= OnCommandReceived;
+            _controller.StatusChanged -= OnStatusChanged;
+            _controller.ConnectionStatusChanged -= OnConnectionStatusChanged;
+            _controller.FileTransferChanged -= OnFileTransferChanged;
+            _controller.ErrorOccurred -= OnErrorOccurred;
+        }
 
         // Controller Event Handlers
         private void OnCommandReceived(object sender, CommandEvent e)

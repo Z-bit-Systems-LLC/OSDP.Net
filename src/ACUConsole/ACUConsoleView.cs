@@ -74,6 +74,7 @@ namespace ACUConsole
                 Height = Dim.Fill(),
                 BorderStyle = LineStyle.None
             };
+            _window.IsRunningChanged += OnWindowIsRunningChanged;
 
             CreateMenuBar();
             _menuBar.Width = Dim.Fill();
@@ -1321,6 +1322,18 @@ namespace ACUConsole
         public void Shutdown()
         {
             _app.RequestStop();
+        }
+
+        private void OnWindowIsRunningChanged(object sender, EventArgs<bool> e)
+        {
+            if (e.Value) return;
+
+            // The presenter raises connection status and log events while it shuts down, after the
+            // application has been disposed, so stop them reaching the view once the window stops
+            _presenter.MessageReceived -= OnMessageReceived;
+            _presenter.StatusChanged -= OnStatusChanged;
+            _presenter.ConnectionStatusChanged -= OnConnectionStatusChanged;
+            _presenter.ErrorOccurred -= OnErrorOccurred;
         }
     }
 }
