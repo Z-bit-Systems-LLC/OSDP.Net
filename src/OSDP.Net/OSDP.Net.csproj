@@ -4,6 +4,7 @@
     <Title>OSDP.Net</Title>
     <Description>OSDP.Net is a .NET framework implementation of the Open Supervised Device Protocol(OSDP).</Description>
     <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>default</LangVersion>
     <TargetFrameworks>net8.0;netstandard2.0;net10.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -22,6 +23,7 @@
 
   <ItemGroup>
     <None Include="Images\icon.png" Pack="true" PackagePath="" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">

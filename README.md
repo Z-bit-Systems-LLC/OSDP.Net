@@ -193,11 +193,11 @@ For more information, see the [Terminal.Gui PuTTY discussion](https://github.com
 
 ## Documentation 
 
-- [PowerShell Support](docs/powershell.md)
-- [Supported Commands and Replies](docs/supported_commands.md)
-- [Tracing Guide](docs/tracing-guide.md)
-- [Transparent Mode Guide](docs/transparent-mode-guide.md)
-- [PDConsole Settings](docs/pdconsole-settings.md)
+- [PowerShell Support](https://github.com/Z-bit-Systems-LLC/OSDP.Net/blob/main/docs/powershell.md)
+- [Supported Commands and Replies](https://github.com/Z-bit-Systems-LLC/OSDP.Net/blob/main/docs/supported_commands.md)
+- [Tracing Guide](https://github.com/Z-bit-Systems-LLC/OSDP.Net/blob/main/docs/tracing-guide.md)
+- [Transparent Mode Guide](https://github.com/Z-bit-Systems-LLC/OSDP.Net/blob/main/docs/transparent-mode-guide.md)
+- [PDConsole Settings](https://github.com/Z-bit-Systems-LLC/OSDP.Net/blob/main/docs/pdconsole-settings.md)
 
 ## Contributing
 
