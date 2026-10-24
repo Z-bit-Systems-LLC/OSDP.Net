@@ -1346,35 +1346,69 @@ namespace OSDP.Net
 
             async Task CheckForDefaultSecurityKey()
             {
-                var waitForSecureConnection = new TaskCompletionSource<bool>();
+                // A PD that reports no AES128 support can't accept the default key, so don't bother asking.
+                // A PD that leaves the capability out is still asked.
+                var communicationSecurity = result.Capabilities?.Get(CapabilityFunction.CommunicationSecurity);
+                if (communicationSecurity != null && (communicationSecurity.Compliance & 0x01) == 0)
+                {
+                    result.UsesDefaultSecurityKey = false;
+                    return;
+                }
+
+                // Both handlers run on the bus polling thread, and the PD keeps getting asked until the
+                // connection is stopped, so the first answer wins and the rest are ignored
+                var defaultKeyCheck =
+                    new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
                 void HandleStatusChange(object sender, ConnectionStatusEventArgs args)
                 {
-                    if (args.Address == result.Address && args.IsConnected && args.IsSecureChannelEstablished)
+                    if (args.ConnectionId == connectionId && args.Address == result.Address &&
+                        args.IsConnected && args.IsSecureChannelEstablished)
                     {
-                        waitForSecureConnection.SetResult(true);
+                        defaultKeyCheck.TrySetResult(true);
                     }
                 }
 
+                void HandleHandshakeFailed(object sender, Bus.SecureChannelHandshakeFailedEventArgs args)
+                {
+                    if (args.Address == result.Address)
+                    {
+                        defaultKeyCheck.TrySetResult(false);
+                    }
+                }
+
+                Bus bus = null;
                 ConnectionStatusChanged += HandleStatusChange;
 
                 try
                 {
-                    // Right now control panel API doesn't indicate connection errors due invalid credentials, even
-                    // though internally the bus knows it got an error response from the device. Until underlying APIs give
-                    // us that data, the best we can do here is wait for a successful connection and timeout when one 
-                    // isn't established
                     connectionId = StartConnection(result.Connection, Bus.DefaultPollInterval,
                         options.Tracer ?? (_ => { }));
+
+                    // Subscribe before the device is added so the first handshake reply can't be missed
+                    bus = _buses[connectionId];
+                    bus.SecureChannelHandshakeFailed += HandleHandshakeFailed;
                     AddDevice(connectionId, result.Address, true, true);
 
-                    using var waitForTask = await Task.WhenAny(waitForSecureConnection.Task,
-                        Task.Delay(TimeSpan.FromSeconds(8), options.CancellationToken));
-                    result.UsesDefaultSecurityKey = waitForTask == waitForSecureConnection.Task;
+                    // A PD that never answers the handshake still needs the timeout
+                    using var timeoutCancellation =
+                        CancellationTokenSource.CreateLinkedTokenSource(options.CancellationToken);
+                    var completedTask = await Task.WhenAny(defaultKeyCheck.Task,
+                        Task.Delay(TimeSpan.FromSeconds(8), timeoutCancellation.Token)).ConfigureAwait(false);
+                    timeoutCancellation.Cancel();
+
+                    if (completedTask != defaultKeyCheck.Task)
+                    {
+                        options.CancellationToken.ThrowIfCancellationRequested();
+                    }
+
+                    result.UsesDefaultSecurityKey = completedTask == defaultKeyCheck.Task &&
+                                                    await defaultKeyCheck.Task.ConfigureAwait(false);
                 }
                 finally
                 {
                     ConnectionStatusChanged -= HandleStatusChange;
+                    if (bus != null) bus.SecureChannelHandshakeFailed -= HandleHandshakeFailed;
                 }
             }
 

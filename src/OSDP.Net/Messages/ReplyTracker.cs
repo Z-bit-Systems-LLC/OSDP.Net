@@ -38,6 +38,12 @@ internal class ReplyTracker
     public bool MatchIssuingCommand(byte address, byte commandCode) =>
         address.Equals(_issuingCommand.Address) && commandCode.Equals(_issuingCommand.Code);
 
+    /// <summary>
+    /// Indicates whether the issuing command was a step of the secure channel handshake (osdp_CHLNG or osdp_SCRYPT).
+    /// </summary>
+    public bool IsReplyToSecureChannelHandshake =>
+        _issuingCommand.Code is (byte)CommandType.SessionChallenge or (byte)CommandType.ServerCryptogram;
+
     internal bool ValidateSecureChannelEstablishment()
     {
         if (!ReplyMessage.SecureCryptogramHasBeenAccepted())

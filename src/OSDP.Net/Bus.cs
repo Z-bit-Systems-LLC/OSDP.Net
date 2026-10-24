@@ -372,6 +372,12 @@ namespace OSDP.Net
         public event EventHandler<ConnectionStatusEventArgs> ConnectionStatusChanged;
 
         /// <summary>
+        /// Raised on the polling thread when a PD turns down a secure channel handshake. The bus keeps
+        /// retrying the handshake afterward, so this can fire repeatedly for the same device.
+        /// </summary>
+        public event EventHandler<SecureChannelHandshakeFailedEventArgs> SecureChannelHandshakeFailed;
+
+        /// <summary>
         /// Determine if the connection status needs to be updated
         /// </summary>
         /// <param name="device"></param>
@@ -442,22 +448,57 @@ namespace OSDP.Net
                 {
                     ResetDevice(device);
                 }
+
+                if (reply.IsReplyToSecureChannelHandshake &&
+                    errorCode is ErrorCode.UnknownCommandCode or ErrorCode.DoesNotSupportSecurityBlock
+                        or ErrorCode.CommunicationSecurityNotMet)
+                {
+                    OnSecureChannelHandshakeFailed(device.Address, SecureChannelHandshakeFailure.Nak);
+                }
             }
 
             switch ((ReplyType)reply.ReplyMessage.Type)
             {
                 case ReplyType.CrypticData:
-                    device.InitializeSecureChannel(reply.ReplyMessage.Payload, reply.ReplyMessage.SecureBlockData);
+                    try
+                    {
+                        device.InitializeSecureChannel(reply.ReplyMessage.Payload, reply.ReplyMessage.SecureBlockData);
+                    }
+                    catch (SecureChannelKeyTypeMismatchException)
+                    {
+                        OnSecureChannelHandshakeFailed(device.Address, SecureChannelHandshakeFailure.KeyTypeMismatch);
+                        throw;
+                    }
+                    catch (Exception)
+                    {
+                        OnSecureChannelHandshakeFailed(device.Address,
+                            SecureChannelHandshakeFailure.ClientCryptogramRejected);
+                        throw;
+                    }
                     break;
                 case ReplyType.InitialRMac:
                     if (!reply.ValidateSecureChannelEstablishment())
                     {
                         _logger?.LogError($"[{Connection}] Cryptogram not accepted by address {reply.ReplyMessage.Address}");
+                        OnSecureChannelHandshakeFailed(device.Address,
+                            SecureChannelHandshakeFailure.ServerCryptogramRejected);
                     }
                     break;
             }
 
             _replies.Add(reply);
+        }
+
+        private void OnSecureChannelHandshakeFailed(byte address, SecureChannelHandshakeFailure failure)
+        {
+            try
+            {
+                SecureChannelHandshakeFailed?.Invoke(this, new SecureChannelHandshakeFailedEventArgs(address, failure));
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogError(exception, $"[{Connection}] Error while notifying secure channel handshake failure for address {address}");
+            }
         }
 
         public void ResetDevice(int address)
@@ -665,6 +706,45 @@ namespace OSDP.Net
             public bool IsConnected { get; }
 
             public bool IsSecureSessionEstablished { get; }
+        }
+
+        /// <summary>
+        /// How a PD turned down a secure channel handshake.
+        /// </summary>
+        public enum SecureChannelHandshakeFailure
+        {
+            /// <summary>
+            /// The PD replied osdp_NAK to osdp_CHLNG or osdp_SCRYPT.
+            /// </summary>
+            Nak,
+
+            /// <summary>
+            /// The client cryptogram in osdp_CCRYPT doesn't match the key the ACU used.
+            /// </summary>
+            ClientCryptogramRejected,
+
+            /// <summary>
+            /// The SCB key type in osdp_CCRYPT doesn't match the one sent in osdp_CHLNG.
+            /// </summary>
+            KeyTypeMismatch,
+
+            /// <summary>
+            /// The PD reported in osdp_RMAC_I that it didn't accept the server cryptogram.
+            /// </summary>
+            ServerCryptogramRejected
+        }
+
+        public class SecureChannelHandshakeFailedEventArgs
+        {
+            public SecureChannelHandshakeFailedEventArgs(byte address, SecureChannelHandshakeFailure failure)
+            {
+                Address = address;
+                Failure = failure;
+            }
+
+            public byte Address { get; }
+
+            public SecureChannelHandshakeFailure Failure { get; }
         }
     }
 }
