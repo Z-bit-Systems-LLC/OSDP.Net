@@ -211,6 +211,12 @@ public class MessageSpy
             string data = entry.data.ToString();
 
             var rawData = BinaryUtils.HexToBytes(data).ToArray();
+
+            // A capture can begin or end mid-frame (e.g. libosdp-conformance records the tail of a
+            // frame already in flight when tracing starts). Such fragments can't be decoded, so skip
+            // them rather than aborting the whole file.
+            if (!IsCompleteFrame(SkipMarkBytes(rawData))) continue;
+
             var packet = ParsePacket(rawData);
 
             yield return new OSDPCaptureEntry(
@@ -220,5 +226,21 @@ public class MessageSpy
                 entry.osdpTraceVersion.ToString(),
                 entry.osdpSource.ToString());
         }
+    }
+
+    /// <summary>
+    /// Determines whether the data holds exactly one whole OSDP frame: it starts with the SOM byte,
+    /// is at least the minimum frame size, and its byte count matches the frame's LEN field.
+    /// </summary>
+    /// <param name="data">Raw OSDP message data with any leading 0xFF mark bytes removed.</param>
+    /// <returns>True if the data is a complete frame, false if it is a fragment.</returns>
+    private static bool IsCompleteFrame(ReadOnlySpan<byte> data)
+    {
+        // SOM, ADDR, LEN_LSB, LEN_MSB, CTRL, CMND/REPLY and a one-byte checksum
+        const int minimumFrameSize = 7;
+
+        return data.Length >= minimumFrameSize &&
+               data[0] == Message.StartOfMessage &&
+               (data[2] | (data[3] << 8)) == data.Length;
     }
 }
