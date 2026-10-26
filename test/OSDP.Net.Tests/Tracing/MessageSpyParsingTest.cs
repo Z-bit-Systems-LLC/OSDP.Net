@@ -124,6 +124,23 @@ public class MessageSpyParsingTest
     }
 
     [Test]
+    public void ParseCaptureFile_SkipsFrameFragment()
+    {
+        // Arrange - libosdp-conformance can record the tail of a frame already in flight when tracing starts
+        var testEntries =
+            "{ \"timeSec\" : \"1792994554\", \"timeNano\" : \"038662209\", \"io\" : \"in\", \"data\" : \" 00 66\", \"osdpTraceVersion\":\"1\", \"osdpSource\":\"libosdp-conformance 1.111-0\" }\n" +
+            "{ \"timeSec\" : \"1792994554\", \"timeNano\" : \"578781808\", \"io\" : \"in\", \"data\" : \" ff 53 00 09 00 04 61 00 c0 66\", \"osdpTraceVersion\":\"1\", \"osdpSource\":\"libosdp-conformance 1.111-0\" }\n";
+        var messageSpy = new MessageSpy();
+
+        // Act
+        var actual = messageSpy.ParseCaptureFile(testEntries).ToArray();
+
+        // Assert
+        Assert.That(actual.Length, Is.EqualTo(1));
+        Assert.That(actual[0].Packet.CommandType, Is.EqualTo(CommandType.IdReport));
+    }
+
+    [Test]
     public void TryParsePacket_ValidCommand_ReturnsTrue()
     {
         // Arrange
