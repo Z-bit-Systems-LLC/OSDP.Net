@@ -1,10 +1,10 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
@@ -34,16 +34,16 @@ namespace OSDP.Net
         
         private readonly ILogger<ControlPanel> _logger;
         private readonly TimeSpan _pollInterval;
-        private readonly BlockingCollection<ReplyTracker> _replies;
+        private readonly ChannelWriter<ReplyTracker> _replies;
         private readonly Action<TraceEntry> _tracer;
-        private readonly AutoResetEvent _commandAvailableEvent = new (false);
+        private readonly SemaphoreSlim _commandAvailable = new (0, 1);
         private readonly IDeviceProxyFactory _deviceProxyFactory;
 
         private CancellationTokenSource _cancellationTokenSource;
         private Task _pollingTask;
         private  ImmutableSortedSet<DeviceProxy> _configuredDevices = ImmutableSortedSet<DeviceProxy>.Empty;
 
-        public Bus(IOsdpConnection connection, BlockingCollection<ReplyTracker> replies, TimeSpan pollInterval,
+        public Bus(IOsdpConnection connection, ChannelWriter<ReplyTracker> replies, TimeSpan pollInterval,
             Action<TraceEntry> tracer, IDeviceProxyFactory deviceProxyFactory,
             // ReSharper disable once ContextualLoggerProblem
             ILogger<ControlPanel> logger = null)
@@ -73,7 +73,7 @@ namespace OSDP.Net
 
         public void Dispose()
         {
-            _commandAvailableEvent?.Dispose();
+            _commandAvailable?.Dispose();
             _cancellationTokenSource?.Dispose();
         }
 
@@ -111,7 +111,25 @@ namespace OSDP.Net
         {
             var foundDevice = _configuredDevices.First(device => device.Address == address);            
             foundDevice.SendCommand(command);
-            _commandAvailableEvent.Set();
+            SignalCommandAvailable();
+        }
+
+        private void SignalCommandAvailable()
+        {
+            // Collapse repeated signals into one, like the AutoResetEvent this replaces
+            if (_commandAvailable.CurrentCount != 0) return;
+            try
+            {
+                _commandAvailable.Release();
+            }
+            catch (SemaphoreFullException)
+            {
+                // Another caller signaled first
+            }
+            catch (ObjectDisposedException)
+            {
+                // Bus is shutting down
+            }
         }
 
         /// <summary>
@@ -177,7 +195,7 @@ namespace OSDP.Net
             if (cancellationTokenSource != null) return;
             _cancellationTokenSource = cancellationTokenSource = new CancellationTokenSource();
 
-            _pollingTask = Task.Factory.StartNew(async () =>
+            _pollingTask = Task.Run(async () =>
             {
                 try
                 {
@@ -189,7 +207,7 @@ namespace OSDP.Net
                         "[{OsdpConnection}] Unexpected exception in polling loop for connection {Guid}", Connection,
                         Id);
                 }
-            }, TaskCreationOptions.LongRunning).Unwrap();
+            });
         }
 
         /// <summary>
@@ -199,8 +217,6 @@ namespace OSDP.Net
         private async Task PollingLoop(CancellationToken cancellationToken)
         {
             DateTime lastMessageSentTime = DateTime.MinValue;
-            using var delayTime = new AutoResetEvent(false);
-            
             while (!cancellationToken.IsCancellationRequested)
             {
                 if (!Connection.IsOpen)
@@ -218,7 +234,7 @@ namespace OSDP.Net
                             UpdateConnectionStatus(device);
                         }
                         
-                        delayTime.WaitOne(TimeSpan.FromSeconds(5));
+                        await Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
 
                         continue;
                     }
@@ -229,9 +245,10 @@ namespace OSDP.Net
                     // Allow for immediate processing of commands in queue or incoming multipart messages
                     while (_pollInterval - (DateTime.UtcNow - lastMessageSentTime) > TimeSpan.Zero &&
                            !_configuredDevices.Any(device1 => device1.HasQueuedCommand) && 
-                           !_configuredDevices.Any(device2 => device2.IsReceivingMultipartMessage))
+                           !_configuredDevices.Any(device2 => device2.IsReceivingMultipartMessage) &&
+                           !cancellationToken.IsCancellationRequested)
                     {
-                        delayTime.WaitOne(TimeSpan.FromMilliseconds(10));
+                        await Delay(TimeSpan.FromMilliseconds(10), cancellationToken).ConfigureAwait(false);
                     }
 
                     lastMessageSentTime = DateTime.UtcNow;
@@ -244,7 +261,13 @@ namespace OSDP.Net
                 else
                 {
                     // Keep CPU usage down while waiting for next command
-                    _commandAvailableEvent.WaitOne(TimeSpan.FromMilliseconds(10));
+                    await WaitForCommand(TimeSpan.FromMilliseconds(10), cancellationToken).ConfigureAwait(false);
+                }
+
+                // Don't put another round on the wire once the connection is being stopped
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    break;
                 }
 
                 foreach (var device in _configuredDevices)
@@ -348,7 +371,7 @@ namespace OSDP.Net
                         continue;
                     }
 
-                    delayTime.WaitOne(IdleLineDelay(Connection, 2));
+                    await Task.Delay(IdleLineDelay(Connection, 2)).ConfigureAwait(false);
                 }
             }
 
@@ -360,6 +383,30 @@ namespace OSDP.Net
             catch(Exception exception)
             {
                 _logger?.LogError(exception, $"[{Connection}] Error while closing connection {Id}.");
+            }
+        }
+
+        private static async Task Delay(TimeSpan delay, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // The polling loop checks the token and exits normally, so the connection is still closed
+            }
+        }
+
+        private async Task WaitForCommand(TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _commandAvailable.WaitAsync(timeout, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // The polling loop checks the token and exits normally, so the connection is still closed
             }
         }
 
@@ -486,7 +533,7 @@ namespace OSDP.Net
                     break;
             }
 
-            _replies.Add(reply);
+            _replies.TryWrite(reply);
         }
 
         private void OnSecureChannelHandshakeFailed(byte address, SecureChannelHandshakeFailure failure)
@@ -563,9 +610,8 @@ namespace OSDP.Net
             await Connection.WriteAsync(commandData).ConfigureAwait(false);
 
             _tracer(new TraceEntry(TraceDirection.Output, Id, commandData.Skip(1).ToArray()));
-            
-            using var delayTime = new AutoResetEvent(false);
-            delayTime.WaitOne(IdleLineDelay(Connection, commandData.Length));
+
+            await Task.Delay(IdleLineDelay(Connection, commandData.Length)).ConfigureAwait(false);
 
             return await ReceiveReply(command, device, cancellationToken);
         }

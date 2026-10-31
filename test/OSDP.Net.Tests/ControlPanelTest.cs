@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics;
+using System.IO;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Threading;
@@ -172,6 +174,31 @@ namespace OSDP.Net.Tests
                 TimeSpan.FromSeconds(3));
             await TaskEx.WaitUntil(() => mockConnection.NumberOfTimesCalledClose == 1, TimeSpan.FromMilliseconds(100),
                 TimeSpan.FromSeconds(3));
+        }
+
+        [Test]
+        public async Task StopConnectionWhileWaitingToRetryOpenReturnsPromptlyTest()
+        {
+            // Arrange
+            int openAttempts = 0;
+            var failingConnection = new Mock<IOsdpConnection>();
+            failingConnection.Setup(connection => connection.Open())
+                .Callback(() => Interlocked.Increment(ref openAttempts))
+                .Throws(new IOException("Port is busy"));
+            failingConnection.Setup(connection => connection.Close()).Returns(Task.CompletedTask);
+
+            var panel = new ControlPanel(NullLoggerFactory.Instance);
+            Guid id = panel.StartConnection(failingConnection.Object);
+            panel.AddDevice(id, 0, true, false);
+            await TaskEx.WaitUntil(() => Volatile.Read(ref openAttempts) == 1, TimeSpan.FromMilliseconds(10),
+                TimeSpan.FromSeconds(3));
+
+            // Act
+            var stopwatch = Stopwatch.StartNew();
+            await panel.StopConnection(id);
+
+            // Assert: the bus waits 5 s between open attempts, and stopping must not wait it out
+            Assert.That(stopwatch.Elapsed, Is.LessThan(TimeSpan.FromSeconds(1)));
         }
 
         [TestFixture]

@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -31,7 +32,8 @@ namespace OSDP.Net
         private readonly object _lockBusCreation = new ();
         private readonly ConcurrentDictionary<Guid, Bus> _buses = new();
         private readonly ILogger<ControlPanel> _logger;
-        private readonly BlockingCollection<ReplyTracker> _replies = new();
+        private readonly Channel<ReplyTracker> _replies =
+            Channel.CreateUnbounded<ReplyTracker>(new UnboundedChannelOptions { SingleReader = true });
         private TimeSpan _replyResponseTimeout = TimeSpan.FromSeconds(8);
         private readonly ConcurrentDictionary<int, SemaphoreSlim> _requestLocks = new();
         private readonly TimeSpan _timeToWaitToCheckOnData = TimeSpan.FromMilliseconds(10);
@@ -59,13 +61,26 @@ namespace OSDP.Net
                       ?? NullLoggerFactory.Instance.CreateLogger<ControlPanel>();
             _deviceProxyFactory = deviceProxyFactory ?? new DeviceProxyFactory();
 
-            Task.Factory.StartNew(() =>
+            Task.Run(ProcessReplies);
+        }
+
+        private async Task ProcessReplies()
+        {
+            var reader = _replies.Reader;
+            while (await reader.WaitToReadAsync().ConfigureAwait(false))
             {
-                foreach (var reply in _replies.GetConsumingEnumerable())
+                while (reader.TryRead(out var reply))
                 {
-                    OnReplyReceived(reply);
+                    try
+                    {
+                        OnReplyReceived(reply);
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger.LogError(exception, "Error while dispatching reply {Reply}", reply);
+                    }
                 }
-            }, TaskCreationOptions.LongRunning);
+            }
         }
 
         /// <summary>
@@ -133,7 +148,7 @@ namespace OSDP.Net
 
                 var newBus = new Bus(
                     connection,
-                    _replies,
+                    _replies.Writer,
                     pollInterval,
                     tracer,
                     _deviceProxyFactory,
