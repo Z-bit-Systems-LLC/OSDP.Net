@@ -145,7 +145,7 @@ public class SecurityContext
     /// <returns>Cypher instance</returns>
     internal Aes CreateCypher(bool isForSessionSetup, byte[] key = null)
     {
-        var crypto = Aes.Create();
+        var crypto = BouncyCastleAes.CreateAes();
         if (crypto == null)
         {
             throw new Exception("Unable to create AES algorithm");
