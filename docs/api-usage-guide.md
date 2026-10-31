@@ -252,6 +252,39 @@ var tcpServer = new TcpServerOsdpConnection(IPAddress.Any, 3001);
 var tcpListener = new TcpConnectionListener(IPAddress.Any, 3001);
 ```
 
+### Browser (Blazor WebAssembly)
+
+`ControlPanel` runs in a Blazor WebAssembly app, including secure channel. The browser has no serial port or socket API that .NET can use, so the built-in connection classes don't work there. Derive your own connection from `OsdpConnection` and pass the bytes through JS interop, for example to the Web Serial API in Chrome and Edge:
+
+```csharp
+public sealed class WebSerialOsdpConnection(IJSObjectReference serial, int baudRate) : OsdpConnection(baudRate)
+{
+    public override async Task Open()
+    {
+        await serial.InvokeVoidAsync("open", BaudRate, DotNetObjectReference.Create(this));
+        IsOpen = true;
+    }
+
+    public override async Task Close()
+    {
+        IsOpen = false;
+        await serial.InvokeVoidAsync("close");
+    }
+
+    public override Task WriteAsync(byte[] buffer) => serial.InvokeVoidAsync("write", buffer).AsTask();
+
+    // Queue the bytes that JavaScript passes to a [JSInvokable] method, and return them here.
+    // Return 0 when the token is canceled, rather than throwing.
+    public override Task<int> ReadAsync(byte[] buffer, CancellationToken token) => ...
+}
+```
+
+Things to know:
+
+- The browser only shows its serial port picker in response to a click, so choose the port before calling `StartConnection`.
+- Browsers have no native AES, so secure channel uses a BouncyCastle implementation there. This is automatic.
+- `BouncyCastle.Cryptography` is not marked as trimmable, so the whole assembly ships unless the app sets `<TrimMode>full</TrimMode>`. With it, the part secure channel uses is about 18 KB.
+
 ## Security Configuration
 
 ### Setting Up Secure Communication
