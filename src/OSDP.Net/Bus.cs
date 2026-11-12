@@ -527,6 +527,9 @@ namespace OSDP.Net
                     if (!reply.ValidateSecureChannelEstablishment())
                     {
                         _logger?.LogError($"[{Connection}] Cryptogram not accepted by address {reply.ReplyMessage.Address}");
+
+                        // Restart the handshake with a new RND.A rather than resending the same osdp_SCRYPT
+                        device.ResetSecureChannelSession();
                         OnSecureChannelHandshakeFailed(device.Address,
                             SecureChannelHandshakeFailure.ServerCryptogramRejected);
                     }

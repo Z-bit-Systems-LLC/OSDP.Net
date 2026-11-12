@@ -41,7 +41,7 @@ public class SecurityContext
         IsUsingDefaultKey = !(_securityKey != null && !_securityKey.SequenceEqual(DefaultKey));
         IsInitialized = false;
         IsSecurityEstablished = false;
-        new Random().NextBytes(ServerRandomNumber);
+        SecureRandomNumber.Fill(ServerRandomNumber);
     }
 
     /// <summary>

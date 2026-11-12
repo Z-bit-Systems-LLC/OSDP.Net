@@ -176,6 +176,21 @@ internal class DeviceProxy : IComparable<DeviceProxy>
 
     internal void InitializeSecureChannel(byte[] payload, byte[] secureBlockData)
     {
+        try
+        {
+            ProcessChallengeResponse(payload, secureBlockData);
+        }
+        catch
+        {
+            // Start the next handshake with a new RND.A. The session keys are derived only from the
+            // SCBK and RND.A (OSDP v2.2.2 Annex D.3), so retrying with the same RND.A repeats them.
+            ResetSecureChannelSession();
+            throw;
+        }
+    }
+
+    private void ProcessChallengeResponse(byte[] payload, byte[] secureBlockData)
+    {
         // Validate payload: must be 32 bytes (cUID[8] + clientRnd[8] + clientCryptogram[16])
         if (payload == null || payload.Length < 32)
         {

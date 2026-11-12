@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
@@ -21,7 +23,10 @@ public class SecureChannelReconnectTests
 {
     private const byte DeviceAddress = 0;
     private const byte DeviceCapabilitiesCommandCode = 0x62;
+    private const byte ChallengeCommandCode = 0x76;
     private const byte SessionChallengeBlockType = 0x11;
+    private static readonly byte[] OtherKey =
+        [0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80, 0x90, 0xa0, 0xb0, 0xc0, 0xd0, 0xe0, 0xf0, 0x01];
     private static readonly TimeSpan SecureChannelTimeout = TimeSpan.FromSeconds(8);
 
     private ILoggerFactory _loggerFactory;
@@ -107,6 +112,61 @@ public class SecureChannelReconnectTests
                 await panel.Shutdown();
             }
         }
+    }
+
+    /// <summary>
+    /// With mismatched keys every handshake fails, and the ACU keeps retrying. Each osdp_CHLNG must
+    /// carry a new RND.A: the session keys come only from the SCBK and RND.A (OSDP v2.2.2 Annex D.3),
+    /// so reusing it repeats them (GitHub issue #217).
+    /// </summary>
+    [Test]
+    public async Task GivenMismatchedKeys_WhenHandshakeIsRetried_EachChallengeHasNewServerRandomNumber()
+    {
+        await StartDevice(OtherKey);
+        var panel = new ControlPanel(_loggerFactory);
+        var challenges = new List<string>();
+        var enoughChallenges = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        void OnPdReceived(byte[] data)
+        {
+            var serverRandomNumber = ChallengeRandomNumber(data);
+            if (serverRandomNumber == null) return;
+
+            lock (challenges)
+            {
+                challenges.Add(Convert.ToHexString(serverRandomNumber));
+                if (challenges.Count >= 3) enoughChallenges.TrySetResult(true);
+            }
+        }
+
+        _wire.PdReceived += OnPdReceived;
+        try
+        {
+            var connectionId = panel.StartConnection(_wire.AcuEnd);
+            panel.AddDevice(connectionId, DeviceAddress, true, true, IntegrationConsts.NonDefaultSCBK);
+
+            var completed = await Task.WhenAny(enoughChallenges.Task, Task.Delay(TimeSpan.FromSeconds(15)));
+            Assert.That(completed, Is.SameAs(enoughChallenges.Task), "The ACU did not retry the handshake");
+        }
+        finally
+        {
+            _wire.PdReceived -= OnPdReceived;
+            await panel.Shutdown();
+        }
+
+        lock (challenges)
+        {
+            Assert.That(challenges, Is.Unique, "The ACU sent the same RND.A in more than one osdp_CHLNG");
+        }
+    }
+
+    // osdp_CHLNG is sent in the clear: the SCB (length 3) follows the header, then the command code
+    // and the 8 byte RND.A
+    private static byte[] ChallengeRandomNumber(byte[] data)
+    {
+        var start = Array.IndexOf(data, (byte)0x53);
+        if (CommandCode(data) != ChallengeCommandCode || data.Length < start + 17) return null;
+        return data.Skip(start + 9).Take(8).ToArray();
     }
 
     private async Task ShutdownWithReplyInFlight(ControlPanel panel, Guid connectionId)

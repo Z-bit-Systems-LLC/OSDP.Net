@@ -236,7 +236,7 @@ namespace OSDP.Net.Messages.SecureChannel
             byte[] cUID = _clientUID;
             byte[] rndB = new byte[8];
 
-            new Random().NextBytes(rndB);
+            SecureRandomNumber.Fill(rndB);
             crypto.Key = Context.Enc;
             var clientCryptogram = SecurityContext.GenerateKey(crypto, rndA, rndB);
             _expectedServerCryptogram = SecurityContext.GenerateKey(crypto, rndB, rndA);
