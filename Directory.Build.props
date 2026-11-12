@@ -2,7 +2,7 @@
   <PropertyGroup>  
     <!-- Common properties for all projects -->
     <VersionPrefix>5.3.0</VersionPrefix>
-    <VersionSuffix>beta.1</VersionSuffix>
+    <VersionSuffix>beta.2</VersionSuffix>
 	
     <Authors>Jonathan Horvath</Authors>
     <Company>Z-bit Systems LLC</Company>
