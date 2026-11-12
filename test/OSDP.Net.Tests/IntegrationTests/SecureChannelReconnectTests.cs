@@ -177,6 +177,8 @@ public class SecureChannelReconnectTests
 
         void OnStatusChanged(object sender, ControlPanel.ConnectionStatusEventArgs e)
         {
+            // Reads the ID that StartConnection assigns below, so events from earlier connections are ignored
+            // ReSharper disable once AccessToModifiedClosure
             if (e.ConnectionId == connectionId && e.IsConnected && e.IsSecureChannelEstablished)
             {
                 secured.TrySetResult(true);
