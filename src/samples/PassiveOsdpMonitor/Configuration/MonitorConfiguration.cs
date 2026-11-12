@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace PassiveOsdpMonitor.Configuration;
 
 public class MonitorConfiguration
@@ -10,7 +12,7 @@ public class MonitorConfiguration
 
     private string GenerateBaseFilePath()
     {
-        string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
         string filename = $"{OutputFilePrefix}-{timestamp}";
         return Path.Combine(OutputPath, filename);
     }

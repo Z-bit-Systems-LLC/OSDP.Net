@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 
 namespace PDConsole.FileTransfer
@@ -41,7 +42,7 @@ namespace PDConsole.FileTransfer
                 Directory.CreateDirectory(_fileTransferDirectoryPath);
             }
 
-            string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
             var path = Path.Combine(_fileTransferDirectoryPath, $"{FilePrefix}-{timestamp}-type{fileType:X2}.bin");
 
             // A second transfer completing within the same second would otherwise overwrite the first.

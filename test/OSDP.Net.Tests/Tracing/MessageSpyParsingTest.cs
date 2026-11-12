@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using NUnit.Framework;
 using OSDP.Net.Messages;
@@ -97,7 +98,7 @@ public class MessageSpyParsingTest
         Assert.That(actual.Count, Is.EqualTo(1));
         var actualEntry = actual[0];
 
-        Assert.That(actualEntry.TimeStamp, Is.EqualTo(DateTime.Parse("2023-07-17 13:06:53.1417933")));
+        Assert.That(actualEntry.TimeStamp, Is.EqualTo(DateTime.Parse("2023-07-17 13:06:53.1417933", CultureInfo.InvariantCulture)));
         Assert.That(actualEntry.Direction, Is.EqualTo(TraceDirection.Output));
         Assert.That(actualEntry.Packet.Address, Is.EqualTo(0));
         Assert.That(actualEntry.TraceVersion, Is.EqualTo("1"));
@@ -116,7 +117,7 @@ public class MessageSpyParsingTest
         Assert.That(actual.Count, Is.EqualTo(1));
         var actualEntry = actual[0];
 
-        Assert.That(actualEntry.TimeStamp, Is.EqualTo(DateTime.Parse("2023-07-17 13:06:46.5794404")));
+        Assert.That(actualEntry.TimeStamp, Is.EqualTo(DateTime.Parse("2023-07-17 13:06:46.5794404", CultureInfo.InvariantCulture)));
         Assert.That(actualEntry.Direction, Is.EqualTo(TraceDirection.Input));
         Assert.That(actualEntry.Packet.Address, Is.EqualTo(0));
         Assert.That(actualEntry.TraceVersion, Is.EqualTo("1"));

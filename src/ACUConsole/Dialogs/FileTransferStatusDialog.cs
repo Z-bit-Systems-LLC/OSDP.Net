@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Terminal.Gui.App;
@@ -160,7 +161,7 @@ namespace ACUConsole.Dialogs
                     {
                         float percentage = (float)status.CurrentOffset / totalSize;
                         ProgressBar.Fraction = percentage;
-                        PercentageLabel.Text = percentage.ToString("P");
+                        PercentageLabel.Text = percentage.ToString("P", CultureInfo.CurrentCulture);
                     }
                 }
 
