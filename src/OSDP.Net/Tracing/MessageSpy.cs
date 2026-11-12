@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using OSDP.Net.Messages;
@@ -205,8 +206,9 @@ public class MessageSpy
             dynamic? entry = JsonSerializer.Deserialize<ExpandoObject>(line);
             if (entry == null) continue;
 
-            DateTime dateTime = new DateTime(1970, 1, 1).AddSeconds(double.Parse(entry.timeSec.ToString()))
-                .AddTicks(long.Parse(entry.timeNano.ToString()) / 100L);
+            DateTime dateTime = new DateTime(1970, 1, 1)
+                .AddSeconds(double.Parse(entry.timeSec.ToString(), CultureInfo.InvariantCulture))
+                .AddTicks(long.Parse(entry.timeNano.ToString(), CultureInfo.InvariantCulture) / 100L);
             Enum.TryParse(entry.io.ToString(), true, out TraceDirection io);
             string data = entry.data.ToString();
 

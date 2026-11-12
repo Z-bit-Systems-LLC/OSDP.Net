@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using NUnit.Framework;
 using OSDP.Net.Messages;
@@ -20,7 +21,7 @@ public class OSDPCaptureEntryTest
         public void Constructor_WithCommandPacket_ShouldCreateEntry()
         {
             // Arrange
-            var timeStamp = DateTime.Parse("2023-07-17 13:06:53.1417933");
+            var timeStamp = DateTime.Parse("2023-07-17 13:06:53.1417933", CultureInfo.InvariantCulture);
             var direction = TraceDirection.Output;
             var testData = BinaryUtils.HexToBytes("53-00-0D-00-06-6A-00-02-02-02-01-59-92").ToArray();
             var packet = MessageSpy.ParsePacket(testData);
@@ -42,7 +43,7 @@ public class OSDPCaptureEntryTest
     public void Constructor_WithReplyPacket_ShouldCreateEntry()
     {
         // Arrange
-        var timeStamp = DateTime.Parse("2023-07-17 13:06:46.5794404");
+        var timeStamp = DateTime.Parse("2023-07-17 13:06:46.5794404", CultureInfo.InvariantCulture);
         var direction = TraceDirection.Input;
         var testData = BinaryUtils.HexToBytes("53-80-14-00-06-45-00-0E-E3-10-10-00-00-74-97-23-06-06-1B-88").ToArray();
         var packet = MessageSpy.ParsePacket(testData);

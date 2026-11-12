@@ -136,7 +136,7 @@ namespace OSDP.Net.LineQuality
                 builder.AppendLine(
                     $"| {result.BaudRate} | {result.PacketsSent} | {result.Failures} | " +
                     $"{Percent(result.SuccessRatePercent)} | {Percent(result.DetectionLimitPercent)} | " +
-                    $"{result.MaxResponseTimeMs:F1} | {Describe(result.Verdict)} |");
+                    $"{Milliseconds(result.MaxResponseTimeMs)} | {Describe(result.Verdict)} |");
             }
 
             builder.AppendLine();
@@ -241,7 +241,8 @@ namespace OSDP.Net.LineQuality
                         $"{combination.Timeouts} | {combination.IntegrityErrors} | " +
                         $"{combination.Naks} | {combination.PatternMismatches} | " +
                         $"{Percent(combination.SuccessRatePercent)} | " +
-                        $"{combination.AverageResponseTimeMs:F1} | {combination.MaxResponseTimeMs:F1} |");
+                        $"{Milliseconds(combination.AverageResponseTimeMs)} | " +
+                        $"{Milliseconds(combination.MaxResponseTimeMs)} |");
                 }
 
                 builder.AppendLine();
@@ -323,6 +324,9 @@ namespace OSDP.Net.LineQuality
 
         private static string Percent(double value) =>
             value.ToString("F2", CultureInfo.InvariantCulture) + "%";
+
+        private static string Milliseconds(double value) =>
+            value.ToString("F1", CultureInfo.InvariantCulture);
 
         private static string Describe(LineQualityVerdict verdict)
         {

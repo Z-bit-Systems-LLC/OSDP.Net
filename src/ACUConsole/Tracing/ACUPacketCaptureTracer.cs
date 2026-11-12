@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.IO;
 using OSDP.Net.Tracing;
 
@@ -47,7 +48,7 @@ namespace ACUConsole.Tracing
 
         private CaptureWriters CreateWriters(Guid connectionId)
         {
-            string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
             var basePath = Path.Combine(_captureDirectoryPath, $"{FilePrefix}-{timestamp}");
             var osdpcapPath = $"{basePath}.osdpcap";
             var txtPath = $"{basePath}.txt";

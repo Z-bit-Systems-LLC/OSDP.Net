@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using OSDP.Net.Messages;
 using OSDP.Net.Model;
@@ -24,7 +25,7 @@ public class OSDPPacketTextFormatter : IPacketTextFormatter
         string direction = packet.CommandType != null ? "ACU -> PD" : "PD -> ACU";
         string type = (packet.CommandType?.GetDisplayName() ?? packet.ReplyType?.GetDisplayName()) ?? "Unknown";
 
-        sb.AppendLine($"{timestamp:yy-MM-dd HH:mm:ss.fff}{deltaString} {direction}: {type}");
+        sb.AppendLine($"{FormatTimestamp(timestamp)}{deltaString} {direction}: {type}");
         sb.Append($"    Address: {packet.Address} Sequence: {packet.Sequence}");
         if (packet.IsSecureMessage)
         {
@@ -219,12 +220,16 @@ public class OSDPPacketTextFormatter : IPacketTextFormatter
         var sb = new StringBuilder();
         string deltaString = FormatTimeDelta(timeDelta);
 
-        sb.AppendLine($"{timestamp:yy-MM-dd HH:mm:ss.fff}{deltaString}");
+        sb.AppendLine($"{FormatTimestamp(timestamp)}{deltaString}");
         sb.AppendLine($"*** Error parsing packet: {errorMessage} ***");
         sb.AppendLine($"    Raw data: {BitConverter.ToString(rawData)}");
         sb.AppendLine();
         return sb.ToString();
     }
+
+    // Invariant so the trace reads the same on every machine, whatever its date and time separators
+    private static string FormatTimestamp(DateTime timestamp) =>
+        timestamp.ToString("yy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
 
     private static string FormatTimeDelta(TimeSpan? timeDelta)
     {
