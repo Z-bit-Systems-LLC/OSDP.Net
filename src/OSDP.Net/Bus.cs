@@ -572,27 +572,58 @@ namespace OSDP.Net
 
         private async Task<ReplyTracker> ReceiveReply(OutgoingMessage command, DeviceProxy device, CancellationToken cancellationToken)
         {
-            var replyBuffer = new Collection<byte>();
-
-            if (!await WaitForStartOfMessage(Connection, replyBuffer, device.IsSendingMultipartMessage ? TimeSpan.FromSeconds(1) : TimeSpan.Zero, cancellationToken).ConfigureAwait(false))
+            while (true)
             {
-                throw new TimeoutException("Timeout waiting for reply message");
-            }
+                var replyBuffer = new Collection<byte>();
 
-            if (!await WaitForMessageLength(Connection, replyBuffer, cancellationToken).ConfigureAwait(false))
-            {
-                throw new TimeoutException("Timeout waiting for reply message length");
-            }
+                if (!await WaitForStartOfMessage(Connection, replyBuffer, device.IsSendingMultipartMessage ? TimeSpan.FromSeconds(1) : TimeSpan.Zero, cancellationToken).ConfigureAwait(false))
+                {
+                    throw new TimeoutException("Timeout waiting for reply message");
+                }
 
-            if (!await WaitForRestOfMessage(Connection, replyBuffer, ExtractMessageLength(replyBuffer), cancellationToken).ConfigureAwait(false))
-            {
-                throw new TimeoutException("Timeout waiting for rest of reply message");
-            }
-            
-            _tracer(new TraceEntry(TraceDirection.Input, Id, replyBuffer.ToArray()));
+                if (!await WaitForMessageLength(Connection, replyBuffer, cancellationToken).ConfigureAwait(false))
+                {
+                    throw new TimeoutException("Timeout waiting for reply message length");
+                }
 
-            return new ReplyTracker(Id, new IncomingMessage(replyBuffer.ToArray(), device.MessageSecureChannel),  command, device);
+                if (!await WaitForRestOfMessage(Connection, replyBuffer, ExtractMessageLength(replyBuffer), cancellationToken).ConfigureAwait(false))
+                {
+                    throw new TimeoutException("Timeout waiting for rest of reply message");
+                }
+
+                _tracer(new TraceEntry(TraceDirection.Input, Id, replyBuffer.ToArray()));
+
+                // Checked on the raw bytes: parsing a secure reply runs it through the MAC chain, which a
+                // reply from an earlier session would corrupt
+                if (!IsReplyToCommand(replyBuffer, command.ControlBlock.Sequence))
+                {
+                    _logger?.LogDebug(
+                        "[{Connection}] Discarding a reply with sequence number {ReplySequence} while waiting for the reply to sequence number {CommandSequence}",
+                        Connection, ExtractSequence(replyBuffer), command.ControlBlock.Sequence);
+                    continue;
+                }
+
+                return new ReplyTracker(Id, new IncomingMessage(replyBuffer.ToArray(), device.MessageSecureChannel), command, device);
+            }
         }
+
+        /// <summary>
+        /// A PD replies with the sequence number of the command it is answering, or with zero to ask the
+        /// ACU to reset the connection (OSDP v2.2.2 Table 2, SQN). A reply with any other sequence number
+        /// answers an earlier command, such as one still on the wire when the connection was restarted.
+        /// Taking it as the reply to this command would leave every later reply answering the command
+        /// before it, which breaks the secure channel handshake.
+        /// </summary>
+        /// <param name="replyBuffer">The reply, starting at the start of message byte.</param>
+        /// <param name="commandSequence">The sequence number of the command sent.</param>
+        /// <returns>True if the reply can be the reply to the command.</returns>
+        internal static bool IsReplyToCommand(IReadOnlyList<byte> replyBuffer, byte commandSequence)
+        {
+            var replySequence = ExtractSequence(replyBuffer);
+            return replySequence == commandSequence || replySequence == 0;
+        }
+
+        private static byte ExtractSequence(IReadOnlyList<byte> replyBuffer) => (byte)(replyBuffer[4] & 0x03);
 
         internal static ushort ExtractMessageLength(IReadOnlyList<byte> replyBuffer)
         {

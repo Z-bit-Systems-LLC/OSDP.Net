@@ -10,14 +10,14 @@ namespace OSDP.Net.Tests.Utilities;
 /// </summary>
 internal sealed class SingleConnectionListener : IOsdpConnectionListener
 {
-    private readonly LoopbackOsdpConnection _connection;
+    private readonly IOsdpConnection _connection;
     private Task _connectionTask;
 
     /// <summary>
     /// Creates a single connection listener with the specified connection.
     /// </summary>
     /// <param name="connection">The pre-created connection to provide when started.</param>
-    public SingleConnectionListener(LoopbackOsdpConnection connection)
+    public SingleConnectionListener(IOsdpConnection connection)
     {
         _connection = connection ?? throw new ArgumentNullException(nameof(connection));
         BaudRate = connection.BaudRate;

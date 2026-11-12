@@ -270,12 +270,15 @@ namespace OSDP.Net.Tests
 
                 public void Reply(PayloadData replyData)
                 {
-                    for (byte seq = 0; seq < 4; seq++)
+                    // A PD echoes the command's sequence number in its reply
+                    for (byte sequence = 0; sequence < 4; sequence++)
                     {
+                        var seq = sequence;
                         var replyMessage = new OutgoingMessage(0x80, new Control(seq, true, false), replyData);
 
                         _parent.Setup(x => x.WriteAsync(It.Is<byte[]>(
-                            messageData => IsMatchingCommandType(messageData, _command.Code)
+                            messageData => IsMatchingCommandType(messageData, _command.Code) &&
+                                           Sequence(messageData) == seq
                         ))).Returns(
                             async (byte[] _) =>
                                 await _parent._incomingData.Writer.WriteAsync(
@@ -290,6 +293,9 @@ namespace OSDP.Net.Tests
                         new IncomingMessage(messageData.Skip(1).ToArray(), new ACUMessageSecureChannel());
                     return receivedCommand.Type == commandType;
                 }
+
+                // The written command starts with the 0xFF driver byte, so the control byte is at index 5
+                private static byte Sequence(byte[] messageData) => (byte)(messageData[5] & 0x03);
 
                 private readonly MockConnection _parent;
                 private readonly CommandData _command;
